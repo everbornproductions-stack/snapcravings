@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Make it or buy it. — Plan (Draft)</title>
+<style>
+@page { size: Letter; margin: 0.45in 0.5in; }
+* { box-sizing: border-box; }
+body { font-family: "Helvetica Neue", Arial, sans-serif; color: #1b1d22; font-size: 9.3pt; line-height: 1.32; margin: 0; }
+header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #E8613A; padding-bottom: 5px; margin-bottom: 7px; }
+h1 { font-size: 19pt; margin: 0; letter-spacing: -0.3px; }
+h1 span { color: #E8613A; }
+.meta { font-size: 8pt; color: #666; text-align: right; }
+.tag { font-style: italic; color: #8A6A2F; }
+h2 { font-size: 10pt; text-transform: uppercase; letter-spacing: .6px; color: #E8613A; margin: 7px 0 2px; }
+p, ul, ol { margin: 0 0 2px; }
+ul, ol { padding-left: 15px; }
+li { margin-bottom: 1px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+.box { background: #FFF4EE; border-left: 3px solid #E8613A; padding: 4px 8px; margin-top: 3px; }
+.phrases { display: flex; flex-wrap: wrap; gap: 3px 5px; margin-top: 3px; }
+.phrases span { background: #FFF4EE; border: 1px solid #F6C6B3; color: #A8401F; font-weight: bold; font-size: 8.4pt; border-radius: 9px; padding: 1px 7px; }
+.note { font-size: 7.6pt; color: #777; margin-top: 6px; border-top: 1px solid #ddd; padding-top: 3px; }
+</style></head><body>
+<header>
+  <div><h1>Make it <span>or buy it.</span></h1><div class="tag">an Everborn product · working name TBD (see names.md)</div></div>
+  <div class="meta">One-page plan · DRAFT 2026-10-20<br>Everborn Productions, Sacramento CA<br>Internal · not market-tested</div>
+</header>
+
+<h2>Problem</h2>
+<p>When a craving hits, people don't know whether to cook with what they have or order in, and they can't see what ordering really costs. The menu price hides markups, delivery, service and small-order fees, tax and tip, and those differ across DoorDash, Uber Eats, Grubhub and ordering from the restaurant directly.</p>
+
+<h2>Solution</h2>
+<ol>
+<li><b>Snap it.</b> Photograph the fridge or pantry. AI identifies the ingredients and suggests craving-matched recipes with full steps, plus a list of what's missing.</li>
+<li><b>Crave it.</b> Name a craving. The app shows whether making it (grocery cost of the missing items, e.g. via Instacart) or buying it is cheaper. It compares all-in totals: DoorDash, Uber Eats, Grubhub, restaurant direct, pickup vs. delivery, menu markups, delivery/service/small-order fees, tax, tip, and memberships (DashPass, Uber One). Then it builds the cart.</li>
+</ol>
+
+<div class="cols">
+<div>
+<h2>Target user</h2>
+<p>Budget-aware people who order delivery often and want to cook more or spend less without giving up the thing they're craving. Launch market: Sacramento.</p>
+
+<h2>Differentiation</h2>
+<ul>
+<li>Photo-to-recipe is crowded: SuperCook, Samsung Food (Vision AI in paid Food+), ChefGPT, Pantry Pic. Savorly, Ingreedi, Custrd, ScanMyPantry and EatIn already send missing items to Instacart.</li>
+<li>Price comparison is thin: FoodBoss looks stagnant (last app update Sep 2023). MealMe pivoted to a B2B ordering API with a "cheapest quote" setting.</li>
+<li><b>No app combines make-vs-buy.</b> That comparison is the wedge; photo recipes are table stakes.</li>
+<li>The cost gap is real: a 2024 FinanceBuzz analysis found menu markups of 69% (Uber Eats) to 83% (DoorDash).</li>
+</ul>
+
+<h2>MVP features</h2>
+<ul>
+<li><b>Phase 1 (legal-safe):</b> photo recipes; missing items sent to an Instacart cart; cook-vs-order using the Instacart grocery cost and the restaurant's pickup price; a <b>screenshot price check</b> (the user uploads their own checkout screen and the app reads the totals; no scraping).</li>
+<li><b>Phase 2:</b> license the MealMe API for live multi-app quotes and ordering.</li>
+</ul>
+</div>
+<div>
+<h2>Monetization <span style="color:#1b1d22;text-transform:none;letter-spacing:0">(PROPOSAL, not market-tested)</span></h2>
+<div class="box">
+<ul>
+<li><b>Free:</b> limited photo scans and recipes.</li>
+<li><b>Pro: $4.99/mo or $39.99/yr.</b> Unlimited photo scans, make-vs-buy comparison, saved favorites.</li>
+<li><b>Later:</b> affiliate/partner revenue from grocery orders (e.g. the Instacart partner program).</li>
+</ul>
+<p><i>Caution: competitors in photo-to-recipe are mostly free, so Pro has to be sold on make-vs-buy, not on scanning.</i></p>
+</div>
+
+<h2>Risks</h2>
+<ul>
+<li>DoorDash, Uber Eats and Grubhub have no public pricing APIs.</li>
+<li>Platforms push back on outside access: Uber revoked Urbanhail's API access (2016), and Instacart sued Cornershop over scraping (settled 2022). So: no scraping, ever.</li>
+<li>Willingness to pay is unproven in a mostly free category.</li>
+<li>AI ingredient recognition can be wrong, so users must be able to edit the ingredient list.</li>
+</ul>
+
+<h2>Next steps</h2>
+<ol>
+<li>Chris picks a name (top 3 in names.md) and approves the scope.</li>
+<li>Run 5–10 user interviews in Sacramento using the clickable prototype.</li>
+<li>Check the Instacart partner program terms and MealMe API licensing and pricing.</li>
+<li>Get a legal review of the screenshot price-check flow and the app-store wording.</li>
+<li>Build Phase 1, then test Pro pricing with a small beta.</li>
+</ol>
+</div>
+</div>
+<h2>Brand Voice</h2>
+<p>Fun, upbeat, quick. Short exclamations and catchphrases on every key screen; keep the money claims honest (savings are shown, never promised).</p>
+<div class="phrases"><span>Let's get cooking!</span><span>Fridge to fabulous!</span><span>Craving unlocked!</span><span>Make it or take it?</span><span>Your fridge has ideas!</span><span>Pantry power!</span><span>Crave smarter, not harder.</span><span>Dinner, decided!</span><span>Fees? We see 'em.</span><span>Snap. Cook. Yum!</span></div>
+<div class="note">Draft for internal planning. Prices are proposals. Competitor facts come from desk research supplied with the brief; recheck them before any public use.</div>
+</body></html>
