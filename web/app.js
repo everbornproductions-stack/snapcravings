@@ -7,7 +7,15 @@ const LS = { get: (k, d) => { try { return JSON.parse(localStorage.getItem('sc.'
 const state = { photos: [], ingredients: LS.get('ingredients', []), low: LS.get('low', []), craving: 'Anything', recipes: LS.get('recipes', null), recipe: null, from: 'recipes', crave: LS.get('crave', null), busy: false };
 let glist = LS.get('glist', []);
 const CRAVINGS = ['Anything', 'Noodles', 'Something quick', 'Comfort food', 'Spicy'];
-const MAX_PHOTOS = 4;
+const MAX_PHOTOS = 8;
+const STEPS = [
+  { area: 'fridge', kick: 'Your fridge has ideas!', h: 'Snap your fridge', d: 'Open it wide. Every shelf counts!' },
+  { area: 'freezer', kick: 'Brrr, nice!', h: 'Now your freezer', d: 'Frozen treasure counts too.' },
+  { area: 'pantry', kick: 'Pantry power!', h: 'Now your pantry', d: 'Cans, pasta, rice, sauces, oils. Show us the goods.' },
+  { area: 'spices', kick: 'Spice it up!', h: 'Last one: your spices!', d: 'Spice rack, drawer or cabinet. Labels facing out if you can.' }
+];
+state.step = 0;
+const GROUPS = ['Produce', 'Proteins', 'Dairy', 'Pantry', 'Spices & Seasonings'];
 
 function toast(msg, ms = 3500) { const t = el('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', ms); }
 async function api(path, body) {
@@ -20,7 +28,7 @@ async function api(path, body) {
 function shrink(file) {
   return new Promise((res, rej) => {
     const img = new Image(); const url = URL.createObjectURL(file);
-    img.onload = () => { const s = Math.min(1, 1280 / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.8)); };
+    img.onload = () => { const s = Math.min(1, 1024 / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.72)); };
     img.onerror = () => rej(new Error('That photo could not be read. Try another!')); img.src = url;
   });
 }
@@ -29,37 +37,52 @@ const loading = (msg) => `<div class="card" style="text-align:center;padding:26p
 /* SNAP */
 function openSnap(lib) { el(lib ? 'snapLib' : 'snapCam').click(); }
 async function onPhotos(files) {
-  files = [...files].slice(0, MAX_PHOTOS - state.photos.length);
+  const room = MAX_PHOTOS - state.photos.length;
+  if (room <= 0) return toast(`That's ${MAX_PHOTOS} photos, the max. Hit Go!`);
+  files = [...files].slice(0, room);
   if (!files.length) return;
   location.hash = '#scan';
-  try { for (const f of files) state.photos.push(await shrink(f)); } catch (e) { toast(e.message); }
-  renderPhotos(); scan();
+  const area = (STEPS[state.step] || STEPS[3]).area;
+  try { for (const f of files) state.photos.push({ src: await shrink(f), area }); } catch (e) { toast(e.message); }
+  state.ingredients = []; state.low = []; renderScan();
 }
 function renderPhotos() {
-  el('scanPhotos').innerHTML = state.photos.length ? state.photos.map(p => `<img src="${p}" alt="Your photo">`).join('') + (state.photos.length < MAX_PHOTOS ? `<button class="chip" data-addphoto style="align-self:center;cursor:pointer;flex-shrink:0">+ Photo</button>` : '')
-    : `<div style="margin:auto;text-align:center"><button class="btn primary" data-addphoto style="width:auto;padding:12px 18px">📸 Snap your fridge</button><div style="margin-top:6px"><button class="chip" data-addlib style="cursor:pointer">or pick photos</button></div></div>`;
+  el('scanPhotos').innerHTML = state.photos.length ? state.photos.map((p, i) => `<span style="position:relative;height:100%;flex-shrink:0"><img src="${p.src}" alt="Your ${p.area} photo"><span class="pill g" style="position:absolute;left:4px;bottom:4px;margin:0;text-transform:capitalize">${esc(p.area)}</span><button data-rmp="${i}" aria-label="Remove photo" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(30,27,24,.75);color:#fff;font-weight:800;cursor:pointer">×</button></span>`).join('') + (state.photos.length < MAX_PHOTOS ? `<span style="align-self:center;display:flex;flex-direction:column;gap:6px;flex-shrink:0"></span>` : '')
+    : `<div style="margin:auto;text-align:center;font-size:44px">📸</div>`;
 }
 async function scan() {
-  state.busy = true; el('scanBody').innerHTML = loading('Peeking in your fridge…');
+  if (!state.photos.length) return toast('Snap a photo first!');
+  state.busy = true; el('scanBody').innerHTML = loading(`Peeking at ${state.photos.length} photo${state.photos.length === 1 ? '' : 's'}… spices too!`);
   try {
-    const j = await api('scan', { images: state.photos });
-    state.ingredients = j.ingredients.filter(i => !i.low).map(i => ({ name: i.name, qty: i.qty || '' }));
-    state.low = j.ingredients.filter(i => i.low).map(i => ({ name: i.name, qty: i.qty || '' }));
-    // running-low items are still "have" for cooking
-    state.ingredients = state.ingredients.concat(state.low);
+    const j = await api('scan', { images: state.photos.map(p => ({ data: p.src, area: p.area })) });
+    state.ingredients = j.ingredients.map(i => ({ name: i.name, qty: i.qty || '', cat: i.category, low: !!i.low }));
+    state.low = state.ingredients.filter(i => i.low); // running-low items still count as "have" for cooking
     LS.set('ingredients', state.ingredients); LS.set('low', state.low);
     state.low.forEach(l => addToList(l.name, 'low', 0, null, true));
   } catch (e) { toast(e.message); }
   state.busy = false; renderScan();
 }
 function renderScan() {
-  if (!state.photos.length && !state.ingredients.length) { renderPhotos(); el('scanBody').innerHTML = `<div class="kick">Your fridge has ideas!</div><h2>Snap it</h2><p class="sub">Take up to ${MAX_PHOTOS} photos of your fridge or pantry. We'll find the ingredients.</p>`; return; }
   renderPhotos();
+  if (!state.ingredients.length) {
+    const n = state.photos.length, st = STEPS[state.step];
+    const dots = STEPS.map((x, i) => `<span style="flex:1;height:6px;border-radius:3px;background:${i < state.step ? 'var(--green)' : i === state.step ? 'var(--coral)' : 'var(--line)'}"></span>`).join('');
+    const here = st ? state.photos.filter(p => p.area === st.area).length : 0;
+    el('scanBody').innerHTML = `<div style="display:flex;gap:5px;margin:2px 0 6px">${dots}</div>
+      ${st ? `<div class="fine" style="margin:0">Step ${state.step + 1} of ${STEPS.length} · ${n}/${MAX_PHOTOS} photos</div>
+      <div class="kick">${st.kick}</div><h2>${st.h}</h2><p class="sub">${st.d}</p>
+      <button class="btn primary" data-addphoto>📸 ${here ? 'Add another' : 'Snap it'}</button>
+      <div style="display:flex;gap:8px"><button class="btn ghost" data-addlib style="flex:1">🖼 Pick photos</button><button class="btn ghost" data-next style="flex:1">${here ? 'Next →' : 'Skip'}</button></div>`
+      : `<div class="kick">Fridge to fabulous!</div><h2>${n} photo${n === 1 ? '' : 's'} ready!</h2><p class="sub">We'll look at all of them together: one list, spices and sauces too.</p>${n < MAX_PHOTOS ? `<button class="chip" data-back style="cursor:pointer;margin-top:8px">‹ Add more photos</button>` : ''}`}
+      ${n ? `<button class="btn primary" id="scanGo" style="font-size:20px;padding:20px">Go! 🚀</button>` : ''}`;
+    return;
+  }
   const n = state.ingredients.length;
   el('scanBody').innerHTML = `<div class="kick">Fridge to fabulous!</div>
     <h2>We found ${n} ingredient${n === 1 ? '' : 's'}</h2>
     <p class="sub">Tap to remove anything we got wrong, or add what we missed.</p><div style="height:10px"></div>
-    <div class="chips">${state.ingredients.map((g, i) => `<span class="chip ${state.low.some(l => l.name === g.name) ? 'miss' : 'have'}" data-rmi="${i}" style="cursor:pointer">${esc(g.name)}${g.qty ? ' · ' + esc(g.qty) : ''}<span class="x">×</span></span>`).join('')}<span class="chip" data-addi style="cursor:pointer">+ Add</span></div>
+    ${GROUPS.map(G => { const items = state.ingredients.map((g, i) => [g, i]).filter(([g]) => (GROUPS.includes(g.cat) ? g.cat : 'Pantry') === G); return `<h3 style="margin:14px 0 6px">${G === 'Spices & Seasonings' ? '🧂 ' : ''}${G} <span style="color:var(--muted);font-weight:600">· ${items.length}</span></h3><div class="chips">${items.map(([g, i]) => `<span class="chip ${g.low ? 'miss' : 'have'}" data-rmi="${i}" style="cursor:pointer">${esc(g.name)}${g.qty ? ' · ' + esc(g.qty) : ''}<span class="x">×</span></span>`).join('')}<span class="chip" data-addi="${G}" style="cursor:pointer">+ Add</span></div>`; }).join('')}
+    <button class="chip" data-rescan style="cursor:pointer;margin-top:10px">🔄 Start over with new photos</button>
     ${state.low.length ? `<p class="fine">Coral = running low. We added ${state.low.length === 1 ? 'it' : 'them'} to your grocery list.</p>` : ''}
     <h3>What are you craving?</h3>
     <div class="chips">${CRAVINGS.map(c => `<span class="chip" data-cr="${esc(c)}" style="cursor:pointer;${c === state.craving ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : ''}">${esc(c)}</span>`).join('')}</div>
@@ -70,7 +93,7 @@ function renderScan() {
 /* RECIPES */
 async function getRecipes() {
   location.hash = '#recipes'; el('recipesBody').innerHTML = loading('Cooking up ideas…');
-  try { state.recipes = await api('recipes', { ingredients: state.ingredients.map(i => i.name + (i.qty ? ' (' + i.qty + ')' : '')), craving: state.craving }); LS.set('recipes', state.recipes); }
+  try { state.recipes = await api('recipes', { ingredients: state.ingredients.map(i => (i.cat === 'Spices & Seasonings' ? '[spice] ' : '') + i.name + (i.qty ? ' (' + i.qty + ')' : '')), craving: state.craving }); LS.set('recipes', state.recipes); }
   catch (e) { toast(e.message); el('recipesBody').innerHTML = `<p class="sub">${esc(e.message)}</p>`; return; }
   renderRecipes();
 }
@@ -157,11 +180,16 @@ function sendList() {
 /* EVENTS */
 document.addEventListener('click', e => {
   const t = e.target;
-  if (t.closest('a.big-choice.snap') || t.closest('a.tab[href="#scan"]')) { if (!state.photos.length && !state.ingredients.length) { e.preventDefault(); location.hash = '#scan'; openSnap(); } return; }
+  if (t.closest('a.big-choice.snap') || t.closest('a.tab[href="#scan"]')) { if (!state.photos.length && !state.ingredients.length) { e.preventDefault(); state.step = 0; location.hash = '#scan'; openSnap(); } return; }
   if (t.closest('[data-addphoto]')) return openSnap();
   if (t.closest('[data-addlib]')) return openSnap(true);
   const rm = t.closest('[data-rmi]'); if (rm) { state.ingredients.splice(+rm.dataset.rmi, 1); LS.set('ingredients', state.ingredients); return renderScan(); }
-  if (t.closest('[data-addi]')) { const n = prompt('Add an ingredient'); if (n && n.trim()) { state.ingredients.push({ name: n.trim(), qty: '' }); LS.set('ingredients', state.ingredients); renderScan(); } return; }
+  const rp = t.closest('[data-rmp]'); if (rp) { state.photos.splice(+rp.dataset.rmp, 1); return renderScan(); }
+  if (t.closest('[data-next]')) { state.step++; return renderScan(); }
+  if (t.closest('[data-back]')) { state.step = STEPS.length - 1; return renderScan(); }
+  if (t.closest('[data-rescan]')) { state.ingredients = []; state.low = []; state.step = 0; return renderScan(); }
+  if (t.closest('#scanGo')) return scan();
+  const ai = t.closest('[data-addi]'); if (ai) { const n = prompt('Add an ingredient'); if (n && n.trim()) { state.ingredients.push({ name: n.trim(), qty: '', cat: ai.dataset.addi }); LS.set('ingredients', state.ingredients); renderScan(); } return; }
   const cr = t.closest('[data-cr]'); if (cr) { state.craving = cr.dataset.cr; return renderScan(); }
   if (t.closest('#goRecipes')) return getRecipes();
   const am = t.closest('[data-addmiss]'); if (am) { const k = am.dataset.addmiss; if (k === 'all') (state.recipes?.more || []).forEach(addMissing); else addMissing(k === 'cur' ? state.recipe : pick(k)); }

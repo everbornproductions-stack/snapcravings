@@ -2,7 +2,7 @@
 // Routes: POST /api/scan {images:[dataURL]} | POST /api/recipes {ingredients, craving} | POST /api/crave {craving, ingredients}
 // GET /api/health. Set MOCK_AI=1 (local only) to return canned results without a key.
 const MODEL = 'gemini-2.5-flash';
-const MAX_IMAGES = 4, MAX_IMAGE_BYTES = 1_500_000, MAX_BODY = 7_000_000;
+const MAX_IMAGES = 8, MAX_IMAGE_BYTES = 1_500_000, MAX_BODY = 9_000_000;
 const LIMIT = { scan: 12, recipes: 20, crave: 20 }, WINDOW_S = 3600; // per IP per hour
 const mem = new Map(); // fallback limiter when no KV binding (per isolate, best effort)
 
@@ -23,7 +23,7 @@ const RECIPE = { type: 'object', properties: {
   missing: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, qty: { type: 'string' }, est_price: { type: 'number' } }, required: ['item', 'qty', 'est_price'] } },
   steps: { type: 'array', items: { type: 'string' } } }, required: ['name', 'emoji', 'minutes', 'servings', 'level', 'ingredients', 'missing', 'steps'] };
 const SCHEMAS = {
-  scan: { type: 'object', properties: { ingredients: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, qty: { type: 'string' }, low: { type: 'boolean' } }, required: ['name', 'qty', 'low'] } } }, required: ['ingredients'] },
+  scan: { type: 'object', properties: { ingredients: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, qty: { type: 'string' }, category: { type: 'string', enum: ['Produce', 'Proteins', 'Dairy', 'Pantry', 'Spices & Seasonings'] }, low: { type: 'boolean' } }, required: ['name', 'qty', 'category', 'low'] } } }, required: ['ingredients'] },
   recipes: { type: 'object', properties: { ready: { type: 'array', items: RECIPE }, more: { type: 'array', items: RECIPE } }, required: ['ready', 'more'] },
   crave: { type: 'object', properties: { recipe: RECIPE, est_cook_cost: { type: 'number' } }, required: ['recipe', 'est_cook_cost'] }
 };
@@ -62,17 +62,20 @@ export async function onRequest({ request, env, params }) {
     if (!imgs.length) return json({ error: 'Add at least one photo!' }, 400);
     if (imgs.length > MAX_IMAGES) return json({ error: `Up to ${MAX_IMAGES} photos at a time.` }, 400);
     parts = [];
-    for (const d of imgs) {
+    const AREAS = ['fridge', 'freezer', 'pantry', 'spices', 'counter'];
+    for (const [i, im] of imgs.entries()) {
+      const d = typeof im === 'string' ? im : im?.data; const area = AREAS.includes(im?.area) ? im.area : 'kitchen';
+      parts.push({ text: `Photo ${i + 1} (${area}):` });
       const m = /^data:(image\/(jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(d));
       if (!m) return json({ error: 'Photos must be JPEG, PNG or WebP.' }, 400);
       if (m[3].length * 0.75 > MAX_IMAGE_BYTES) return json({ error: 'One photo is too big (max 1.5 MB).' }, 413);
       parts.push({ inlineData: { mimeType: m[1], data: m[3] } });
     }
-    parts.push({ text: 'These are photos of one fridge/pantry. List every distinct food ingredient you can see (merge duplicates across photos). For each give a short common name, a rough quantity (e.g. "6 eggs", "half a bottle", "about 1 lb"), and low=true if it looks nearly empty or running low. Ignore non-food items. If no food is visible, return an empty list.' });
+    parts.push({ text: `These ${imgs.length} photos are all from ONE kitchen; each is labeled with its area (fridge, freezer, pantry, spices). Analyze ALL photos together and return ONE combined, de-duplicated inventory: if the same item appears in several photos, list it once. List every distinct food item you can see, explicitly including spices, dried herbs, seasonings and blends, salt and pepper, sauces, oils, vinegars and condiments (read jar and bottle labels). For each give a short common name (e.g. "smoked paprika", "soy sauce", "olive oil"), a rough quantity (e.g. "6 eggs", "half a jar", "about 1 lb"), a category (Produce, Proteins, Dairy, Pantry, Spices & Seasonings; sauces, oils and condiments go in Pantry; spices, dried herbs, salt, pepper and seasoning blends go in Spices & Seasonings), and low=true if it looks nearly empty or running low. Ignore non-food items. If no food is visible, return an empty list.` });
   } else if (route === 'recipes') {
     const ing = clean(body.ingredients); const craving = String(body.craving || 'Anything').slice(0, 60);
     if (!ing.length) return json({ error: 'Add some ingredients first!' }, 400);
-    parts = [{ text: `Ingredients on hand: ${ing.join('; ')}.\nAlways available staples: ${STAPLES}.\nCraving: ${craving}.\nReturn "ready": 2 to 3 recipes that use ONLY the ingredients on hand plus staples (missing must be an empty list; every ingredient have=true). Return "more": 2 to 3 recipes matching the craving that need 1 to 4 extra items; list those in missing with a rough US grocery price estimate in USD (est_price) for the smallest common package, and mark them have=false in ingredients. Sort each list by fewest missing items, then shortest time. One food emoji per recipe. 2 servings unless the dish needs more.` }];
+    parts = [{ text: `Ingredients on hand (items marked [spice] are spices/seasonings the user owns; use them to flavor the recipes and name them in ingredients and steps): ${ing.join('; ')}.\nAlways available staples: ${STAPLES}.\nCraving: ${craving}.\nReturn "ready": 2 to 3 recipes that use ONLY the ingredients on hand plus staples (missing must be an empty list; every ingredient have=true). Return "more": 2 to 3 recipes matching the craving that need 1 to 4 extra items; list those in missing with a rough US grocery price estimate in USD (est_price) for the smallest common package, and mark them have=false in ingredients. Sort each list by fewest missing items, then shortest time. One food emoji per recipe. 2 servings unless the dish needs more.` }];
   } else {
     const craving = String(body.craving || '').slice(0, 80).trim(); const ing = clean(body.ingredients);
     if (!craving) return json({ error: 'Name a craving first!' }, 400);
@@ -86,7 +89,7 @@ export async function onRequest({ request, env, params }) {
 
 function mock(route, body) {
   const r = (name, miss) => ({ name, emoji: '🍳', minutes: 15, servings: 2, level: 'Easy', ingredients: [{ item: 'Eggs', qty: '2', have: true }, ...miss.map(m => ({ item: m, qty: '1', have: false }))], missing: miss.map(m => ({ item: m, qty: '1', est_price: 2.5 })), steps: ['Mock step one.', 'Mock step two.'] });
-  if (route === 'scan') return { ingredients: [{ name: 'Eggs', qty: '6', low: false }, { name: 'Milk', qty: 'a little', low: true }] };
+  if (route === 'scan') return { ingredients: [{ name: 'Eggs', qty: '6', category: 'Proteins', low: false }, { name: 'Milk', qty: 'a little', category: 'Dairy', low: true }, { name: 'Smoked paprika', qty: 'half a jar', category: 'Spices & Seasonings', low: false }] };
   if (route === 'recipes') return { ready: [r('Mock fried eggs', [])], more: [r('Mock omelette', ['Cheese'])] };
   return { recipe: r('Mock ' + body.craving, ['Noodles']), est_cook_cost: 6.5 };
 }

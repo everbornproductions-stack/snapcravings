@@ -1,0 +1,2 @@
+fridge.jpg: "Food into a refrigerator - 20111002", Wikimedia Commons, CC0.
+spices.jpg: "Spice rack, 2014", Wikimedia Commons, CC BY 2.0 (test use only).
