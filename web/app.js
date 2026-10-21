@@ -162,7 +162,7 @@ async function moreIdeas() {
   const fresh = list => (list || []).filter(r => r?.name && !seen.has(r.name.toLowerCase()) && seen.add(r.name.toLowerCase()));
   const call = section => api('recipes', { ingredients, craving: state.craving, section, avoid }, 65000).then(j => j.recipes).catch(() => []);
   const [ready, more] = await Promise.all([call('ready'), call('more')]);
-  const a = dedupe(fresh(ready), avoid), b = dedupe(fresh(more), avoid.concat(a.map(r => r.name)));
+  const a = pick3(dedupe(fresh(ready), avoid), fresh(ready), avoid), b = pick3(dedupe(fresh(more), avoid.concat(a.map(r => r.name))), fresh(more), avoid.concat(a.map(r => r.name)));
   R.ready = (R.ready || []).concat(a); R.more = (R.more || []).concat(b); LS.set('recipes', R);
   state.moreBusy = false;
   if (location.hash === '#recipes') { const y = el('recipes').scrollTop; renderRecipes(); el('recipes').scrollTop = y; }
@@ -173,13 +173,14 @@ async function getRecipes() {
   const ingredients = state.ingredients.slice(0, 80).map(i => (i.cat === 'Spices & Seasonings' ? '[spice] ' : '') + i.name + (i.qty ? ' (' + i.qty + ')' : ''));
   const call = async section => { for (let a = 0; a < 2; a++) { try { return (await api('recipes', { ingredients, craving: state.craving, section }, 65000)).recipes || []; } catch (e) { if (a) throw e; } } };
   state.moreBusy = false;
-  try { const [ready0, more0] = await Promise.all([call('ready'), call('more')]); const ready = dedupe(ready0, []); const more = dedupe(more0, ready.map(r => r.name)); state.recipes = { craving: state.craving, ready, more }; LS.set('recipes', state.recipes); }
+  try { const [ready0, more0] = await Promise.all([call('ready'), call('more')]); const ready = pick3(dedupe(ready0, []), ready0, []); const more = pick3(dedupe(more0, ready.map(r => r.name)), more0, ready.map(r => r.name)); state.recipes = { craving: state.craving, ready, more }; LS.set('recipes', state.recipes); }
   catch (e) { el('recipesBody').innerHTML = `<div class="kick">Oops, kitchen hiccup!</div><h2>Recipes didn't come through</h2><p class="sub">${esc(e.message)} Your ingredients are saved.</p><button class="btn primary" id="goRecipes">Retry 🔄</button>`; return; }
   renderRecipes();
 }
 const STOP = new Set(['and', 'with', 'the', 'a', 'of', 'in', 'on', 'style', 'quick', 'easy', 'simple', 'classic', 'homemade', 'savory', 'creamy', 'crispy', 'cheesy', 'spicy', 'garlic', 'butter', 'herb', 'herbed']);
-const words = n => new Set(n.toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w)).map(w => w.replace(/(es|s)$/, '')));
-function similar(a, b) { const A = words(a), B = words(b); if (!A.size || !B.size) return a.toLowerCase() === b.toLowerCase(); let k = 0; A.forEach(w => B.has(w) && k++); return k / Math.min(A.size, B.size) >= 0.6; }
+const words = n => new Set(n.toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w)).map(w => w.replace(/(ed|es|s|ing)$/, '').replace(/e$/, '')));
+function similar(a, b, t = 0.6) { const A = words(a), B = words(b); if (!A.size || !B.size) return a.toLowerCase() === b.toLowerCase(); let k = 0; A.forEach(w => B.has(w) && k++); return k / Math.min(A.size, B.size) >= t; }
+function pick3(list, raw = [], seen = []) { const L = ['Easy', 'Medium', 'Chef mode']; list = list.slice(); if (!list.some(x => x.level === 'Chef mode')) { const c = (raw || []).find(x => x?.name && x.level === 'Chef mode' && !seen.some(n => similar(n, x.name, 0.75))); if (c) list.push(c); } const out = []; for (const l of L) { const r = list.find(x => x.level === l && !out.includes(x)); if (r) out.push(r); } for (const r of list) { if (out.length >= 3) break; if (!out.includes(r)) out.push(r); } return out.slice(0, 3).sort((a, b) => L.indexOf(a.level) - L.indexOf(b.level)); }
 function dedupe(list, seenNames) { const out = []; for (const r of list || []) { if (!r?.name) continue; if ([...seenNames, ...out.map(x => x.name)].some(n => similar(n, r.name))) continue; out.push(r); } return out; }
 const LEVEL_PILL = l => l === 'Chef mode' ? '<span class="pill" style="background:var(--dark);color:#fff;margin-left:4px">👨‍🍳 Chef mode</span>' : l === 'Medium' ? '<span class="pill" style="background:#FFF1C9;color:#7A5300;margin-left:4px">Medium</span>' : '<span class="pill g" style="margin-left:4px">Easy</span>';
 const THUMBS = ['#FFF1C9', '#E3F3E9', '#EDE6F7', '#FDE9E0'];
