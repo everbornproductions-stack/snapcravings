@@ -3,9 +3,37 @@ const $ = n => '$' + (Number(n) || 0).toFixed(2);
 const r2 = n => Math.round(n * 100) / 100;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const el = id => document.getElementById(id);
+let sub = {};
 const LS = { get: (k, d) => { try { return JSON.parse(localStorage.getItem('sc.' + k)) ?? d; } catch { return d; } }, set: (k, v) => localStorage.setItem('sc.' + k, JSON.stringify(v)) };
 const state = { photos: [], ingredients: LS.get('ingredients', []), low: LS.get('low', []), craving: 'Anything', recipes: LS.get('recipes', null), recipe: null, from: 'recipes', crave: LS.get('crave', null), busy: false };
 let glist = LS.get('glist', []);
+sub = LS.get('sub', {});
+let subCfg = { enabled: false, price: 4.99 };
+const unlimited = () => !!sub.token && sub.active;
+async function subCall(path, body) { const r = await fetch('/api/sub/' + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Square is having a moment. Try again!'); return j; }
+async function checkSub(email, quiet) {
+  try { const j = await subCall('status', { email, token: sub.token }); sub = j.active ? { email: j.email || email, token: j.token, active: true, checked: Date.now() } : { email, active: false, checked: Date.now() }; LS.set('sub', sub); renderLeft(); renderPro(); if (!quiet) toast(j.active ? "You're Unlimited! Let's get cooking! 🎉" : "No active plan for that email yet."); return j.active; }
+  catch (e) { if (!quiet) toast(e.message); return false; }
+}
+function renderPro() {
+  if (!el('proBody')) return;
+  el('proPrice').textContent = '$' + Number(subCfg.price).toFixed(2);
+  if (unlimited()) { el('proBody').innerHTML = `<div class="card" style="background:var(--green-soft);border-color:#BFE3CC;text-align:center;margin-top:12px"><b style="color:#1F6B42">You're Unlimited! 🎉</b><div class="fine" style="color:#1F6B42">${esc(sub.email)} · unlimited photo scans. Let's get cooking!</div></div><a class="btn primary" href="#scan">📸 Snap it</a><p class="fine" style="text-align:center">Manage or cancel anytime from your Square receipt email.</p>`; return; }
+  if (sub.email && !el('proEmail').value) el('proEmail').value = sub.email;
+  el('proFine').textContent = subCfg.enabled ? `$${Number(subCfg.price).toFixed(2)}/month. Secure checkout by Square. We use your email only to find your plan.${subCfg.sandbox ? ' (Test mode)' : ''}` : 'Go Unlimited is coming soon. No payments yet.';
+}
+async function goUnlimited() {
+  if (!subCfg.enabled) return toast('Go Unlimited is coming soon!');
+  const email = el('proEmail').value.trim(); if (!email) return toast('Pop in your email first!');
+  el('proGo').innerHTML = '<span class="spin" style="border-top-color:#fff"></span> Heading to checkout…';
+  try { const j = await subCall('checkout', { email }); sub = { email: email.toLowerCase(), active: false }; LS.set('sub', sub); location.href = j.url; }
+  catch (e) { toast(e.message); el('proGo').textContent = "Go Unlimited — let's get cooking!"; }
+}
+fetch('/api/sub/config').then(r => r.json()).then(c => { subCfg = c; renderPro();
+  if (!c.enabled || !sub.email) return;
+  if (/[?&]paid=1/.test(location.search)) { history.replaceState(null, '', '/#pro'); let n = 0; const poll = async () => { if (await checkSub(sub.email, n < 5) || ++n > 6) return; setTimeout(poll, 4000); }; toast('Thanks! Checking your plan…'); poll(); }
+  else if (!sub.checked || Date.now() - sub.checked > 3 * 864e5) checkSub(sub.email, true);
+}).catch(() => {});
 let favs = LS.get('favs', []);
 const isFav = r => !!r && favs.some(f => f.name.toLowerCase() === r.name.toLowerCase());
 function toggleFav(r) { if (!r) return; if (isFav(r)) { favs = favs.filter(f => f.name.toLowerCase() !== r.name.toLowerCase()); toast('Removed from favorites.'); } else { favs.unshift({ ...r, savedAt: Date.now() }); toast('Saved to favorites! ❤️'); } LS.set('favs', favs); renderFavCount(); }
@@ -30,11 +58,11 @@ function toast(msg, ms = 3500) { const t = el('toast'); t.textContent = msg; t.s
 async function api(path, body, ms = 60000) {
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
   let r;
-  try { r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal }); }
+  try { r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-sc-token': sub.token || '', 'x-sc-scan': state.scanId || '' }, body: JSON.stringify(body), signal: ctl.signal }); }
   catch (e) { throw new Error(e.name === 'AbortError' ? 'That took too long. Check your signal and tap Retry!' : 'Lost the connection for a sec. Tap Retry!'); }
   finally { clearTimeout(t); }
   const j = await r.json().catch(() => ({ error: 'Something went sideways. Try again!' }));
-  if (!r.ok) throw new Error(j.error || 'Something went sideways. Try again!');
+  if (!r.ok) { const er = new Error(j.error || 'Something went sideways. Try again!'); er.paywall = !!j.paywall; throw er; }
   return j;
 }
 // Resize on device: max 1024px JPEG, quality stepped down until <= ~350 KB. Handles EXIF rotation and big camera files.
@@ -77,11 +105,11 @@ function mergeInv(lists) {
 }
 async function scan() {
   if (!state.photos.length) return toast('Snap a photo first!');
-  state.busy = true; const n = state.photos.length;
+  state.busy = true; const n = state.photos.length; state.scanId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random());
   const batches = []; for (let i = 0; i < n; i += BATCH) batches.push(state.photos.slice(i, i + BATCH));
   let done = 0; const prog = () => el('scanBody').innerHTML = loading(`Peeking at ${n} photo${n === 1 ? '' : 's'}… spices too! (${Math.min(done * BATCH, n)}/${n})`);
   prog();
-  const one = async b => { for (let a = 0; a < 2; a++) { try { const j = await api('scan', { images: b.map(p => ({ data: p.src, area: p.area })) }, 60000); done++; prog(); return j.ingredients; } catch (e) { if (a) throw e; } } };
+  const one = async b => { for (let a = 0; a < 2; a++) { try { const j = await api('scan', { images: b.map(p => ({ data: p.src, area: p.area })) }, 60000); done++; prog(); return j.ingredients; } catch (e) { if (a || e.paywall) throw e; } } };
   try {
     const results = []; // two batches at a time
     for (let i = 0; i < batches.length; i += 2) results.push(...await Promise.all(batches.slice(i, i + 2).map(one)));
@@ -93,6 +121,7 @@ async function scan() {
     state.busy = false; renderScan();
   } catch (e) {
     state.busy = false;
+    if (e.paywall) { el('scanBody').innerHTML = `<div class="kick">Hungry for more?</div><h2>Free scans used up</h2><p class="sub">${esc(e.message)} Your ${n} photo${n === 1 ? ' is' : 's are'} still here.</p><a class="btn primary" href="#pro">Go Unlimited — let's get cooking!</a>`; return; }
     el('scanBody').innerHTML = `<div class="kick">Oops, kitchen hiccup!</div><h2>We couldn't read your photos</h2><p class="sub">${esc(e.message)} Your ${n} photo${n === 1 ? ' is' : 's are'} still here.</p><button class="btn primary" id="scanGo" style="font-size:20px;padding:20px">Retry 🔄</button>`;
   }
 }
@@ -260,16 +289,18 @@ document.addEventListener('click', e => {
   if (t.closest('#listClear')) { glist = glist.filter(g => !g.done); LS.set('glist', glist); el('listLinks').innerHTML = ''; return renderList(); }
   const tip = t.closest('[data-tip]'); if (tip) document.querySelectorAll('#tipSeg button').forEach(b => b.classList.toggle('on', b === tip));
   const s = t.closest('[data-mem]'); if (s) s.classList.toggle('on');
-  const p = t.closest('.plan'); if (p) document.querySelectorAll('.plan').forEach(x => x.classList.toggle('on', x === p));
+  const p = t.closest('.plan'); if (p) { if (p.dataset.plan === 'yr') toast('Yearly is coming soon! Monthly is ready now.'); else document.querySelectorAll('.plan').forEach(x => x.classList.toggle('on', x === p)); }
+  if (t.closest('#proGo')) return goUnlimited();
+  if (t.closest('#proRestore')) { const em = el('proEmail').value.trim() || sub.email; if (!em) return toast('Pop in the email you used at checkout!'); return checkSub(em.toLowerCase()); }
 });
 el('listAdd').addEventListener('keydown', e => { if (e.key === 'Enter') el('listAddBtn').click(); });
 el('craveInput').addEventListener('keydown', e => { if (e.key === 'Enter') crave(el('craveInput').value); });
 ['snapCam', 'snapLib'].forEach(id => el(id).addEventListener('change', e => { onPhotos(e.target.files); e.target.value = ''; }));
 
-function renderLeft() { const n = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5).length; el('scanLeft').textContent = n < 3 ? `${3 - n} of 3 free scans left this week` : 'Free scans used up. Beta bonus: keep snapping!'; }
+function renderLeft() { if (unlimited()) { el('scanLeft').textContent = 'Unlimited scans. Let\'s get cooking!'; return; } const n = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5).length; el('scanLeft').textContent = n < 3 ? `${3 - n} of 3 free scans left this week` : 'Free scans used up. Beta bonus: keep snapping!'; }
 renderLeft();
 const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'favs', 'pro'];
-const RENDER = { scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, favs: renderFavs, home: renderFavCount, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList };
+const RENDER = { scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, favs: renderFavs, home: renderFavCount, pro: renderPro, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList };
 function route() {
   const id = SCREENS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
   RENDER[id]?.();

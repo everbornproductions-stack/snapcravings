@@ -14,3 +14,10 @@
     echo "$GEMINI_API_KEY" | wrangler pages secret put GEMINI_API_KEY --project-name snapcravings
     npx wrangler@3 pages deploy web --project-name snapcravings --branch main
 Then: https://snapcravings.pages.dev  (noindex via meta + _headers)
+
+## Go Unlimited (Square subscription)
+- `functions/api/sub/[[path]].js`: `/api/sub/config`, `/api/sub/checkout` (Square payment link with `subscription_plan_id`, buyer email prefilled), `/api/sub/status` (customer by email -> ACTIVE subscription at the location -> signed 35-day unlock token). Price: `PRICE_CENTS` (499). Plan "SnapCravings Unlimited" + monthly variation are created in the Square Catalog on first checkout (or set `SQUARE_PLAN_VARIATION_ID`).
+- Secrets: `SQUARE_ACCESS_TOKEN`, `SUB_SECRET`; vars `SQUARE_ENV` (`sandbox` for test), optional `SQUARE_LOCATION_ID`, `PAYWALL=off` to hide.
+- Free limit (3 scans/week per IP, Unlimited token skips) is enforced server-side only when `ENFORCE_FREE=1` and a KV namespace is bound as `RATE_KV`.
+- Production currently: no Square token set, so Pro shows "coming soon". Sandbox test site: https://sandbox.snapcravings.pages.dev (preview env, Square sandbox).
+- Local: `.dev.vars` (git-ignored) + `wrangler pages dev web --kv RATE_KV`.

@@ -295,10 +295,14 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
     <div class="feat"><span class="ck">✓</span><span><b>Saved favorites</b><br><span class="sub" style="font-size:12.5px">Keep the recipes and orders you love</span></span></div>
     <table class="cmp"><tr><th></th><th>Free</th><th>Pro</th></tr><tr><td>Photo scans</td><td>Limited</td><td>Unlimited</td></tr><tr><td>Recipes</td><td>Limited</td><td>Unlimited</td></tr><tr><td>Make vs. buy</td><td>—</td><td>✓</td></tr><tr><td>Saved favorites</td><td>—</td><td>✓</td></tr></table>
     <div style="height:14px"></div>
-    <div class="plan on" data-plan="yr"><span class="rd"></span><span class="p"><b>Yearly <span class="save">SAVE 33%</span></b><span>$39.99 billed once a year · about $3.33/mo</span></span><span class="pr">$39.99</span></div>
-    <div class="plan" data-plan="mo"><span class="rd"></span><span class="p"><b>Monthly</b><span>Billed monthly, cancel anytime</span></span><span class="pr">$4.99</span></div>
-    <button class="btn primary" onclick="alert('Pro is coming soon. No payment is taken.')">Continue</button>
-    <p class="fine" style="text-align:center">Pro is coming soon. No payments yet.</p>
+    <div class="plan" data-plan="yr"><span class="rd"></span><span class="p"><b>Yearly <span class="save">SAVE 33%</span></b><span>Coming soon · about $3.33/mo</span></span><span class="pr">$39.99</span></div>
+    <div class="plan on" data-plan="mo"><span class="rd"></span><span class="p"><b>Monthly</b><span>Billed monthly, cancel anytime</span></span><span class="pr" id="proPrice">$4.99</span></div>
+    <div id="proBody">
+      <div class="input"><span>✉️</span><input id="proEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@email.com" aria-label="Email"></div>
+      <button class="btn primary" id="proGo">Go Unlimited — let's get cooking!</button>
+      <button class="btn ghost" id="proRestore">Restore purchase</button>
+      <p class="fine" style="text-align:center" id="proFine">Secure checkout by Square. We use your email only to find your plan.</p>
+    </div>
   </section>
 
   <nav class="tabbar">
@@ -314,6 +318,6 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 <input type="file" id="snapCam" accept="image/*" capture="environment" multiple hidden>
 <input type="file" id="snapLib" accept="image/*" multiple hidden>
 <div id="toast" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
-<script src="app.js?v=ui8"></script>
+<script src="app.js?v=ui9"></script>
 </body>
 </html>
