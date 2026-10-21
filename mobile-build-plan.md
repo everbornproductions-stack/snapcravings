@@ -38,7 +38,7 @@ Why: the prototype is already web; Capacitor ships that exact UI to both stores 
 - Phase 2: MealMe API for live multi-platform restaurant pricing and ordering.
 - Apply for Instacart and MealMe access early; both have approval steps (lead time unknown).
 
-## 7. Store accounts and costs (verify before paying)
+## 7. Store accounts and costs (superseded by section 11, verified 2026-10-20)
 - Apple Developer Program: $99/year (per Meldmind mobile.md; confirm on developer.apple.com). Enroll as organization (Everborn Productions) needs a D-U-N-S number.
 - Google Play Console: $25 one-time (per Meldmind mobile.md; confirm on play.google.com/console). New personal accounts must run a closed test with testers before production; org account avoids some of this.
 - iOS builds need a Mac/Xcode or a cloud builder (Codemagic / Ionic Appflow / GitHub macOS runners). Meldmind's doc estimates $30-100/month for a cloud builder.
@@ -71,3 +71,42 @@ Why: the prototype is already web; Capacitor ships that exact UI to both stores 
 7. **Cloud-first.** Nothing lives only on the PC or the box: git + Google Drive "Everborn Cloud/". The Meldmind fix run ended with work "only on Chris's PC" because push/Drive were out of scope; put the backup step in the brief. (everborn/CLAUDE_FIRST.md, cc-hotfix/docs/FIX-REPORT-2026-10-18.md)
 8. **Keys server-side only; plain user-facing text** (no em-dashes in user-facing text per Meldmind rules). (cc-fix/CLAUDE.md)
 9. **Route tasks to the AI that already has the login** (Chris's standing rule; not found written in the files reviewed).
+
+## 11. Costs to publish (verified online 2026-10-20; estimates are labeled ESTIMATE)
+
+| Item | Cost | Source |
+|---|---|---|
+| Apple Developer Program | $99/year (Enterprise $299/yr, not needed) | developer.apple.com/programs/ ; developer.apple.com/help/account/membership/program-enrollment/ |
+| Google Play Console | $25 one-time. Personal accounts must pass a closed-testing requirement before production; Organization accounts avoid it | support.google.com/googleplay/android-developer/answer/6112435 |
+| Apple commission, subscriptions | 30% in a subscriber's first year, 15% after one year of paid service. **App Store Small Business Program: 15% from the first payment** if proceeds stay at or under $1M/yr (new developers qualify; must enroll and list associated accounts; takes effect ~15 days after the month of approval) | developer.apple.com/app-store/small-business-program/ ; developer.apple.com/app-store/subscriptions/ |
+| Google commission, subscriptions | US/UK/EEA since 2026-06-30: 10% service fee + 5% Play Billing fee = **15%** for auto-renewing subscriptions (no enrollment needed). Other markets: 15% for subscriptions | support.google.com/paymentscenter/answer/112622 ; developer.android.com/blog/posts/expanded-billing-choice-and-lower-fees-on-google-play |
+| RevenueCat | Free up to $2,500 monthly tracked revenue, then 1% of MTR (measured before store fees) | revenuecat.com/pricing |
+| Expo EAS (only if Expo is chosen) | Free: 15 iOS + 15 Android builds/mo; Starter $19/mo; Production $199/mo | expo.dev/pricing |
+| iOS cloud builds for Capacitor | GitHub Actions macOS runners or Codemagic. Codemagic's free allowance not confirmed in search. ESTIMATE $0-100/mo (the Meldmind mobile.md estimate is $30-100/mo) | cc-fix/docs/mobile.md |
+| Backend: Supabase | Free tier to start; Pro $25/mo | secondary sources (markaicode.com, shiporskip.io); confirm at supabase.com/pricing |
+| Web hosting | Free tier on Cloudflare Pages / Netlify / Vercel Hobby / GitHub Pages for a static PWA | ESTIMATE $0; Vercel Hobby is non-commercial, so use Cloudflare Pages (Chris's sites already run there per everborn/CLAUDE.md) |
+| Vision AI per scan | Gemini 2.5 Flash paid tier: $0.30 per 1M input tokens (image), $2.50 per 1M output tokens. ESTIMATE per scan, at ~1,300 image + ~500 prompt input tokens and ~800 output tokens: **about $0.0025 (a quarter of a cent)**; 10,000 scans is about $25. Batch is half price | ai.google.dev/gemini-api/docs/pricing |
+
+**ESTIMATE, year 1 fixed cost:** $99 + $25 + $0 to $25/mo Supabase + $0 to $100/mo builds = **about $124 to $1,624**, plus vision usage. On a subscription, the store keeps 15% (Apple with the Small Business Program; Google by default in the US) and RevenueCat takes 1% only above $2,500/mo.
+
+## 12. Web version right away (installable PWA)
+
+Fastest route to a phone-usable app from the exact prototype design. Files are ready in `web/`:
+- `web/index.html`: the prototype unchanged, plus head tags only (manifest link, apple-touch-icon, theme color, standalone meta, `viewport-fit=cover`), a hidden `<input type="file" accept="image/*" capture="environment">` that opens the back camera when "Snap it" is tapped (photo stays on the phone, Scan screen still shows example data), and service worker registration. No CSS, layout or copy changed.
+- `web/manifest.webmanifest`: name "Make or Take", standalone, portrait, colors from the prototype (#FBF6EF).
+- `web/icons/`: 192, 512, maskable 512, 180 apple-touch. These are **placeholder** coral-gradient "M/T" icons; swap in a real logo later.
+- `web/sw.js`: offline shell, network first, versioned cache cleared on each deploy (Meldmind v0.3.2 stale-cache lesson).
+- Test locally: `cd web && python3 -m http.server 8080`.
+
+Install on phones: Android Chrome shows "Install app"; on iPhone, Safari, then Share, then Add to Home Screen.
+
+**Recommended host: Cloudflare Pages (free).** Chris's sites already deploy there, and the box can deploy with `CLOUDFLARE_API_TOKEN` and wrangler v3 (everborn/CLAUDE.md).
+
+**Steps that need Chris:**
+1. **Approve the deploy** (it is public). Nothing has been deployed.
+2. **Account:** Chris's existing Cloudflare account (Everborn, already used for everbornproductions.com). No new signup needed if the box token is still valid. Command after approval: `npx wrangler@3 pages deploy web --project-name make-or-take`. Creating a new Pages project may need the token to have Pages Edit (it does per CLAUDE.md).
+3. **Optional subdomain**, e.g. makeortake.everbornproductions.com: Chris approves the DNS record in Cloudflare.
+4. Alternatives that would need a new signup by Chris: Netlify (drag-and-drop `web/`), Vercel (Hobby is non-commercial only), GitHub Pages (needs the GitHub account and a public repo, or a paid plan for private).
+5. Keep `<meta name="robots" content="noindex">` (it came from the prototype) until the trademark check is done.
+
+Not verified: the PWA was not opened in a real phone browser, and no install or camera test has been run yet.
