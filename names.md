@@ -25,3 +25,8 @@
 ## Logo / brand directions
 1. **"The Fork in the Road"**: a single-line mark in which a fork's tines split into two paths, one ending in a pan (make) and one in a bag (buy). Warm cream background, coral (#E8613A) and deep espresso (#1E1B18). Friendly rounded sans for the wordmark, with "an Everborn product" in small gold italic underneath. This is the look used in the prototype.
 2. **"The Receipt"**: the logo is a torn receipt whose total line is circled, or a checkmark. It leans into the hidden-fees story: honest, a bit cheeky, money-savvy. Off-white paper texture, a monospace accent font for numbers, and fresh green (#2F8F5B) for "you saved". It works well in social posts that show "the real total" breakdowns.
+
+## Decision (2026-10-20)
+Chris chose **SnapCravings**. "Make it or take it?" stays as a catchphrase.
+
+Quick web search 2026-10-20 (NOT a trademark search): no app or brand named "SnapCravings" found. Near matches: Snapcart (receipt cashback app, Google Play, com.snapcart.android), SnapCrave (beauty salon, Malolos PH; also appears on name-idea lists for candy/gum), "Snap craving" (coffee shop, Haryana, India), Crave It (food social app, Los Angeles, 2019-2022). Snap Inc. owns many "Snap" marks, so an attorney should check "Snap" prefix risk. A USPTO search and attorney review are still needed before launch.

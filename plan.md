@@ -1,6 +1,6 @@
-# Make it or buy it. — one-page plan (DRAFT)
+# SnapCravings — one-page plan (DRAFT)
 
-*Working name TBD (see names.md) · an Everborn product · Everborn Productions, Sacramento CA · Draft 2026-10-20, internal, not market-tested*
+*Name: SnapCravings (chosen by Chris 2026-10-20; trademark check pending) · Catchphrase: "Make it or take it?" · an Everborn product · Everborn Productions, Sacramento CA · Draft 2026-10-20, internal, not market-tested*
 
 ## Problem
 When a craving hits, people don't know whether to cook with what they have or order in, and they can't see what ordering really costs. The menu price hides markups, delivery, service and small-order fees, tax and tip, and those differ across DoorDash, Uber Eats, Grubhub and ordering from the restaurant directly.

@@ -1,6 +1,6 @@
-# Claude Code kickoff prompt: Make or Take (paste as-is)
+# Claude Code kickoff prompt: SnapCravings (paste as-is)
 
-You are building **Make or Take** (working name), an Everborn product, as an iOS + Android app from one codebase using **Capacitor** wrapping the existing web prototype.
+You are building **SnapCravings**, an Everborn product, as an iOS + Android app from one codebase using **Capacitor** wrapping the existing web prototype.
 
 **Read these first, in order:** `CLAUDE.md`, `docs/DECISIONS.md`, `plan.md`, `mobile-build-plan.md`, `prototype/index.html`.
 

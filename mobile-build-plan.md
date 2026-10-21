@@ -1,4 +1,4 @@
-# Make or Take: phone build plan (iOS + Android)
+# SnapCravings: phone build plan (iOS + Android)
 
 *Working name. An Everborn product. Draft 2026-10-20. Design, voice, catchphrases ("Let's get cooking!"), pricing and concept are LOCKED as in plan.md and prototype/index.html. This plan changes none of them.*
 
@@ -57,7 +57,7 @@ Why: the prototype is already web; Capacitor ships that exact UI to both stores 
 - RevenueCat free until a revenue threshold; Supabase free tier to start.
 
 ## 8. Milestones
-1. M0 Name: real trademark check on "Make or Take" (USPTO search + attorney) before any store listing. Reserve bundle id `com.everborn.makeortake` (rename later is painful).
+1. M0 Name: real trademark check on "SnapCravings" (USPTO search + attorney; note Snap Inc. "Snap" marks, and near matches Snapcart/SnapCrave in names.md) before any store listing. Reserve bundle id `com.everborn.snapcravings` (rename later is painful).
 2. M1 Shell: Capacitor project, prototype ported 1:1, screenshot + copy-lock tests, CI on iOS + Android.
 3. M2 Snap it: camera, vision, editable ingredient list, recipes.
 4. M3 Crave it: make-vs-buy, Instacart links, screenshot checkout reader.
@@ -79,7 +79,7 @@ Why: the prototype is already web; Capacitor ships that exact UI to both stores 
 3. **Hard rules in the brief, one commit per fix.** No deploy, no billing changes, no real keys, never read data/, commit after each lettered fix. (cc-hotfix/docs/FIX-BRIEF-2026-10-18.md)
 4. **Helper-process tests run alone first; release retries tests once.** scripts/test-all.mjs runs mcp.test.js serially before the rest; release-windows.yml retries the test step once. Note: Meldmind CI is Windows-only (windows-ci.yml, release-windows.yml); we need iOS + Android from day one. (cc-fix/scripts/test-all.mjs, cc-fix/.github/workflows/)
 5. **Port/process collisions cause real bugs.** v0.3.1 root cause of "fetch failed": the installed app attached to a foreign server on port 4747; v0.3.2 fixed a reload loop from service-worker caching. Use random free ports in tests, version-bust caches, no stale service worker in the native shell. (cc-fix/docs/BUILD-LOG.md, cc-hotfix/docs/FIX-REPORT-2026-10-18.md)
-6. **Trademark before launch.** Meldmind's name is provisional pending attorney review over Cisco MINDMELD. (cc-fix/docs/DECISIONS.md) Do the check for Make or Take at M0.
+6. **Trademark before launch.** Meldmind's name is provisional pending attorney review over Cisco MINDMELD. (cc-fix/docs/DECISIONS.md) Do the check for SnapCravings at M0.
 7. **Cloud-first.** Nothing lives only on the PC or the box: git + Google Drive "Everborn Cloud/". The Meldmind fix run ended with work "only on Chris's PC" because push/Drive were out of scope; put the backup step in the brief. (everborn/CLAUDE_FIRST.md, cc-hotfix/docs/FIX-REPORT-2026-10-18.md)
 8. **Keys server-side only; plain user-facing text** (no em-dashes in user-facing text per Meldmind rules). (cc-fix/CLAUDE.md)
 9. **Route tasks to the AI that already has the login** (Chris's standing rule; not found written in the files reviewed).
@@ -105,8 +105,8 @@ Why: the prototype is already web; Capacitor ships that exact UI to both stores 
 
 Fastest route to a phone-usable app from the exact prototype design. Files are ready in `web/`:
 - `web/index.html`: the prototype unchanged, plus head tags only (manifest link, apple-touch-icon, theme color, standalone meta, `viewport-fit=cover`), a hidden `<input type="file" accept="image/*" capture="environment">` that opens the back camera when "Snap it" is tapped (photo stays on the phone, Scan screen still shows example data), and service worker registration. No CSS, layout or copy changed.
-- `web/manifest.webmanifest`: name "Make or Take", standalone, portrait, colors from the prototype (#FBF6EF).
-- `web/icons/`: 192, 512, maskable 512, 180 apple-touch. These are **placeholder** coral-gradient "M/T" icons; swap in a real logo later.
+- `web/manifest.webmanifest`: name "SnapCravings", standalone, portrait, colors from the prototype (#FBF6EF).
+- `web/icons/`: 192, 512, maskable 512, 180 apple-touch. These are **placeholder** coral-gradient "SC" icons; swap in a real logo later.
 - `web/sw.js`: offline shell, network first, versioned cache cleared on each deploy; bump VERSION in sw.js (now includes the Grocery List) (Meldmind v0.3.2 stale-cache lesson).
 - Test locally: `cd web && python3 -m http.server 8080`.
 
@@ -116,8 +116,8 @@ Install on phones: Android Chrome shows "Install app"; on iPhone, Safari, then S
 
 **Steps that need Chris:**
 1. **Approve the deploy** (it is public). Nothing has been deployed.
-2. **Account:** Chris's existing Cloudflare account (Everborn, already used for everbornproductions.com). No new signup needed if the box token is still valid. Command after approval: `npx wrangler@3 pages deploy web --project-name make-or-take`. Creating a new Pages project may need the token to have Pages Edit (it does per CLAUDE.md).
-3. **Optional subdomain**, e.g. makeortake.everbornproductions.com: Chris approves the DNS record in Cloudflare.
+2. **Account:** Chris's existing Cloudflare account (Everborn, already used for everbornproductions.com). No new signup needed if the box token is still valid. Command after approval: `npx wrangler@3 pages deploy web --project-name snapcravings`. Creating a new Pages project may need the token to have Pages Edit (it does per CLAUDE.md).
+3. **Optional subdomain**, e.g. snapcravings.everbornproductions.com: Chris approves the DNS record in Cloudflare.
 4. Alternatives that would need a new signup by Chris: Netlify (drag-and-drop `web/`), Vercel (Hobby is non-commercial only), GitHub Pages (needs the GitHub account and a public repo, or a paid plan for private).
 5. Keep `<meta name="robots" content="noindex">` (it came from the prototype) until the trademark check is done.
 
