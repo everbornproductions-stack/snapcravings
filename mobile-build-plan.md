@@ -122,3 +122,9 @@ Install on phones: Android Chrome shows "Install app"; on iPhone, Safari, then S
 5. Keep `<meta name="robots" content="noindex">` (it came from the prototype) until the trademark check is done.
 
 Not verified: the PWA was not opened in a real phone browser, and no install or camera test has been run yet.
+
+## 13. Live web app status (2026-10-20)
+- Real PWA built: `web/` + `functions/api/[[path]].js` (Cloudflare Pages Function, Gemini 2.5 Flash, key server-side). See web/README.md.
+- Tested locally with `wrangler pages dev` in mock-AI mode: scan, recipes (ready-now first), recipe detail, grocery list (persisted), crave + make-vs-buy estimate, rate limit (429 after 12 scans/hour), image type check. All passed; no console errors.
+- BLOCKED on going live: no AI key on the box. Needed: `GEMINI_API_KEY` (Google AI Studio, aistudio.google.com, paid tier so photos are not used for training). Cloudflare token works (lists Pages projects).
+- Cost per scan (ESTIMATE, Gemini 2.5 Flash paid: $0.30/1M input, $2.50/1M output): photo scan ~1-4 images x ~1,300 tokens + ~300 output = ~$0.001-0.003; recipes call ~600 in + ~2,500 out = ~$0.006; crave ~$0.003. Full snap-to-recipes flow ~ $0.01.
