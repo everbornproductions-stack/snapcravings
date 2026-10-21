@@ -21,6 +21,7 @@ Budget-aware people who order delivery often and want to cook more or spend less
 
 ## MVP features
 - **Phase 1 (legal-safe):** photo recipes; missing items sent to an Instacart cart; cook-vs-order using the Instacart grocery cost and the restaurant's pickup price; a **screenshot price check** (the user uploads their own checkout screen and the app reads the totals; no scraping).
+- **Recipe results order (Chris's rule):** first, cards for recipes you can make right now with what you have ("Ready now: let's get cooking!"); below, "Make it with a few more things" cards that show the missing items and a button into the Grocery List.
 - **Grocery List ("Restock time!"):** one list built from what a recipe is missing and what the fridge photos show running low, plus manual add, quantities and check-off; one tap sends it to Instacart with the estimated cost.
 - **Phase 2:** license the MealMe API for live multi-app quotes and ordering.
 

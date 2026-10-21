@@ -6,6 +6,7 @@ You are building **Make or Take** (working name), an Everborn product, as an iOS
 
 ## Locked (never change, never "improve")
 - The prototype's design, layout, colors, fonts, animations, copy, voice and catchphrases (including "Let's get cooking!"), pricing, and concept. Port it **1:1**. If a phase seems to need a design or copy change, write `PHASE N BLOCKED: <reason>` in `docs/BUILD-LOG.md` and stop that phase.
+- Recipe results order on `#recipes`: FIRST recipes the user can make right now ("Ready now: let's get cooking!"), BELOW "Make it with a few more things" with missing items shown on each card and a button into the Grocery List (`#list`). Exactly as in prototype/index.html.
 - Phase 1 ordering = Instacart Developer Platform + screenshot checkout reader. Phase 2 = MealMe API. Do not swap these.
 
 ## Hard rules for every run

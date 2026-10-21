@@ -38,6 +38,10 @@ Why: the prototype is already web; Capacitor ships that exact UI to both stores 
 - Phase 2: MealMe API for live multi-platform restaurant pricing and ordering.
 - Apply for Instacart and MealMe access early; both have approval steps (lead time unknown).
 
+## 6a. Recipe results order (locked rule from Chris)
+- `#recipes` shows FIRST the recipes makeable right now with what the user has, under "Ready now: let's get cooking!". BELOW, "Make it with a few more things": each card lists its missing items and has a "+ List" button into `#list`, plus a "Restock time! Build my grocery list" button.
+- Within each section, sort by fewest missing items, then by time. Test: the ready section always renders above the missing section.
+
 ## 6b. Grocery List ("Restock time!")
 - Screen `#list` (prototype + web): sections "Missing for <recipe>" and "Running low · spotted in your snap", manual add, +/- quantities, tap to check off, total of unchecked items, "Send list to Instacart".
 - Linked from Scan result ("Restock time! Build my grocery list") and Recipe detail ("Add to my grocery list").
