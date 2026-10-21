@@ -223,4 +223,8 @@ function route() {
 }
 window.addEventListener('hashchange', () => { route(); const a = document.querySelector('.screen.active'); a.classList.remove('anim'); void a.offsetWidth; a.classList.add('anim'); });
 route();
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+if ('serviceWorker' in navigator) window.addEventListener('load', () => {
+  const had = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && !reloaded) { reloaded = true; location.reload(); } });
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {});
+});
