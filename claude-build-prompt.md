@@ -22,7 +22,7 @@ You are building **Make or Take** (working name), an Everborn product, as an iOS
 ## Phases (log each in docs/BUILD-LOG.md with what was verified and what was NOT verified)
 1. Capacitor shell + 1:1 port of prototype/index.html into web/; safe areas only; tests above; CI for iOS + Android.
 2. Snap it: @capacitor/camera, backend vision call returning strict JSON ingredients, editable list, craving-matched recipes in the app's existing voice.
-3. Crave it: make-vs-buy all-in comparison, Instacart links for missing items, screenshot checkout reader.
+3. Crave it: make-vs-buy all-in comparison, Instacart links for missing items, screenshot checkout reader. Grocery List: build the `#list` screen exactly as in prototype/index.html ("Restock time!"): missing-for-recipe items + running-low items from photos (user confirms) + manual add, quantities, check-off, total of unchecked items, one-tap send to Instacart with the estimated cost. Stored per user (Supabase, RLS), works offline.
 4. Accounts + Pro: Supabase auth (Sign in with Apple, Google, email) with RLS; RevenueCat entitlement "pro" with server-side tier check; privacy policy draft.
 5. Beta packaging: TestFlight and Play closed-test build configs (do not upload).
 

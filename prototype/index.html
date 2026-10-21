@@ -204,6 +204,7 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
     <h3>What are you craving?</h3>
     <div class="chips"><span class="chip" style="background:var(--dark);color:#fff;border-color:var(--dark)">Noodles</span><span class="chip">Something quick</span><span class="chip">Comfort food</span><span class="chip">Spicy</span></div>
     <a class="btn primary" href="#recipes">Let's get cooking! Show recipes →</a>
+    <a class="btn ghost" href="#list">🛒 Restock time! Build my grocery list</a>
   </section>
 
   <!-- RECIPES -->
@@ -244,6 +245,7 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
       <div class="row" style="padding-top:0"><b>Missing 3 items</b><b>$7.28</b></div>
       <div class="fine" style="margin-top:0">Example Instacart prices, before delivery and service fees.</div>
       <a class="btn insta" href="#cart" style="padding:12px">🛒 Add missing items to Instacart cart</a>
+      <a class="btn ghost" href="#list" style="padding:11px">＋ Add to my grocery list</a>
     </div>
     <h3>Steps <span style="color:var(--coral)">· Let's get cooking!</span></h3>
     <ol class="steps">
@@ -309,6 +311,27 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
     </div>
     <a class="btn insta" href="#cart" onclick="alert('Prototype only: nothing is sent to Instacart.');return false;">Open cart in Instacart</a>
     <a class="btn ghost" href="#recipe">Let's get cooking! View recipe steps</a>
+    <p class="fine" style="text-align:center">You check out in Instacart. Prices and fees there may differ from these examples.</p>
+  </section>
+
+  <!-- GROCERY LIST -->
+  <section class="screen" id="list">
+    <div class="topbar"><a class="back" href="#scan">‹</a><span class="t">Grocery list</span></div>
+    <span class="example">⚠ Example data</span>
+    <div class="kick">Restock time!</div>
+    <h2>Your grocery list</h2>
+    <p class="sub">What your recipe is missing, plus what's running low in your fridge photos. Tap to check off.</p>
+    <h3>Missing for Chicken pad thai</h3>
+    <div class="card" id="listMissing"></div>
+    <h3>Running low <span style="color:var(--coral)">· spotted in your snap</span></h3>
+    <div class="card" id="listLow"></div>
+    <div class="input"><span>＋</span><input id="listAdd" placeholder="Add an item, like milk" aria-label="Add an item"><button class="chip" id="listAddBtn" style="cursor:pointer">Add</button></div>
+    <div class="card" style="background:var(--coral-soft);border-color:#F6C6B3">
+      <div class="row" style="padding-top:0"><b id="listCount"></b><b id="listTotal"></b></div>
+      <div class="fine" style="margin-top:0">Example Instacart prices, before delivery and service fees. Checked-off items are left out.</div>
+      <a class="btn insta" href="#list" style="padding:12px" onclick="alert('Prototype only: nothing is sent to Instacart.');return false;">🛒 Send list to Instacart</a>
+    </div>
+    <a class="btn ghost" href="#recipe">Let's get cooking! Back to the recipe</a>
     <p class="fine" style="text-align:center">You check out in Instacart. Prices and fees there may differ from these examples.</p>
   </section>
 
@@ -430,7 +453,7 @@ document.addEventListener('click', e => {
   const p = e.target.closest('.plan');
   if (p) document.querySelectorAll('.plan').forEach(x => x.classList.toggle('on', x === p));
 });
-const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'pro'];
+const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'pro'];
 function route() {
   const id = SCREENS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
   document.querySelectorAll('.screen').forEach(s => { s.classList.toggle('active', s.id === id); if (s.id === id) s.scrollTop = 0; });
@@ -438,6 +461,31 @@ function route() {
 }
 window.addEventListener('hashchange', () => { route(); const a = document.querySelector('.screen.active'); a.classList.remove('anim'); void a.offsetWidth; a.classList.add('anim'); });
 renderCompare();
+// GROCERY LIST (example data)
+const glist = [
+  { name: 'Rice noodles, 8 oz', price: 3.49, qty: 1, src: 'miss', done: false },
+  { name: 'Bean sprouts, 1 cup', price: 2.29, qty: 1, src: 'miss', done: false },
+  { name: 'Limes', price: 0.75, qty: 2, src: 'miss', done: false },
+  { name: 'Eggs, dozen (2 left)', price: 4.29, qty: 1, src: 'low', done: false },
+  { name: 'Soy sauce (almost empty)', price: 2.99, qty: 1, src: 'low', done: true }
+];
+function renderList() {
+  const row = (g, i) => `<div class="row"><span data-gdone="${i}" style="cursor:pointer;${g.done ? 'text-decoration:line-through;opacity:.5' : ''}">${g.done ? '✓' : '○'} ${g.name}</span><span class="qty"><button data-gq="${i}" data-d="-1">−</button>${g.qty}<button data-gq="${i}" data-d="1">+</button><b style="width:52px;text-align:right">${$(r2(g.price * g.qty))}</b></span></div>`;
+  const part = s => glist.map((g, i) => g.src === s ? row(g, i) : '').join('') || '<div class="fine" style="margin:0">Nothing here yet!</div>';
+  document.getElementById('listMissing').innerHTML = part('miss');
+  document.getElementById('listLow').innerHTML = part('low') + glist.map((g, i) => g.src === 'add' ? row(g, i) : '').join('');
+  const open = glist.filter(g => !g.done && g.qty > 0);
+  document.getElementById('listCount').textContent = `${open.length} item${open.length === 1 ? '' : 's'} to grab`;
+  document.getElementById('listTotal').textContent = $(r2(open.reduce((s, g) => s + g.price * g.qty, 0)));
+}
+document.addEventListener('click', e => {
+  const d = e.target.closest('[data-gdone]');
+  if (d) { const g = glist[+d.dataset.gdone]; g.done = !g.done; renderList(); }
+  const q = e.target.closest('[data-gq]');
+  if (q) { const g = glist[+q.dataset.gq]; g.qty = Math.max(0, g.qty + +q.dataset.d); renderList(); }
+  if (e.target.closest('#listAddBtn')) { const inp = document.getElementById('listAdd'); const n = inp.value.trim(); if (n) { glist.push({ name: n, price: 2.50, qty: 1, src: 'add', done: false }); inp.value = ''; renderList(); } }
+});
+renderList();
 route();
 </script>
 </body>

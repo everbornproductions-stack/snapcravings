@@ -38,6 +38,14 @@ Why: the prototype is already web; Capacitor ships that exact UI to both stores 
 - Phase 2: MealMe API for live multi-platform restaurant pricing and ordering.
 - Apply for Instacart and MealMe access early; both have approval steps (lead time unknown).
 
+## 6b. Grocery List ("Restock time!")
+- Screen `#list` (prototype + web): sections "Missing for <recipe>" and "Running low · spotted in your snap", manual add, +/- quantities, tap to check off, total of unchecked items, "Send list to Instacart".
+- Linked from Scan result ("Restock time! Build my grocery list") and Recipe detail ("Add to my grocery list").
+- Data: Supabase table `grocery_items` (user_id, name, qty, unit, source = missing|low|manual, recipe_id, done, est_price), RLS per user; works offline in local storage and syncs.
+- "Running low": the vision call also returns a fill-level guess per item (e.g. eggs 2 left, soy sauce almost empty); the user confirms before it is added.
+- Instacart: send unchecked items as one shoppable list/cart link via the Instacart Developer Platform; show the estimated cost before the tap and say that the final price is shown in Instacart.
+- Milestone: part of M3 (Crave it + Grocery List). Tests: list math, check-off excludes items, qty 0 excluded, copy-lock includes "Restock time!".
+
 ## 7. Store accounts and costs (superseded by section 11, verified 2026-10-20)
 - Apple Developer Program: $99/year (per Meldmind mobile.md; confirm on developer.apple.com). Enroll as organization (Everborn Productions) needs a D-U-N-S number.
 - Google Play Console: $25 one-time (per Meldmind mobile.md; confirm on play.google.com/console). New personal accounts must run a closed test with testers before production; org account avoids some of this.
@@ -95,7 +103,7 @@ Fastest route to a phone-usable app from the exact prototype design. Files are r
 - `web/index.html`: the prototype unchanged, plus head tags only (manifest link, apple-touch-icon, theme color, standalone meta, `viewport-fit=cover`), a hidden `<input type="file" accept="image/*" capture="environment">` that opens the back camera when "Snap it" is tapped (photo stays on the phone, Scan screen still shows example data), and service worker registration. No CSS, layout or copy changed.
 - `web/manifest.webmanifest`: name "Make or Take", standalone, portrait, colors from the prototype (#FBF6EF).
 - `web/icons/`: 192, 512, maskable 512, 180 apple-touch. These are **placeholder** coral-gradient "M/T" icons; swap in a real logo later.
-- `web/sw.js`: offline shell, network first, versioned cache cleared on each deploy (Meldmind v0.3.2 stale-cache lesson).
+- `web/sw.js`: offline shell, network first, versioned cache cleared on each deploy; bump VERSION in sw.js (now includes the Grocery List) (Meldmind v0.3.2 stale-cache lesson).
 - Test locally: `cd web && python3 -m http.server 8080`.
 
 Install on phones: Android Chrome shows "Install app"; on iPhone, Safari, then Share, then Add to Home Screen.
