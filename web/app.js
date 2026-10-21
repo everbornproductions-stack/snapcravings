@@ -16,7 +16,7 @@ function renderFavs() {
     : `<div class="card" style="text-align:center;padding:22px"><div style="font-size:30px">♡</div><b>No favorites yet</b><p class="sub" style="font-size:13px;margin-top:4px">Tap ♡ on any recipe and it lands here.</p><a class="btn primary" href="#scan">📸 Snap it</a></div>`;
 }
 const CRAVINGS = ['Anything', 'Noodles', 'Something quick', 'Comfort food', 'Spicy'];
-const MAX_PHOTOS = 8;
+const MAX_PHOTOS = 10;
 const STEPS = [
   { area: 'fridge', kick: 'Your fridge has ideas!', h: 'Snap your fridge', d: 'Open it wide. Every shelf counts!' },
   { area: 'freezer', kick: 'Brrr, nice!', h: 'Now your freezer', d: 'Frozen treasure counts too.' },

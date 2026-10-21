@@ -2,7 +2,7 @@
 // Routes: POST /api/scan {images:[dataURL]} | POST /api/recipes {ingredients, craving} | POST /api/crave {craving, ingredients}
 // GET /api/health. Set MOCK_AI=1 (local only) to return canned results without a key.
 const MODEL = 'gemini-3.8-flash'; // gemini-2.5-flash is closed to new API users (404); see CHAIN for fallbacks
-const MAX_IMAGES = 8, MAX_IMAGE_BYTES = 1_500_000, MAX_BODY = 9_000_000;
+const MAX_IMAGES = 10, MAX_IMAGE_BYTES = 1_500_000, MAX_BODY = 9_000_000;
 const LIMIT = { scan: 60, recipes: 30, crave: 30 }, WINDOW_S = 3600; // per IP per hour
 const mem = new Map(); // fallback limiter when no KV binding (per isolate, best effort)
 
