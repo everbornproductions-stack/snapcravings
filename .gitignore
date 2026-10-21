@@ -1,3 +1,4 @@
 node_modules/
 .wrangler/
 .dev.vars
+OWNER_CODE.txt

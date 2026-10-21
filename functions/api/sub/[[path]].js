@@ -52,6 +52,16 @@ export async function onRequest({ request, env, params }) {
   const route = (params.path || [])[0];
   const on = !!(env.SQUARE_ACCESS_TOKEN && env.SUB_SECRET);
   if (route === 'config') return json({ enabled: on && env.PAYWALL !== 'off', price: PRICE_CENTS / 100, plan: PLAN_NAME, sandbox: env.SQUARE_ENV === 'sandbox', freePerWeek: 3 });
+  if (route === 'redeem' && request.method === 'POST') {
+    const ip = request.headers.get('cf-connecting-ip') || 'local';
+    if (env.RATE_KV) { const k = `redeem:${ip}:${Math.floor(Date.now() / 36e5)}`; const n = +(await env.RATE_KV.get(k) || 0) + 1; await env.RATE_KV.put(k, String(n), { expirationTtl: 3700 }); if (n > 8) return json({ error: 'Too many tries. Take a snack break and try later!' }, 429); }
+    let b = {}; try { b = await request.json(); } catch {}
+    const code = String(b.code || '').trim().toLowerCase(); const want = String(env.OWNER_CODE || '').trim().toLowerCase();
+    if (!want || !env.SUB_SECRET || !code || code.length !== want.length) return json({ error: "Hmm, that code didn't work." }, 400);
+    let d = 0; for (let i = 0; i < code.length; i++) d |= code.charCodeAt(i) ^ want.charCodeAt(i);
+    if (d) return json({ error: "Hmm, that code didn't work." }, 400);
+    return json({ active: true, email: 'Code unlocked', token: await signToken(env, 'Code unlocked', 400) });
+  }
   if (!on || env.PAYWALL === 'off') return json({ error: 'Go Unlimited is coming soon!' }, 503);
   if (request.method !== 'POST') return json({ error: 'Not found' }, 404);
   let body = {}; try { body = await request.json(); } catch {}

@@ -8,6 +8,8 @@ const LS = { get: (k, d) => { try { return JSON.parse(localStorage.getItem('sc.'
 const state = { photos: [], ingredients: LS.get('ingredients', []), low: LS.get('low', []), craving: 'Anything', recipes: LS.get('recipes', null), recipe: null, from: 'recipes', crave: LS.get('crave', null), busy: false };
 let glist = LS.get('glist', []);
 sub = LS.get('sub', {});
+const DEV = LS.get('dev', null) || (() => { const d = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2)); LS.set('dev', d); return d; })();
+async function redeem() { const c = (el('proCode')?.value || '').trim(); if (!c) return toast('Pop in your code first!'); try { const j = await subCall('redeem', { code: c }); sub = { email: j.email, token: j.token, active: true, checked: Date.now(), code: true }; LS.set('sub', sub); renderLeft(); renderPro(); toast("Code unlocked! You're Unlimited! 🎉"); } catch (e) { toast(e.message); } }
 let subCfg = { enabled: false, price: 4.99 };
 const unlimited = () => !!sub.token && sub.active;
 async function subCall(path, body) { const r = await fetch('/api/sub/' + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Square is having a moment. Try again!'); return j; }
@@ -20,6 +22,7 @@ function renderPro() {
   el('proPrice').textContent = '$' + Number(subCfg.price).toFixed(2);
   if (unlimited()) { el('proBody').innerHTML = `<div class="card" style="background:var(--green-soft);border-color:#BFE3CC;text-align:center;margin-top:12px"><b style="color:#1F6B42">You're Unlimited! 🎉</b><div class="fine" style="color:#1F6B42">${esc(sub.email)} · unlimited photo scans. Let's get cooking!</div></div><a class="btn primary" href="#scan">📸 Snap it</a><p class="fine" style="text-align:center">Manage or cancel anytime from your Square receipt email.</p>`; return; }
   if (sub.email && !el('proEmail').value) el('proEmail').value = sub.email;
+  if (!subCfg.enabled) { el('proGo').textContent = 'Go Unlimited · coming soon!'; el('proGo').style.opacity = '.6'; el('proEmail').parentNode.style.display = 'none'; el('proRestore').style.display = 'none'; }
   el('proFine').textContent = subCfg.enabled ? `$${Number(subCfg.price).toFixed(2)}/month. Secure checkout by Square. We use your email only to find your plan.${subCfg.sandbox ? ' (Test mode)' : ''}` : 'Go Unlimited is coming soon. No payments yet.';
 }
 async function goUnlimited() {
@@ -30,7 +33,7 @@ async function goUnlimited() {
   catch (e) { toast(e.message); el('proGo').textContent = "Go Unlimited — let's get cooking!"; }
 }
 fetch('/api/sub/config').then(r => r.json()).then(c => { subCfg = c; renderPro();
-  if (!c.enabled || !sub.email) return;
+  if (!c.enabled || !sub.email || sub.code) return;
   if (/[?&]paid=1/.test(location.search)) { history.replaceState(null, '', '/#pro'); let n = 0; const poll = async () => { if (await checkSub(sub.email, n < 5) || ++n > 6) return; setTimeout(poll, 4000); }; toast('Thanks! Checking your plan…'); poll(); }
   else if (!sub.checked || Date.now() - sub.checked > 3 * 864e5) checkSub(sub.email, true);
 }).catch(() => {});
@@ -58,7 +61,7 @@ function toast(msg, ms = 3500) { const t = el('toast'); t.textContent = msg; t.s
 async function api(path, body, ms = 60000) {
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
   let r;
-  try { r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-sc-token': sub.token || '', 'x-sc-scan': state.scanId || '' }, body: JSON.stringify(body), signal: ctl.signal }); }
+  try { r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-sc-token': sub.token || '', 'x-sc-scan': state.scanId || '', 'x-sc-dev': DEV }, body: JSON.stringify(body), signal: ctl.signal }); }
   catch (e) { throw new Error(e.name === 'AbortError' ? 'That took too long. Check your signal and tap Retry!' : 'Lost the connection for a sec. Tap Retry!'); }
   finally { clearTimeout(t); }
   const j = await r.json().catch(() => ({ error: 'Something went sideways. Try again!' }));
@@ -121,7 +124,7 @@ async function scan() {
     state.busy = false; renderScan();
   } catch (e) {
     state.busy = false;
-    if (e.paywall) { el('scanBody').innerHTML = `<div class="kick">Hungry for more?</div><h2>Free scans used up</h2><p class="sub">${esc(e.message)} Your ${n} photo${n === 1 ? ' is' : 's are'} still here.</p><a class="btn primary" href="#pro">Go Unlimited — let's get cooking!</a>`; return; }
+    if (e.paywall) { el('scanBody').innerHTML = `<div class="kick">Hungry for more?</div><h2>Free scans used up</h2><p class="sub">${esc(e.message)} Your ${n} photo${n === 1 ? ' is' : 's are'} still here.</p><a class="btn primary" href="#pro">${subCfg.enabled ? "Go Unlimited — let's get cooking!" : 'Go Unlimited (coming soon) · Have a code?'}</a>`; return; }
     el('scanBody').innerHTML = `<div class="kick">Oops, kitchen hiccup!</div><h2>We couldn't read your photos</h2><p class="sub">${esc(e.message)} Your ${n} photo${n === 1 ? ' is' : 's are'} still here.</p><button class="btn primary" id="scanGo" style="font-size:20px;padding:20px">Retry 🔄</button>`;
   }
 }
@@ -297,6 +300,8 @@ document.addEventListener('click', e => {
   const s = t.closest('[data-mem]'); if (s) s.classList.toggle('on');
   const p = t.closest('.plan'); if (p) { if (p.dataset.plan === 'yr') toast('Yearly is coming soon! Monthly is ready now.'); else document.querySelectorAll('.plan').forEach(x => x.classList.toggle('on', x === p)); }
   if (t.closest('#proGo')) return goUnlimited();
+  if (t.closest('#proCodeGo')) return redeem();
+  if (t.closest('#proCodeShow')) { el('proCodeBox').style.display = 'block'; el('proCode').focus(); return; }
   if (t.closest('#proRestore')) { const em = el('proEmail').value.trim() || sub.email; if (!em) return toast('Pop in the email you used at checkout!'); return checkSub(em.toLowerCase()); }
 });
 el('listAdd').addEventListener('keydown', e => { if (e.key === 'Enter') el('listAddBtn').click(); });
@@ -322,13 +327,23 @@ let deferredInstall = null;
 function showInstall(sub, btn) { const c = el('installCard'); if (standalone()) { c.hidden = true; c.style.display = 'none'; return; } c.hidden = false; c.style.display = 'flex'; if (sub) el('installSub').textContent = sub; el('installBtn').style.display = btn === false ? 'none' : ''; }
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; showInstall(null, true); });
 window.addEventListener('appinstalled', () => { deferredInstall = null; el('installCard').style.display = 'none'; toast('Installed! Find SnapCravings on your home screen.'); });
+const isAndroid = /android/i.test(navigator.userAgent), isMobile = isIOS || isAndroid || /mobi/i.test(navigator.userAgent);
+const isSafariMac = !isMobile && /safari/i.test(navigator.userAgent) && !/chrome|crios|edg|android/i.test(navigator.userAgent);
+const isFirefox = /firefox|fxios/i.test(navigator.userAgent);
+function installHint() {
+  if (isIOS) return /crios|fxios|edgios/i.test(navigator.userAgent) ? 'Tap Share (⬆️), then Add to Home Screen' : 'In Safari: tap Share (⬆️), then Add to Home Screen';
+  if (isAndroid) return isFirefox ? 'Open the ⋮ menu, then tap Install' : 'Open the Chrome ⋮ menu, then tap Install app (or Add to Home screen)';
+  if (isSafariMac) return 'In Safari: File menu, then Add to Dock';
+  if (isFirefox) return 'Firefox can’t install apps. Open this page in Chrome or Edge to install';
+  return 'Click the install icon (⊕) at the right end of the address bar, or ⋮ menu, then Install SnapCravings';
+}
 el('installBtn').addEventListener('click', async () => {
   if (deferredInstall) { deferredInstall.prompt(); const r = await deferredInstall.userChoice; deferredInstall = null; if (r.outcome === 'accepted') el('installCard').style.display = 'none'; return; }
-  toast(isIOS ? 'Tap Share, then Add to Home Screen' : 'Open the ⋮ menu, then tap Add to Home screen or Install app', 6000);
+  toast(installHint(), 8000);
 });
-if (!standalone()) { if (isIOS) showInstall('Tap Share, then Add to Home Screen', false); else setTimeout(() => { if (!deferredInstall && !standalone()) showInstall('Open the ⋮ menu, then tap Install app', true); }, 4000); }
 el('installCard').style.display = 'none';
-if (!standalone() && isIOS) showInstall('Tap Share, then Add to Home Screen', false);
+if (!standalone()) showInstall(deferredInstall ? null : installHint(), !isIOS);
+window.addEventListener('beforeinstallprompt', () => showInstall('Snap from your home screen, one tap away.', true));
 
 if ('serviceWorker' in navigator) window.addEventListener('load', () => {
   const had = !!navigator.serviceWorker.controller; let reloaded = false;

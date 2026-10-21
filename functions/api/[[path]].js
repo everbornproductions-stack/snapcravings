@@ -2,7 +2,7 @@
 // Routes: POST /api/scan {images:[dataURL]} | POST /api/recipes {ingredients, craving} | POST /api/crave {craving, ingredients}
 // GET /api/health. Set MOCK_AI=1 (local only) to return canned results without a key.
 import { verifyToken } from '../_lib/sub.js';
-const FREE_SCANS_PER_WEEK = 3;
+const FREE_SCANS_PER_WEEK = 3; const IP_SCANS_PER_WEEK = 30;
 const MODEL = 'gemini-3.8-flash'; // gemini-2.5-flash is closed to new API users (404); see CHAIN for fallbacks
 const MAX_IMAGES = 10, MAX_IMAGE_BYTES = 1_500_000, MAX_BODY = 9_000_000;
 const LIMIT = { scan: 60, recipes: 30, crave: 30 }, WINDOW_S = 3600; // per IP per hour
@@ -70,9 +70,16 @@ export async function onRequest({ request, env, params }) {
   let body; try { body = await request.json(); } catch { return json({ error: 'Bad request' }, 400); }
   // Free plan: 3 scans (a scan = one Go, many photo batches share one scan id) per IP per week; Unlimited token skips it.
   if (route === 'scan' && env.ENFORCE_FREE === '1' && env.RATE_KV && !(await verifyToken(env, request.headers.get('x-sc-token')))) {
-    const wk = Math.floor(Date.now() / (7 * 864e5)); const k = `free:${ip}:${wk}`;
-    const ids = JSON.parse(await env.RATE_KV.get(k) || '[]'); const sid = String(request.headers.get('x-sc-scan') || '').slice(0, 40) || crypto.randomUUID();
-    if (!ids.includes(sid)) { if (ids.length >= FREE_SCANS_PER_WEEK) return json({ error: "You've used your 3 free scans this week. Go Unlimited for more!", paywall: true }, 402); ids.push(sid); await env.RATE_KV.put(k, JSON.stringify(ids), { expirationTtl: 8 * 86400 }); }
+    // Count per device (random id in localStorage) so strangers behind one carrier NAT don't share a limit; a generous per-IP cap stops storage-clearing abuse.
+    const wk = Math.floor(Date.now() / (7 * 864e5)); const dev = String(request.headers.get('x-sc-dev') || '').replace(/[^\w-]/g, '').slice(0, 40);
+    const kd = `free:d:${dev || 'ip-' + ip}:${wk}`, ki = `free:ip:${ip}:${wk}`;
+    const [ids, ipIds] = await Promise.all([kd, ki].map(async k => JSON.parse(await env.RATE_KV.get(k) || '[]')));
+    const sid = String(request.headers.get('x-sc-scan') || '').slice(0, 40) || crypto.randomUUID();
+    if (!ids.includes(sid)) {
+      if (ids.length >= FREE_SCANS_PER_WEEK || ipIds.length >= IP_SCANS_PER_WEEK) return json({ error: "You've used your 3 free scans this week.", paywall: true }, 402);
+      ids.push(sid); ipIds.push(sid);
+      await Promise.all([env.RATE_KV.put(kd, JSON.stringify(ids), { expirationTtl: 8 * 86400 }), env.RATE_KV.put(ki, JSON.stringify(ipIds.slice(-60)), { expirationTtl: 8 * 86400 })]);
+    }
   }
   if (!env.GEMINI_API_KEY && env.MOCK_AI !== '1') return json({ error: 'AI is not set up yet (missing GEMINI_API_KEY).' }, 503);
 
