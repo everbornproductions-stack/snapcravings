@@ -2,15 +2,29 @@
   "name": "SnapCravings",
   "short_name": "SnapCravings",
   "description": "Snap your fridge for recipes, or name a craving and see which way is cheaper.",
-  "start_url": "./#home",
-  "scope": "./",
+  "start_url": "/#home",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#FBF6EF",
   "theme_color": "#FBF6EF",
   "icons": [
-    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
-    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
-    {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
-  ]
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "/"
 }

@@ -18,19 +18,29 @@ state.step = 0;
 const GROUPS = ['Produce', 'Proteins', 'Dairy', 'Pantry', 'Spices & Seasonings'];
 
 function toast(msg, ms = 3500) { const t = el('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', ms); }
-async function api(path, body) {
-  const r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+async function api(path, body, ms = 60000) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+  let r;
+  try { r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal }); }
+  catch (e) { throw new Error(e.name === 'AbortError' ? 'That took too long. Check your signal and tap Retry!' : 'Lost the connection for a sec. Tap Retry!'); }
+  finally { clearTimeout(t); }
   const j = await r.json().catch(() => ({ error: 'Something went sideways. Try again!' }));
   if (!r.ok) throw new Error(j.error || 'Something went sideways. Try again!');
   return j;
 }
-// Resize on device: max 1280px, JPEG ~0.8, keeps uploads small.
-function shrink(file) {
-  return new Promise((res, rej) => {
-    const img = new Image(); const url = URL.createObjectURL(file);
-    img.onload = () => { const s = Math.min(1, 1024 / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.72)); };
-    img.onerror = () => rej(new Error('That photo could not be read. Try another!')); img.src = url;
-  });
+// Resize on device: max 1024px JPEG, quality stepped down until <= ~350 KB. Handles EXIF rotation and big camera files.
+async function decode(file) {
+  if (window.createImageBitmap) { try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch {} }
+  return new Promise((res, rej) => { const img = new Image(); const url = URL.createObjectURL(file); img.onload = () => { res(img); setTimeout(() => URL.revokeObjectURL(url), 1000); }; img.onerror = () => rej(new Error('That photo could not be read. Try another!')); img.src = url; });
+}
+async function shrink(file) {
+  const img = await decode(file); const w = img.width, h = img.height;
+  const sc = Math.min(1, 1024 / Math.max(w, h)); const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(w * sc)); c.height = Math.max(1, Math.round(h * sc));
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); img.close?.();
+  let q = 0.72, out = c.toDataURL('image/jpeg', q);
+  while (out.length * 0.75 > 350000 && q > 0.35) { q -= 0.12; out = c.toDataURL('image/jpeg', q); }
+  c.width = c.height = 0; return out;
 }
 const loading = (msg) => `<div class="card" style="text-align:center;padding:26px"><span class="spin"></span><div style="margin-top:10px;font-weight:700">${esc(msg)}</div></div>`;
 
@@ -43,25 +53,39 @@ async function onPhotos(files) {
   if (!files.length) return;
   location.hash = '#scan';
   const area = (STEPS[state.step] || STEPS[3]).area;
-  try { for (const f of files) state.photos.push({ src: await shrink(f), area }); } catch (e) { toast(e.message); }
+  for (const f of files) { try { state.photos.push({ src: await shrink(f), area }); } catch (e) { toast('One photo could not be read. Try another!'); } }
   state.ingredients = []; state.low = []; renderScan();
 }
 function renderPhotos() {
   el('scanPhotos').innerHTML = state.photos.length ? state.photos.map((p, i) => `<span style="position:relative;height:100%;flex-shrink:0"><img src="${p.src}" alt="Your ${p.area} photo"><span class="pill g" style="position:absolute;left:4px;bottom:4px;margin:0;text-transform:capitalize">${esc(p.area)}</span><button data-rmp="${i}" aria-label="Remove photo" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(30,27,24,.75);color:#fff;font-weight:800;cursor:pointer">×</button></span>`).join('') + (state.photos.length < MAX_PHOTOS ? `<span style="align-self:center;display:flex;flex-direction:column;gap:6px;flex-shrink:0"></span>` : '')
     : `<div style="margin:auto;text-align:center;font-size:44px">📸</div>`;
 }
+const BATCH = 2;
+function mergeInv(lists) {
+  const m = new Map();
+  for (const it of lists.flat()) { const k = it.name.trim().toLowerCase().replace(/s$/, ''); const ex = m.get(k); if (!ex) m.set(k, { ...it }); else { ex.low = ex.low && it.low; if (!ex.qty && it.qty) ex.qty = it.qty; } }
+  return [...m.values()];
+}
 async function scan() {
   if (!state.photos.length) return toast('Snap a photo first!');
-  state.busy = true; el('scanBody').innerHTML = loading(`Peeking at ${state.photos.length} photo${state.photos.length === 1 ? '' : 's'}… spices too!`);
+  state.busy = true; const n = state.photos.length;
+  const batches = []; for (let i = 0; i < n; i += BATCH) batches.push(state.photos.slice(i, i + BATCH));
+  let done = 0; const prog = () => el('scanBody').innerHTML = loading(`Peeking at ${n} photo${n === 1 ? '' : 's'}… spices too! (${Math.min(done * BATCH, n)}/${n})`);
+  prog();
+  const one = async b => { for (let a = 0; a < 2; a++) { try { const j = await api('scan', { images: b.map(p => ({ data: p.src, area: p.area })) }, 60000); done++; prog(); return j.ingredients; } catch (e) { if (a) throw e; } } };
   try {
-    const j = await api('scan', { images: state.photos.map(p => ({ data: p.src, area: p.area })) });
-    state.ingredients = j.ingredients.map(i => ({ name: i.name, qty: i.qty || '', cat: i.category, low: !!i.low }));
+    const results = []; // two batches at a time
+    for (let i = 0; i < batches.length; i += 2) results.push(...await Promise.all(batches.slice(i, i + 2).map(one)));
+    state.ingredients = mergeInv(results).map(i => ({ name: i.name, qty: i.qty || '', cat: i.category, low: !!i.low }));
     state.low = state.ingredients.filter(i => i.low); // running-low items still count as "have" for cooking
     LS.set('ingredients', state.ingredients); LS.set('low', state.low);
     const wk = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5); wk.push(Date.now()); LS.set('scans', wk); renderLeft();
     state.low.forEach(l => addToList(l.name, 'low', 0, null, true));
-  } catch (e) { toast(e.message); }
-  state.busy = false; renderScan();
+    state.busy = false; renderScan();
+  } catch (e) {
+    state.busy = false;
+    el('scanBody').innerHTML = `<div class="kick">Oops, kitchen hiccup!</div><h2>We couldn't read your photos</h2><p class="sub">${esc(e.message)} Your ${n} photo${n === 1 ? ' is' : 's are'} still here.</p><button class="btn primary" id="scanGo" style="font-size:20px;padding:20px">Retry 🔄</button>`;
+  }
 }
 function renderScan() {
   renderPhotos();
@@ -94,8 +118,10 @@ function renderScan() {
 /* RECIPES */
 async function getRecipes() {
   location.hash = '#recipes'; el('recipesBody').innerHTML = loading('Cooking up ideas…');
-  try { state.recipes = await api('recipes', { ingredients: state.ingredients.map(i => (i.cat === 'Spices & Seasonings' ? '[spice] ' : '') + i.name + (i.qty ? ' (' + i.qty + ')' : '')), craving: state.craving }); LS.set('recipes', state.recipes); }
-  catch (e) { toast(e.message); el('recipesBody').innerHTML = `<p class="sub">${esc(e.message)}</p>`; return; }
+  const ingredients = state.ingredients.slice(0, 80).map(i => (i.cat === 'Spices & Seasonings' ? '[spice] ' : '') + i.name + (i.qty ? ' (' + i.qty + ')' : ''));
+  const call = async section => { for (let a = 0; a < 2; a++) { try { return (await api('recipes', { ingredients, craving: state.craving, section }, 65000)).recipes || []; } catch (e) { if (a) throw e; } } };
+  try { const [ready, more] = await Promise.all([call('ready'), call('more')]); state.recipes = { craving: state.craving, ready, more }; LS.set('recipes', state.recipes); }
+  catch (e) { el('recipesBody').innerHTML = `<div class="kick">Oops, kitchen hiccup!</div><h2>Recipes didn't come through</h2><p class="sub">${esc(e.message)} Your ingredients are saved.</p><button class="btn primary" id="goRecipes">Retry 🔄</button>`; return; }
   renderRecipes();
 }
 const THUMBS = ['#FFF1C9', '#E3F3E9', '#EDE6F7', '#FDE9E0'];
@@ -214,7 +240,7 @@ el('craveInput').addEventListener('keydown', e => { if (e.key === 'Enter') crave
 function renderLeft() { const n = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5).length; el('scanLeft').textContent = n < 3 ? `${3 - n} of 3 free scans left this week` : 'Free scans used up. Beta bonus: keep snapping!'; }
 renderLeft();
 const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'pro'];
-const RENDER = { scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin') || renderRecipes(), recipe: renderRecipe, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList };
+const RENDER = { scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList };
 function route() {
   const id = SCREENS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
   RENDER[id]?.();
@@ -223,6 +249,21 @@ function route() {
 }
 window.addEventListener('hashchange', () => { route(); const a = document.querySelector('.screen.active'); a.classList.remove('anim'); void a.offsetWidth; a.classList.add('anim'); });
 route();
+/* INSTALL */
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let deferredInstall = null;
+function showInstall(sub, btn) { const c = el('installCard'); if (standalone()) { c.hidden = true; c.style.display = 'none'; return; } c.hidden = false; c.style.display = 'flex'; if (sub) el('installSub').textContent = sub; el('installBtn').style.display = btn === false ? 'none' : ''; }
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; showInstall(null, true); });
+window.addEventListener('appinstalled', () => { deferredInstall = null; el('installCard').style.display = 'none'; toast('Installed! Find SnapCravings on your home screen.'); });
+el('installBtn').addEventListener('click', async () => {
+  if (deferredInstall) { deferredInstall.prompt(); const r = await deferredInstall.userChoice; deferredInstall = null; if (r.outcome === 'accepted') el('installCard').style.display = 'none'; return; }
+  toast(isIOS ? 'Tap Share, then Add to Home Screen' : 'Open the ⋮ menu, then tap Add to Home screen or Install app', 6000);
+});
+if (!standalone()) { if (isIOS) showInstall('Tap Share, then Add to Home Screen', false); else setTimeout(() => { if (!deferredInstall && !standalone()) showInstall('Open the ⋮ menu, then tap Install app', true); }, 4000); }
+el('installCard').style.display = 'none';
+if (!standalone() && isIOS) showInstall('Tap Share, then Add to Home Screen', false);
+
 if ('serviceWorker' in navigator) window.addEventListener('load', () => {
   const had = !!navigator.serviceWorker.controller; let reloaded = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && !reloaded) { reloaded = true; location.reload(); } });

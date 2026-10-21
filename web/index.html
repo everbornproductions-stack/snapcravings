@@ -183,6 +183,10 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
       <div style="font-size:22px">✨</div><div style="flex:1;font-size:13px"><b id="scanLeft">3 of 3 free scans left this week</b><br><span class="sub" style="font-size:12px">Go unlimited with Pro</span></div>
       <a class="chip" href="#pro" style="background:var(--dark);color:#fff;border:0">Pro</a>
     </div>
+    <div class="card" id="installCard" hidden style="display:flex;align-items:center;gap:10px">
+      <div style="font-size:22px">📲</div><div style="flex:1;font-size:13px"><b>Install SnapCravings</b><br><span class="sub" style="font-size:12px" id="installSub">Snap from your home screen, one tap away.</span></div>
+      <button class="chip" id="installBtn" style="background:var(--coral);color:#fff;border:0;cursor:pointer">Install</button>
+    </div>
   </section>
 
   <!-- SCAN -->
@@ -297,6 +301,6 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 <input type="file" id="snapCam" accept="image/*" capture="environment" multiple hidden>
 <input type="file" id="snapLib" accept="image/*" multiple hidden>
 <div id="toast" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
-<script src="app.js?v=ui2"></script>
+<script src="app.js?v=ui5"></script>
 </body>
 </html>

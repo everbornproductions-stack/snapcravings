@@ -1,9 +1,9 @@
 // SnapCravings API (Cloudflare Pages Function). The AI key stays server-side in env.GEMINI_API_KEY.
 // Routes: POST /api/scan {images:[dataURL]} | POST /api/recipes {ingredients, craving} | POST /api/crave {craving, ingredients}
 // GET /api/health. Set MOCK_AI=1 (local only) to return canned results without a key.
-const MODEL = 'gemini-3.8-flash', FALLBACK_MODEL = 'gemini-flash-latest'; // gemini-2.5-flash is closed to new API users (404)
+const MODEL = 'gemini-3.8-flash'; // gemini-2.5-flash is closed to new API users (404); see CHAIN for fallbacks
 const MAX_IMAGES = 8, MAX_IMAGE_BYTES = 1_500_000, MAX_BODY = 9_000_000;
-const LIMIT = { scan: 12, recipes: 20, crave: 20 }, WINDOW_S = 3600; // per IP per hour
+const LIMIT = { scan: 60, recipes: 30, crave: 30 }, WINDOW_S = 3600; // per IP per hour
 const mem = new Map(); // fallback limiter when no KV binding (per isolate, best effort)
 
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
@@ -24,25 +24,35 @@ const RECIPE = { type: 'object', properties: {
   steps: { type: 'array', items: { type: 'string' } } }, required: ['name', 'emoji', 'minutes', 'servings', 'level', 'ingredients', 'missing', 'steps'] };
 const SCHEMAS = {
   scan: { type: 'object', properties: { ingredients: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, qty: { type: 'string' }, category: { type: 'string', enum: ['Produce', 'Proteins', 'Dairy', 'Pantry', 'Spices & Seasonings'] }, low: { type: 'boolean' } }, required: ['name', 'qty', 'category', 'low'] } } }, required: ['ingredients'] },
-  recipes: { type: 'object', properties: { ready: { type: 'array', items: RECIPE }, more: { type: 'array', items: RECIPE } }, required: ['ready', 'more'] },
+  recipes: { type: 'object', properties: { recipes: { type: 'array', items: RECIPE } }, required: ['recipes'] },
   crave: { type: 'object', properties: { recipe: RECIPE, est_cook_cost: { type: 'number' } }, required: ['recipe', 'est_cook_cost'] }
 };
 const VOICE = 'You write for SnapCravings, a fun, upbeat cooking app. Plain, friendly words. No em-dashes. Recipe steps are complete, specific (times, temperatures, amounts) and safe (cook meat through).';
 
-async function gemini(env, route, parts, model = env.GEMINI_MODEL || MODEL) {
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: VOICE }] }, contents: [{ role: 'user', parts }],
-      generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMAS[route], temperature: 0.6, thinkingConfig: { thinkingBudget: 0 } } })
-  });
-  if (r.status === 404 && model !== FALLBACK_MODEL) return gemini(env, route, parts, FALLBACK_MODEL);
-  if (!r.ok) { console.log('gemini error', r.status, (await r.text()).slice(0, 300)); throw new Error(r.status === 429 ? 'Our kitchen is busy. Try again in a minute!' : 'The recipe brain hiccuped. Try again!'); }
-  const j = await r.json();
-  const text = j.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text || '').join('') || '';
-  const u = j.usageMetadata || {};
-  console.log('usage', route, u.promptTokenCount, u.candidatesTokenCount);
-  let data; try { data = JSON.parse(text); } catch { throw new Error('The recipe brain hiccuped. Try again!'); }
-  return { data, usage: { model, in: u.promptTokenCount, out: u.candidatesTokenCount, think: u.thoughtsTokenCount || 0 } };
+// Model chain: Google's 3.8 Flash is often overloaded (429/503 "high demand") and slow; fall back fast.
+const CHAIN = [['gemini-3.8-flash', 22000, { thinkingBudget: 0 }], ['gemini-3.5-flash-lite', 18000, null], ['gemini-2.5-flash-lite', 15000, { thinkingBudget: 0 }]];
+async function gemini(env, route, parts) {
+  const chain = env.GEMINI_MODEL ? [[env.GEMINI_MODEL, 25000, null], ...CHAIN] : CHAIN;
+  let last = 'The recipe brain hiccuped. Tap Retry!';
+  for (const [model, ms, thinking] of chain) {
+    const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), ms); const t0 = Date.now();
+    try {
+      const gc = { responseMimeType: 'application/json', responseSchema: SCHEMAS[route], temperature: 0.6, maxOutputTokens: 6000 };
+      if (thinking) gc.thinkingConfig = thinking;
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', signal: ctl.signal,
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: VOICE }] }, contents: [{ role: 'user', parts }], generationConfig: gc }) });
+      if (!r.ok) { console.log('gemini', model, r.status, (await r.text()).slice(0, 200)); if (r.status === 429) last = 'Our kitchen is busy. Tap Retry in a moment!'; continue; }
+      const j = await r.json();
+      const text = j.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text || '').join('') || '';
+      let data; try { data = JSON.parse(text); } catch { console.log('bad json', model, j.candidates?.[0]?.finishReason); continue; }
+      const u = j.usageMetadata || {};
+      console.log('ok', route, model, Date.now() - t0, 'ms', u.promptTokenCount, u.candidatesTokenCount);
+      return { data, usage: { model, ms: Date.now() - t0, in: u.promptTokenCount, out: u.candidatesTokenCount } };
+    } catch (e) { console.log('timeout/err', model, Date.now() - t0, e.name); last = 'That took too long. Tap Retry!'; }
+    finally { clearTimeout(timer); }
+  }
+  throw new Error(last);
 }
 
 const clean = (a, n = 60) => (Array.isArray(a) ? a : []).map(s => String(s).slice(0, 80)).filter(Boolean).slice(0, n);
@@ -75,9 +85,13 @@ export async function onRequest({ request, env, params }) {
     }
     parts.push({ text: `These ${imgs.length} photos are all from ONE kitchen; each is labeled with its area (fridge, freezer, pantry, spices). Analyze ALL photos together and return ONE combined, de-duplicated inventory: if the same item appears in several photos, list it once. List every distinct food item you can see, explicitly including spices, dried herbs, seasonings and blends, salt and pepper, sauces, oils, vinegars and condiments (read jar and bottle labels). For each give a short common name (e.g. "smoked paprika", "soy sauce", "olive oil"), a rough quantity (e.g. "6 eggs", "half a jar", "about 1 lb"), a category (Produce, Proteins, Dairy, Pantry, Spices & Seasonings; sauces, oils and condiments go in Pantry; spices, dried herbs, salt, pepper and seasoning blends go in Spices & Seasonings), and low=true if it looks nearly empty or running low. Ignore non-food items. If no food is visible, return an empty list.` });
   } else if (route === 'recipes') {
-    const ing = clean(body.ingredients); const craving = String(body.craving || 'Anything').slice(0, 60);
+    const ing = clean(body.ingredients, 80); const craving = String(body.craving || 'Anything').slice(0, 60);
+    const section = body.section === 'more' ? 'more' : 'ready';
     if (!ing.length) return json({ error: 'Add some ingredients first!' }, 400);
-    parts = [{ text: `Ingredients on hand (items marked [spice] are spices/seasonings the user owns; use them to flavor the recipes and name them in ingredients and steps): ${ing.join('; ')}.\nAlways available staples: ${STAPLES}.\nCraving: ${craving}.\nReturn "ready": 2 to 3 recipes that use ONLY the ingredients on hand plus staples (missing must be an empty list; every ingredient have=true). Return "more": 2 to 3 recipes matching the craving that need 1 to 4 extra items; list those in missing with a rough US grocery price estimate in USD (est_price) for the smallest common package, and mark them have=false in ingredients. Sort each list by fewest missing items, then shortest time. One food emoji per recipe. 2 servings unless the dish needs more.` }];
+    const ask = section === 'ready'
+      ? 'Give 2 or 3 recipes that use ONLY the ingredients on hand plus staples. missing must be an empty list and every ingredient have=true.'
+      : 'Give 2 or 3 recipes matching the craving that need 1 to 4 extra items. List those in missing with a rough US grocery price in USD (est_price) for the smallest common package, and mark them have=false in ingredients.';
+    parts = [{ text: `Ingredients on hand (items marked [spice] are spices/seasonings the user owns; use them to flavor the recipes): ${ing.join('; ')}.\nAlways available staples: ${STAPLES}.\nCraving: ${craving}.\n${ask} Use a handful of the on-hand items per recipe, not all of them. Keep it concise: at most 10 ingredients and 6 short steps per recipe. Sort by fewest missing items, then shortest time. One food emoji per recipe. 2 servings unless the dish needs more.` }];
   } else {
     const craving = String(body.craving || '').slice(0, 80).trim(); const ing = clean(body.ingredients);
     if (!craving) return json({ error: 'Name a craving first!' }, 400);
@@ -92,6 +106,6 @@ export async function onRequest({ request, env, params }) {
 function mock(route, body) {
   const r = (name, miss) => ({ name, emoji: '🍳', minutes: 15, servings: 2, level: 'Easy', ingredients: [{ item: 'Eggs', qty: '2', have: true }, ...miss.map(m => ({ item: m, qty: '1', have: false }))], missing: miss.map(m => ({ item: m, qty: '1', est_price: 2.5 })), steps: ['Mock step one.', 'Mock step two.'] });
   if (route === 'scan') return { ingredients: [{ name: 'Eggs', qty: '6', category: 'Proteins', low: false }, { name: 'Milk', qty: 'a little', category: 'Dairy', low: true }, { name: 'Smoked paprika', qty: 'half a jar', category: 'Spices & Seasonings', low: false }] };
-  if (route === 'recipes') return { ready: [r('Mock fried eggs', [])], more: [r('Mock omelette', ['Cheese'])] };
+  if (route === 'recipes') return { recipes: body.section === 'more' ? [r('Mock omelette', ['Cheese'])] : [r('Mock fried eggs', [])] };
   return { recipe: r('Mock ' + body.craving, ['Noodles']), est_cook_cost: 6.5 };
 }
