@@ -20,7 +20,7 @@ async function limited(env, ip, route) {
 
 const STAPLES = 'salt, pepper, cooking oil, water, sugar, flour, butter, common dried spices';
 const RECIPE = { type: 'object', properties: {
-  name: { type: 'string' }, emoji: { type: 'string' }, minutes: { type: 'integer' }, servings: { type: 'integer' }, level: { type: 'string', enum: ['Easy', 'Medium', 'Hard'] },
+  name: { type: 'string' }, emoji: { type: 'string' }, minutes: { type: 'integer' }, servings: { type: 'integer' }, level: { type: 'string', enum: ['Easy', 'Medium', 'Chef mode'] },
   ingredients: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, qty: { type: 'string' }, have: { type: 'boolean' } }, required: ['item', 'qty', 'have'] } },
   missing: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, qty: { type: 'string' }, est_price: { type: 'number' } }, required: ['item', 'qty', 'est_price'] } },
   steps: { type: 'array', items: { type: 'string' } } }, required: ['name', 'emoji', 'minutes', 'servings', 'level', 'ingredients', 'missing', 'steps'] };
@@ -39,7 +39,7 @@ async function gemini(env, route, parts) {
   for (const [model, ms, thinking] of chain) {
     const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), ms); const t0 = Date.now();
     try {
-      const gc = { responseMimeType: 'application/json', responseSchema: SCHEMAS[route], temperature: 0.6, maxOutputTokens: 6000 };
+      const gc = { responseMimeType: 'application/json', responseSchema: SCHEMAS[route], temperature: 0.6, maxOutputTokens: 8000 };
       if (thinking) gc.thinkingConfig = thinking;
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', signal: ctl.signal,
         headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
@@ -100,7 +100,7 @@ export async function onRequest({ request, env, params }) {
     const ask = section === 'ready'
       ? 'Give exactly 3 recipes that use ONLY the ingredients on hand plus staples. missing must be an empty list and every ingredient have=true.'
       : 'Give exactly 3 recipes matching the craving that need 1 to 4 extra items. List those in missing with a rough US grocery price in USD (est_price) for the smallest common package, and mark them have=false in ingredients.';
-    parts = [{ text: `Ingredients on hand (items marked [spice] are spices/seasonings the user owns; use them to flavor the recipes): ${ing.join('; ')}.\nAlways available staples: ${STAPLES}.\nCraving: ${craving}.\n${ask} Use a handful of the on-hand items per recipe, not all of them. Keep it concise: at most 10 ingredients and 6 short steps per recipe. Sort by fewest missing items, then shortest time.${avoid.length ? ' Do NOT repeat or closely copy these already-shown recipes: ' + avoid.join('; ') + '. Give new, different dishes.' : ''} One food emoji per recipe. 2 servings unless the dish needs more.` }];
+    parts = [{ text: `Ingredients on hand (items marked [spice] are spices/seasonings the user owns; use them to flavor the recipes): ${ing.join('; ')}.\nAlways available staples: ${STAPLES}.\nCraving: ${craving}.\n${ask} Use a handful of the on-hand items per recipe, not all of them. Make the 3 a mix: 1 quick Easy dish (level Easy, at most 8 ingredients, 5 short steps), 1 Medium dish (level Medium, at most 10 ingredients, 7 steps), and 1 elaborate restaurant-style showstopper (level Chef mode: more technique, layered flavors, a pan sauce, glaze, marinade or crispy element, and a plating tip in the last step; up to 14 ingredients and 10 clear steps). Keep each step to one or two sentences. Order them Easy, Medium, Chef mode.${avoid.length ? ' Do NOT repeat or closely copy these already-shown recipes: ' + avoid.join('; ') + '. Give new, different dishes.' : ''} One food emoji per recipe. 2 servings unless the dish needs more.` }];
   } else {
     const craving = String(body.craving || '').slice(0, 80).trim(); const ing = clean(body.ingredients);
     if (!craving) return json({ error: 'Name a craving first!' }, 400);

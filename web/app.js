@@ -162,7 +162,7 @@ async function moreIdeas() {
   const fresh = list => (list || []).filter(r => r?.name && !seen.has(r.name.toLowerCase()) && seen.add(r.name.toLowerCase()));
   const call = section => api('recipes', { ingredients, craving: state.craving, section, avoid }, 65000).then(j => j.recipes).catch(() => []);
   const [ready, more] = await Promise.all([call('ready'), call('more')]);
-  const a = fresh(ready), b = fresh(more);
+  const a = dedupe(fresh(ready), avoid), b = dedupe(fresh(more), avoid.concat(a.map(r => r.name)));
   R.ready = (R.ready || []).concat(a); R.more = (R.more || []).concat(b); LS.set('recipes', R);
   state.moreBusy = false;
   if (location.hash === '#recipes') { const y = el('recipes').scrollTop; renderRecipes(); el('recipes').scrollTop = y; }
@@ -173,16 +173,21 @@ async function getRecipes() {
   const ingredients = state.ingredients.slice(0, 80).map(i => (i.cat === 'Spices & Seasonings' ? '[spice] ' : '') + i.name + (i.qty ? ' (' + i.qty + ')' : ''));
   const call = async section => { for (let a = 0; a < 2; a++) { try { return (await api('recipes', { ingredients, craving: state.craving, section }, 65000)).recipes || []; } catch (e) { if (a) throw e; } } };
   state.moreBusy = false;
-  try { const [ready, more] = await Promise.all([call('ready'), call('more')]); state.recipes = { craving: state.craving, ready, more }; LS.set('recipes', state.recipes); }
+  try { const [ready0, more0] = await Promise.all([call('ready'), call('more')]); const ready = dedupe(ready0, []); const more = dedupe(more0, ready.map(r => r.name)); state.recipes = { craving: state.craving, ready, more }; LS.set('recipes', state.recipes); }
   catch (e) { el('recipesBody').innerHTML = `<div class="kick">Oops, kitchen hiccup!</div><h2>Recipes didn't come through</h2><p class="sub">${esc(e.message)} Your ingredients are saved.</p><button class="btn primary" id="goRecipes">Retry 🔄</button>`; return; }
   renderRecipes();
 }
+const STOP = new Set(['and', 'with', 'the', 'a', 'of', 'in', 'on', 'style', 'quick', 'easy', 'simple', 'classic', 'homemade', 'savory', 'creamy', 'crispy', 'cheesy', 'spicy', 'garlic', 'butter', 'herb', 'herbed']);
+const words = n => new Set(n.toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w)).map(w => w.replace(/(es|s)$/, '')));
+function similar(a, b) { const A = words(a), B = words(b); if (!A.size || !B.size) return a.toLowerCase() === b.toLowerCase(); let k = 0; A.forEach(w => B.has(w) && k++); return k / Math.min(A.size, B.size) >= 0.6; }
+function dedupe(list, seenNames) { const out = []; for (const r of list || []) { if (!r?.name) continue; if ([...seenNames, ...out.map(x => x.name)].some(n => similar(n, r.name))) continue; out.push(r); } return out; }
+const LEVEL_PILL = l => l === 'Chef mode' ? '<span class="pill" style="background:var(--dark);color:#fff;margin-left:4px">👨‍🍳 Chef mode</span>' : l === 'Medium' ? '<span class="pill" style="background:#FFF1C9;color:#7A5300;margin-left:4px">Medium</span>' : '<span class="pill g" style="margin-left:4px">Easy</span>';
 const THUMBS = ['#FFF1C9', '#E3F3E9', '#EDE6F7', '#FDE9E0'];
 function renderRecipes() {
   const R = state.recipes;
   if (!R) { el('recipesBody').innerHTML = `<div class="kick">Craving unlocked!</div><h2>No recipes yet</h2><p class="sub">Snap your fridge first and we'll match recipes to what you have.</p><a class="btn primary" href="#scan">📸 Snap it</a>`; return; }
-  const ready = (R.ready || []).map((r, i) => `<a class="card recipe" href="#recipe" data-rec="ready:${i}"><div class="thumb" style="background:${THUMBS[i % 4]}">${esc(r.emoji || '🍳')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${esc(r.minutes)} min · ${esc(r.servings)} servings</div><span class="pill g">Pantry power! You have everything</span></div>${heart('ready:' + i, r)}</a>`).join('') || `<p class="sub">Nothing makes the cut with only what you have. Check the ideas below!</p>`;
-  const more = (R.more || []).map((r, i) => `<div class="card recipe"><a href="#recipe" data-rec="more:${i}" style="display:flex;gap:12px;align-items:center;flex:1;color:inherit;text-decoration:none"><div class="thumb" style="background:${THUMBS[(i + 1) % 4]}">${esc(r.emoji || '🍜')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${esc(r.minutes)} min · ${esc(r.servings)} servings</div><span class="pill c">Missing ${r.missing.length}: ${esc(r.missing.map(m => m.item).join(', '))}</span></div></a><span style="display:flex;flex-direction:column;align-items:center;gap:4px">${heart('more:' + i, r)}<a class="chip" href="#list" data-addmiss="more:${i}" style="white-space:nowrap">🛒 + List</a></span></div>`).join('');
+  const ready = (R.ready || []).map((r, i) => `<a class="card recipe" href="#recipe" data-rec="ready:${i}"><div class="thumb" style="background:${THUMBS[i % 4]}">${esc(r.emoji || '🍳')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${esc(r.minutes)} min · ${esc(r.servings)} servings</div><span class="pill g">Pantry power! You have everything</span>${LEVEL_PILL(r.level)}</div>${heart('ready:' + i, r)}</a>`).join('') || `<p class="sub">Nothing makes the cut with only what you have. Check the ideas below!</p>`;
+  const more = (R.more || []).map((r, i) => `<div class="card recipe"><a href="#recipe" data-rec="more:${i}" style="display:flex;gap:12px;align-items:center;flex:1;color:inherit;text-decoration:none"><div class="thumb" style="background:${THUMBS[(i + 1) % 4]}">${esc(r.emoji || '🍜')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${esc(r.minutes)} min · ${esc(r.servings)} servings</div><span class="pill c">Missing ${r.missing.length}: ${esc(r.missing.map(m => m.item).join(', '))}</span>${LEVEL_PILL(r.level)}</div></a><span style="display:flex;flex-direction:column;align-items:center;gap:4px">${heart('more:' + i, r)}<a class="chip" href="#list" data-addmiss="more:${i}" style="white-space:nowrap">🛒 + List</a></span></div>`).join('');
   el('recipesBody').innerHTML = `<div class="kick">Craving unlocked!</div><h2>Matched to “${esc(R.craving || state.craving)}”</h2>
     <h3>Ready now: let's get cooking!</h3><p class="sub">You already have everything for these. Pantry power!</p><div style="height:8px"></div>${ready}
     ${more ? `<h3>Make it with a few more things</h3><p class="sub">Just a few items away. Add them to your grocery list and restock time is done!</p><div style="height:8px"></div>${more}<a class="btn ghost" href="#list" data-addmiss="all">🛒 Restock time! Build my grocery list</a>` : ''}
