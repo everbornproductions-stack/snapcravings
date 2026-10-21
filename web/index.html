@@ -141,7 +141,7 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 .spin{display:inline-block;width:18px;height:18px;border:3px solid var(--coral-soft);border-top-color:var(--coral);border-radius:50%;animation:sp 1s linear infinite;vertical-align:middle}
 @keyframes sp{to{transform:rotate(360deg)}}
 .photo img{height:100%;border-radius:12px;object-fit:cover;flex-shrink:0}
-@media (max-width:500px){body{padding:0!important;background:var(--bg)!important;min-height:100vh}.phone{width:100vw;height:100vh;height:100dvh;border-radius:0;box-shadow:none}.notch,.status{display:none}.screen{top:env(safe-area-inset-top)}.proto{display:none}}
+@media (max-width:500px){html,body{height:100%;background:var(--bg)!important}body{display:block;padding:0!important}.phone{position:fixed;inset:0;width:auto;height:auto;border-radius:0;box-shadow:none}.notch,.status .icons,.status span:first-child{visibility:hidden}.status{height:max(20px,env(safe-area-inset-top))}.screen{top:max(20px,env(safe-area-inset-top));bottom:calc(78px + env(safe-area-inset-bottom))}.tabbar{height:calc(78px + env(safe-area-inset-bottom));padding-bottom:calc(22px + env(safe-area-inset-bottom))}.proto{display:none}}
 </style>
 <meta name="theme-color" content="#FBF6EF">
 <link rel="manifest" href="manifest.webmanifest">
@@ -176,7 +176,7 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
     <h3>Popular cravings <span style="color:var(--coral)">· crave smarter, not harder</span></h3>
     <div class="chips"><a class="chip" href="#crave" data-crave="Pad thai">🍜 Pad thai</a><a class="chip" href="#crave" data-crave="Pizza">🍕 Pizza</a><a class="chip" href="#crave" data-crave="Tacos">🌮 Tacos</a><a class="chip" href="#crave" data-crave="Burger">🍔 Burger</a><a class="chip" href="#crave" data-crave="Sushi">🍣 Sushi</a></div>
     <div class="card" style="margin-top:14px;display:flex;align-items:center;gap:10px">
-      <div style="font-size:22px">✨</div><div style="flex:1;font-size:13px"><b id="scanLeft">Free while in beta</b><br><span class="sub" style="font-size:12px">Pro is coming soon</span></div>
+      <div style="font-size:22px">✨</div><div style="flex:1;font-size:13px"><b id="scanLeft">3 of 3 free scans left this week</b><br><span class="sub" style="font-size:12px">Go unlimited with Pro</span></div>
       <a class="chip" href="#pro" style="background:var(--dark);color:#fff;border:0">Pro</a>
     </div>
   </section>
@@ -192,7 +192,7 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
   <section class="screen" id="recipes">
     <div class="topbar"><a class="back" href="#scan">‹</a><span class="t">Recipe ideas</span></div>
     <div id="recipesBody"></div>
-    <div class="card" style="background:var(--dark);color:#fff;border:0">
+    <div class="card" style="background:var(--dark);color:#fff;border:0;margin-top:14px">
       <div class="kick dk" style="margin:0 0 2px">Make it or take it?</div><b>Still want it from a restaurant?</b>
       <p style="font-size:13px;opacity:.8;margin-top:3px">See what cooking it costs. Delivery-app comparison is coming soon.</p>
       <a class="btn primary" href="#crave" style="padding:11px">Compare make vs. buy</a>

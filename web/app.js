@@ -58,6 +58,7 @@ async function scan() {
     state.ingredients = j.ingredients.map(i => ({ name: i.name, qty: i.qty || '', cat: i.category, low: !!i.low }));
     state.low = state.ingredients.filter(i => i.low); // running-low items still count as "have" for cooking
     LS.set('ingredients', state.ingredients); LS.set('low', state.low);
+    const wk = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5); wk.push(Date.now()); LS.set('scans', wk); renderLeft();
     state.low.forEach(l => addToList(l.name, 'low', 0, null, true));
   } catch (e) { toast(e.message); }
   state.busy = false; renderScan();
@@ -210,6 +211,8 @@ el('listAdd').addEventListener('keydown', e => { if (e.key === 'Enter') el('list
 el('craveInput').addEventListener('keydown', e => { if (e.key === 'Enter') crave(el('craveInput').value); });
 ['snapCam', 'snapLib'].forEach(id => el(id).addEventListener('change', e => { onPhotos(e.target.files); e.target.value = ''; }));
 
+function renderLeft() { const n = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5).length; el('scanLeft').textContent = n < 3 ? `${3 - n} of 3 free scans left this week` : 'Free scans used up. Beta bonus: keep snapping!'; }
+renderLeft();
 const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'pro'];
 const RENDER = { scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin') || renderRecipes(), recipe: renderRecipe, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList };
 function route() {
