@@ -1,7 +1,7 @@
 # SnapCravings web app (PWA)
 
 - `web/` static app (design unchanged from the prototype; real data). `app.js` holds all client logic; no keys in the client.
-- `functions/api/[[path]].js` Cloudflare Pages Function: `/api/scan`, `/api/recipes`, `/api/crave`, `/api/health`. Calls Gemini 2.5 Flash with `GEMINI_API_KEY` (Pages secret). Limits: 4 photos, 1.5 MB each (client shrinks to 1280px JPEG), 7 MB body, per-IP hourly limits (scan 12, recipes 20, crave 20; KV binding `RATE_KV` optional, else per-isolate memory).
+- `functions/api/[[path]].js` Cloudflare Pages Function: `/api/scan`, `/api/recipes`, `/api/crave`, `/api/health`. Calls Gemini 3.8 Flash (gemini-2.5-flash is closed to new keys) with `GEMINI_API_KEY` (Pages secret). Limits: 4 photos, 1.5 MB each (client shrinks to 1280px JPEG), 7 MB body, per-IP hourly limits (scan 12, recipes 20, crave 20; KV binding `RATE_KV` optional, else per-isolate memory).
 - Grocery list, ingredients and last results persist in localStorage. "Send list to Instacart" opens Instacart search per item. Ordering comparison = "Coming soon". Pro = no payments.
 
 ## Run locally (mock AI, no key)

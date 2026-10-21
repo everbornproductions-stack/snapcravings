@@ -1,7 +1,7 @@
 // SnapCravings API (Cloudflare Pages Function). The AI key stays server-side in env.GEMINI_API_KEY.
 // Routes: POST /api/scan {images:[dataURL]} | POST /api/recipes {ingredients, craving} | POST /api/crave {craving, ingredients}
 // GET /api/health. Set MOCK_AI=1 (local only) to return canned results without a key.
-const MODEL = 'gemini-2.5-flash';
+const MODEL = 'gemini-3.8-flash', FALLBACK_MODEL = 'gemini-flash-latest'; // gemini-2.5-flash is closed to new API users (404)
 const MAX_IMAGES = 8, MAX_IMAGE_BYTES = 1_500_000, MAX_BODY = 9_000_000;
 const LIMIT = { scan: 12, recipes: 20, crave: 20 }, WINDOW_S = 3600; // per IP per hour
 const mem = new Map(); // fallback limiter when no KV binding (per isolate, best effort)
@@ -29,25 +29,27 @@ const SCHEMAS = {
 };
 const VOICE = 'You write for SnapCravings, a fun, upbeat cooking app. Plain, friendly words. No em-dashes. Recipe steps are complete, specific (times, temperatures, amounts) and safe (cook meat through).';
 
-async function gemini(env, route, parts) {
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+async function gemini(env, route, parts, model = env.GEMINI_MODEL || MODEL) {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
     body: JSON.stringify({ systemInstruction: { parts: [{ text: VOICE }] }, contents: [{ role: 'user', parts }],
       generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMAS[route], temperature: 0.6, thinkingConfig: { thinkingBudget: 0 } } })
   });
+  if (r.status === 404 && model !== FALLBACK_MODEL) return gemini(env, route, parts, FALLBACK_MODEL);
   if (!r.ok) { console.log('gemini error', r.status, (await r.text()).slice(0, 300)); throw new Error(r.status === 429 ? 'Our kitchen is busy. Try again in a minute!' : 'The recipe brain hiccuped. Try again!'); }
   const j = await r.json();
-  const text = j.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+  const text = j.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text || '').join('') || '';
   const u = j.usageMetadata || {};
   console.log('usage', route, u.promptTokenCount, u.candidatesTokenCount);
-  return { data: JSON.parse(text), usage: { in: u.promptTokenCount, out: u.candidatesTokenCount } };
+  let data; try { data = JSON.parse(text); } catch { throw new Error('The recipe brain hiccuped. Try again!'); }
+  return { data, usage: { model, in: u.promptTokenCount, out: u.candidatesTokenCount, think: u.thoughtsTokenCount || 0 } };
 }
 
 const clean = (a, n = 60) => (Array.isArray(a) ? a : []).map(s => String(s).slice(0, 80)).filter(Boolean).slice(0, n);
 
 export async function onRequest({ request, env, params }) {
   const route = (params.path || [])[0];
-  if (route === 'health') return json({ ok: true, model: MODEL, ai: !!env.GEMINI_API_KEY || env.MOCK_AI === '1' ? 'ready' : 'missing GEMINI_API_KEY' });
+  if (route === 'health') return json({ ok: true, model: env.GEMINI_MODEL || MODEL, ai: !!env.GEMINI_API_KEY || env.MOCK_AI === '1' ? 'ready' : 'missing GEMINI_API_KEY' });
   if (request.method !== 'POST' || !SCHEMAS[route]) return json({ error: 'Not found' }, 404);
   const len = +request.headers.get('content-length') || 0;
   if (len > MAX_BODY) return json({ error: 'Those photos are too big. Try fewer photos.' }, 413);
