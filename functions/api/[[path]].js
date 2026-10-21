@@ -87,11 +87,12 @@ export async function onRequest({ request, env, params }) {
   } else if (route === 'recipes') {
     const ing = clean(body.ingredients, 80); const craving = String(body.craving || 'Anything').slice(0, 60);
     const section = body.section === 'more' ? 'more' : 'ready';
+    const avoid = clean(body.avoid, 40);
     if (!ing.length) return json({ error: 'Add some ingredients first!' }, 400);
     const ask = section === 'ready'
-      ? 'Give 2 or 3 recipes that use ONLY the ingredients on hand plus staples. missing must be an empty list and every ingredient have=true.'
-      : 'Give 2 or 3 recipes matching the craving that need 1 to 4 extra items. List those in missing with a rough US grocery price in USD (est_price) for the smallest common package, and mark them have=false in ingredients.';
-    parts = [{ text: `Ingredients on hand (items marked [spice] are spices/seasonings the user owns; use them to flavor the recipes): ${ing.join('; ')}.\nAlways available staples: ${STAPLES}.\nCraving: ${craving}.\n${ask} Use a handful of the on-hand items per recipe, not all of them. Keep it concise: at most 10 ingredients and 6 short steps per recipe. Sort by fewest missing items, then shortest time. One food emoji per recipe. 2 servings unless the dish needs more.` }];
+      ? 'Give exactly 3 recipes that use ONLY the ingredients on hand plus staples. missing must be an empty list and every ingredient have=true.'
+      : 'Give exactly 3 recipes matching the craving that need 1 to 4 extra items. List those in missing with a rough US grocery price in USD (est_price) for the smallest common package, and mark them have=false in ingredients.';
+    parts = [{ text: `Ingredients on hand (items marked [spice] are spices/seasonings the user owns; use them to flavor the recipes): ${ing.join('; ')}.\nAlways available staples: ${STAPLES}.\nCraving: ${craving}.\n${ask} Use a handful of the on-hand items per recipe, not all of them. Keep it concise: at most 10 ingredients and 6 short steps per recipe. Sort by fewest missing items, then shortest time.${avoid.length ? ' Do NOT repeat or closely copy these already-shown recipes: ' + avoid.join('; ') + '. Give new, different dishes.' : ''} One food emoji per recipe. 2 servings unless the dish needs more.` }];
   } else {
     const craving = String(body.craving || '').slice(0, 80).trim(); const ing = clean(body.ingredients);
     if (!craving) return json({ error: 'Name a craving first!' }, 400);

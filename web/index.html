@@ -183,6 +183,9 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
       <div style="font-size:22px">✨</div><div style="flex:1;font-size:13px"><b id="scanLeft">3 of 3 free scans left this week</b><br><span class="sub" style="font-size:12px">Go unlimited with Pro</span></div>
       <a class="chip" href="#pro" style="background:var(--dark);color:#fff;border:0">Pro</a>
     </div>
+    <a class="card" href="#favs" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)">
+      <div style="font-size:22px">❤️</div><div style="flex:1;font-size:13px"><b>Your favorites</b><br><span class="sub" style="font-size:12px" id="favCount">Tap ♡ on any recipe to save it</span></div><span>›</span>
+    </a>
     <div class="card" id="installCard" hidden style="display:flex;align-items:center;gap:10px">
       <div style="font-size:22px">📲</div><div style="flex:1;font-size:13px"><b>Install SnapCravings</b><br><span class="sub" style="font-size:12px" id="installSub">Snap from your home screen, one tap away.</span></div>
       <button class="chip" id="installBtn" style="background:var(--coral);color:#fff;border:0;cursor:pointer">Install</button>
@@ -209,7 +212,7 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 
   <!-- RECIPE DETAIL -->
   <section class="screen" id="recipe">
-    <div class="topbar"><a class="back" href="#recipes" id="recipeBack">‹</a><span class="t">Recipe</span><span style="flex:1"></span><span style="font-size:20px">♡</span></div>
+    <div class="topbar"><a class="back" href="#recipes" id="recipeBack">‹</a><span class="t">Recipe</span><span style="flex:1"></span><button id="recipeFav" aria-label="Save to favorites" style="font-size:22px;background:none;border:0;cursor:pointer;color:var(--coral)">♡</button></div>
     <div id="recipeBody"></div>
   </section>
 
@@ -269,6 +272,16 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
     <p class="fine" style="text-align:center">Opens Instacart search for each item. You pick the store and check out in Instacart; prices there may differ.</p>
   </section>
 
+  <!-- FAVORITES -->
+  <section class="screen" id="favs">
+    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Favorites</span></div>
+    <div class="kick">Saved for later!</div>
+    <h2>Your favorite recipes</h2>
+    <p class="sub">Tap a recipe to cook it again. Tap ♥ to unsave.</p>
+    <div style="height:10px"></div>
+    <div id="favsBody"></div>
+  </section>
+
   <!-- PRO -->
   <section class="screen" id="pro">
     <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Go Pro</span></div>
@@ -301,6 +314,6 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 <input type="file" id="snapCam" accept="image/*" capture="environment" multiple hidden>
 <input type="file" id="snapLib" accept="image/*" multiple hidden>
 <div id="toast" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
-<script src="app.js?v=ui5"></script>
+<script src="app.js?v=ui7"></script>
 </body>
 </html>

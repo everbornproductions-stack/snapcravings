@@ -6,6 +6,15 @@ const el = id => document.getElementById(id);
 const LS = { get: (k, d) => { try { return JSON.parse(localStorage.getItem('sc.' + k)) ?? d; } catch { return d; } }, set: (k, v) => localStorage.setItem('sc.' + k, JSON.stringify(v)) };
 const state = { photos: [], ingredients: LS.get('ingredients', []), low: LS.get('low', []), craving: 'Anything', recipes: LS.get('recipes', null), recipe: null, from: 'recipes', crave: LS.get('crave', null), busy: false };
 let glist = LS.get('glist', []);
+let favs = LS.get('favs', []);
+const isFav = r => !!r && favs.some(f => f.name.toLowerCase() === r.name.toLowerCase());
+function toggleFav(r) { if (!r) return; if (isFav(r)) { favs = favs.filter(f => f.name.toLowerCase() !== r.name.toLowerCase()); toast('Removed from favorites.'); } else { favs.unshift({ ...r, savedAt: Date.now() }); toast('Saved to favorites! ❤️'); } LS.set('favs', favs); renderFavCount(); }
+const heart = (key, r) => `<button data-fav="${key}" aria-label="${isFav(r) ? 'Unsave' : 'Save'}" style="background:none;border:0;font-size:20px;cursor:pointer;color:var(--coral);padding:4px;flex-shrink:0">${isFav(r) ? '♥' : '♡'}</button>`;
+function renderFavCount() { const n = favs.length; el('favCount').textContent = n ? `${n} saved recipe${n === 1 ? '' : 's'}. Pantry power!` : 'Tap ♡ on any recipe to save it'; }
+function renderFavs() {
+  el('favsBody').innerHTML = favs.length ? favs.map((r, i) => `<div class="card recipe"><a href="#recipe" data-rec="fav:${i}" style="display:flex;gap:12px;align-items:center;flex:1;color:inherit;text-decoration:none"><div class="thumb" style="background:${THUMBS[i % 4]}">${esc(r.emoji || '🍳')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${esc(r.minutes)} min · ${esc(r.servings)} servings</div>${(r.missing || []).length ? `<span class="pill c">Missing ${r.missing.length}: ${esc(r.missing.map(m => m.item).join(', '))}</span>` : '<span class="pill g">Pantry power! You have everything</span>'}</div></a>${heart('fav:' + i, r)}</div>`).join('')
+    : `<div class="card" style="text-align:center;padding:22px"><div style="font-size:30px">♡</div><b>No favorites yet</b><p class="sub" style="font-size:13px;margin-top:4px">Tap ♡ on any recipe and it lands here.</p><a class="btn primary" href="#scan">📸 Snap it</a></div>`;
+}
 const CRAVINGS = ['Anything', 'Noodles', 'Something quick', 'Comfort food', 'Spicy'];
 const MAX_PHOTOS = 8;
 const STEPS = [
@@ -116,10 +125,25 @@ function renderScan() {
 }
 
 /* RECIPES */
+async function moreIdeas() {
+  if (state.moreBusy || !state.recipes) return; state.moreBusy = true; renderRecipes();
+  const R = state.recipes; const avoid = [...(R.ready || []), ...(R.more || [])].map(r => r.name).slice(-40);
+  const ingredients = state.ingredients.slice(0, 80).map(i => (i.cat === 'Spices & Seasonings' ? '[spice] ' : '') + i.name + (i.qty ? ' (' + i.qty + ')' : ''));
+  const seen = new Set(avoid.map(n => n.toLowerCase()));
+  const fresh = list => (list || []).filter(r => r?.name && !seen.has(r.name.toLowerCase()) && seen.add(r.name.toLowerCase()));
+  const call = section => api('recipes', { ingredients, craving: state.craving, section, avoid }, 65000).then(j => j.recipes).catch(() => []);
+  const [ready, more] = await Promise.all([call('ready'), call('more')]);
+  const a = fresh(ready), b = fresh(more);
+  R.ready = (R.ready || []).concat(a); R.more = (R.more || []).concat(b); LS.set('recipes', R);
+  state.moreBusy = false;
+  if (location.hash === '#recipes') { const y = el('recipes').scrollTop; renderRecipes(); el('recipes').scrollTop = y; }
+  toast(a.length + b.length ? `${a.length + b.length} new idea${a.length + b.length === 1 ? '' : 's'}! Let's get cooking!` : 'Kitchen hiccup. Tap again for more ideas!');
+}
 async function getRecipes() {
   location.hash = '#recipes'; el('recipesBody').innerHTML = loading('Cooking up ideas…');
   const ingredients = state.ingredients.slice(0, 80).map(i => (i.cat === 'Spices & Seasonings' ? '[spice] ' : '') + i.name + (i.qty ? ' (' + i.qty + ')' : ''));
   const call = async section => { for (let a = 0; a < 2; a++) { try { return (await api('recipes', { ingredients, craving: state.craving, section }, 65000)).recipes || []; } catch (e) { if (a) throw e; } } };
+  state.moreBusy = false;
   try { const [ready, more] = await Promise.all([call('ready'), call('more')]); state.recipes = { craving: state.craving, ready, more }; LS.set('recipes', state.recipes); }
   catch (e) { el('recipesBody').innerHTML = `<div class="kick">Oops, kitchen hiccup!</div><h2>Recipes didn't come through</h2><p class="sub">${esc(e.message)} Your ingredients are saved.</p><button class="btn primary" id="goRecipes">Retry 🔄</button>`; return; }
   renderRecipes();
@@ -128,19 +152,21 @@ const THUMBS = ['#FFF1C9', '#E3F3E9', '#EDE6F7', '#FDE9E0'];
 function renderRecipes() {
   const R = state.recipes;
   if (!R) { el('recipesBody').innerHTML = `<div class="kick">Craving unlocked!</div><h2>No recipes yet</h2><p class="sub">Snap your fridge first and we'll match recipes to what you have.</p><a class="btn primary" href="#scan">📸 Snap it</a>`; return; }
-  const ready = (R.ready || []).map((r, i) => `<a class="card recipe" href="#recipe" data-rec="ready:${i}"><div class="thumb" style="background:${THUMBS[i % 4]}">${esc(r.emoji || '🍳')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${esc(r.minutes)} min · ${esc(r.servings)} servings</div><span class="pill g">Pantry power! You have everything</span></div><span>›</span></a>`).join('') || `<p class="sub">Nothing makes the cut with only what you have. Check the ideas below!</p>`;
-  const more = (R.more || []).map((r, i) => `<div class="card recipe"><a href="#recipe" data-rec="more:${i}" style="display:flex;gap:12px;align-items:center;flex:1;color:inherit;text-decoration:none"><div class="thumb" style="background:${THUMBS[(i + 1) % 4]}">${esc(r.emoji || '🍜')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${esc(r.minutes)} min · ${esc(r.servings)} servings</div><span class="pill c">Missing ${r.missing.length}: ${esc(r.missing.map(m => m.item).join(', '))}</span></div></a><a class="chip" href="#list" data-addmiss="more:${i}" style="white-space:nowrap">🛒 + List</a></div>`).join('');
+  const ready = (R.ready || []).map((r, i) => `<a class="card recipe" href="#recipe" data-rec="ready:${i}"><div class="thumb" style="background:${THUMBS[i % 4]}">${esc(r.emoji || '🍳')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${esc(r.minutes)} min · ${esc(r.servings)} servings</div><span class="pill g">Pantry power! You have everything</span></div>${heart('ready:' + i, r)}</a>`).join('') || `<p class="sub">Nothing makes the cut with only what you have. Check the ideas below!</p>`;
+  const more = (R.more || []).map((r, i) => `<div class="card recipe"><a href="#recipe" data-rec="more:${i}" style="display:flex;gap:12px;align-items:center;flex:1;color:inherit;text-decoration:none"><div class="thumb" style="background:${THUMBS[(i + 1) % 4]}">${esc(r.emoji || '🍜')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${esc(r.minutes)} min · ${esc(r.servings)} servings</div><span class="pill c">Missing ${r.missing.length}: ${esc(r.missing.map(m => m.item).join(', '))}</span></div></a><span style="display:flex;flex-direction:column;align-items:center;gap:4px">${heart('more:' + i, r)}<a class="chip" href="#list" data-addmiss="more:${i}" style="white-space:nowrap">🛒 + List</a></span></div>`).join('');
   el('recipesBody').innerHTML = `<div class="kick">Craving unlocked!</div><h2>Matched to “${esc(R.craving || state.craving)}”</h2>
     <h3>Ready now: let's get cooking!</h3><p class="sub">You already have everything for these. Pantry power!</p><div style="height:8px"></div>${ready}
-    ${more ? `<h3>Make it with a few more things</h3><p class="sub">Just a few items away. Add them to your grocery list and restock time is done!</p><div style="height:8px"></div>${more}<a class="btn ghost" href="#list" data-addmiss="all">🛒 Restock time! Build my grocery list</a>` : ''}`;
+    ${more ? `<h3>Make it with a few more things</h3><p class="sub">Just a few items away. Add them to your grocery list and restock time is done!</p><div style="height:8px"></div>${more}<a class="btn ghost" href="#list" data-addmiss="all">🛒 Restock time! Build my grocery list</a>` : ''}
+    <button class="btn primary" id="moreIdeas" ${state.moreBusy ? 'disabled style="opacity:.7"' : ''}>${state.moreBusy ? '<span class="spin" style="border-top-color:#fff"></span> Cooking up more…' : 'Hungry for more? Tap for more ideas!'}</button>`;
 }
-const pick = key => { if (key === 'crave') return state.crave?.recipe; const [k, i] = key.split(':'); return state.recipes?.[k]?.[+i]; };
+const pick = key => { if (key === 'crave') return state.crave?.recipe; if (key.startsWith('fav:')) return favs[+key.slice(4)]; const [k, i] = key.split(':'); return state.recipes?.[k]?.[+i]; };
 
 /* RECIPE */
 function renderRecipe() {
   const r = state.recipe;
   if (!r) { el('recipeBody').innerHTML = `<p class="sub">Pick a recipe first!</p><a class="btn primary" href="#recipes">See recipes</a>`; return; }
-  el('recipeBack').href = state.from === 'crave' ? '#compare' : '#recipes';
+  el('recipeBack').href = state.from === 'crave' ? '#compare' : state.from === 'favs' ? '#favs' : '#recipes';
+  el('recipeFav').textContent = isFav(r) ? '♥' : '♡';
   const miss = r.missing || []; const cost = r2(miss.reduce((s, m) => s + (+m.est_price || 0), 0));
   el('recipeBody').innerHTML = `<div class="hero">${esc(r.emoji || '🍳')}</div><div class="kick">Craving unlocked!</div><h2>${esc(r.name)}</h2>
     <div class="stats"><div class="stat"><b>${esc(r.minutes)} min</b><span>Total</span></div><div class="stat"><b>${esc(r.servings)}</b><span>Servings</span></div><div class="stat"><b>${esc(r.level || 'Easy')}</b><span>Level</span></div></div>
@@ -207,6 +233,8 @@ function sendList() {
 /* EVENTS */
 document.addEventListener('click', e => {
   const t = e.target;
+  const fv = t.closest('[data-fav]'); if (fv) { e.preventDefault(); e.stopPropagation(); toggleFav(pick(fv.dataset.fav)); const y = document.querySelector('.screen.active').scrollTop; if (location.hash === '#favs') renderFavs(); else renderRecipes(); document.querySelector('.screen.active').scrollTop = y; return; }
+  if (t.closest('#recipeFav')) { toggleFav(state.recipe); el('recipeFav').textContent = isFav(state.recipe) ? '♥' : '♡'; return; }
   if (t.closest('a.big-choice.snap') || t.closest('a.tab[href="#scan"]')) { if (!state.photos.length && !state.ingredients.length) { e.preventDefault(); state.step = 0; location.hash = '#scan'; openSnap(); } return; }
   if (t.closest('[data-addphoto]')) return openSnap();
   if (t.closest('[data-addlib]')) return openSnap(true);
@@ -219,8 +247,9 @@ document.addEventListener('click', e => {
   const ai = t.closest('[data-addi]'); if (ai) { const n = prompt('Add an ingredient'); if (n && n.trim()) { state.ingredients.push({ name: n.trim(), qty: '', cat: ai.dataset.addi }); LS.set('ingredients', state.ingredients); renderScan(); } return; }
   const cr = t.closest('[data-cr]'); if (cr) { state.craving = cr.dataset.cr; return renderScan(); }
   if (t.closest('#goRecipes')) return getRecipes();
+  if (t.closest('#moreIdeas')) return moreIdeas();
   const am = t.closest('[data-addmiss]'); if (am) { const k = am.dataset.addmiss; if (k === 'all') (state.recipes?.more || []).forEach(addMissing); else addMissing(k === 'cur' ? state.recipe : pick(k)); }
-  const rc = t.closest('[data-rec]'); if (rc) { state.recipe = pick(rc.dataset.rec); state.from = rc.dataset.rec === 'crave' ? 'crave' : 'recipes'; }
+  const rc = t.closest('[data-rec]'); if (rc) { state.recipe = pick(rc.dataset.rec); state.from = rc.dataset.rec === 'crave' ? 'crave' : rc.dataset.rec.startsWith('fav:') ? 'favs' : 'recipes'; }
   const ci = t.closest('[data-craveit]'); if (ci) el('craveInput').value = ci.dataset.craveit;
   const hc = t.closest('[data-crave]'); if (hc) el('craveInput').value = hc.dataset.crave;
   if (t.closest('#craveGo')) return crave(el('craveInput').value);
@@ -239,8 +268,8 @@ el('craveInput').addEventListener('keydown', e => { if (e.key === 'Enter') crave
 
 function renderLeft() { const n = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5).length; el('scanLeft').textContent = n < 3 ? `${3 - n} of 3 free scans left this week` : 'Free scans used up. Beta bonus: keep snapping!'; }
 renderLeft();
-const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'pro'];
-const RENDER = { scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList };
+const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'favs', 'pro'];
+const RENDER = { scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, favs: renderFavs, home: renderFavCount, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList };
 function route() {
   const id = SCREENS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
   RENDER[id]?.();
