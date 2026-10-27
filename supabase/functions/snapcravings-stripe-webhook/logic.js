@@ -3,6 +3,11 @@
 export const TOLERANCE_SECONDS = 300;
 export const APP = "snapcravings";
 export const PRICE_CENTS = 499;
+// Hardcoded Stripe ids (live, account "Everborn marketing"): the dashboard could not put app=snapcravings on subscriptions,
+// so these are the primary match for invoices and subscriptions. Ids are not secrets.
+export const PRICE_IDS = ["price_1UV1Nv6wphxe2c5DdlBKSCId"];
+export const PRODUCT_IDS = ["prod_VW3Um2yJoNikOC"];
+export const PAYMENT_LINK_IDS = ["plink_1UV1Pz6wphxe2c5DKeNKdWOL"];
 
 const hex = (bytes) => [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 export async function computeStripeSignature({ secret, timestamp, rawBody }) {
@@ -53,7 +58,16 @@ export function isSnap(obj, { paymentLinkId = "" } = {}) {
   const metas = [obj?.metadata, obj?.subscription_details?.metadata, obj?.parent?.subscription_details?.metadata,
     obj?.lines?.data?.[0]?.metadata, obj?.items?.data?.[0]?.metadata, obj?.items?.data?.[0]?.price?.metadata];
   if (metas.some((m) => String(m?.app ?? "").toLowerCase() === APP)) return true;
-  if (paymentLinkId && idOf(obj?.payment_link) === paymentLinkId) return true;
+  const link = idOf(obj?.payment_link);
+  if (link && (PAYMENT_LINK_IDS.includes(link) || (paymentLinkId && link === paymentLinkId))) return true;
+  // Price / product ids from the subscription items or invoice lines (classic and newer API shapes).
+  const rows = [...(obj?.items?.data ?? []), ...(obj?.lines?.data ?? [])];
+  for (const r of rows) {
+    const pd = r?.pricing?.price_details;
+    const pid = idOf(r?.price) ?? idOf(r?.plan) ?? (typeof pd === "string" ? pd : pd?.price);
+    const prod = idOf(r?.price?.product) ?? idOf(r?.plan?.product) ?? (typeof pd === "object" ? pd?.product : null);
+    if ((pid && PRICE_IDS.includes(pid)) || (prod && PRODUCT_IDS.includes(prod))) return true;
+  }
   const price = obj?.items?.data?.[0]?.price ?? obj?.lines?.data?.[0]?.price ?? obj?.lines?.data?.[0]?.pricing?.price_details;
   const plan = obj?.plan ?? obj?.items?.data?.[0]?.plan ?? obj?.lines?.data?.[0]?.plan;
   const amt = price?.unit_amount ?? plan?.amount ?? (obj?.object === "invoice" && Number(obj?.lines?.data?.[0]?.pricing?.unit_amount_decimal) === PRICE_CENTS ? PRICE_CENTS : undefined), iv = price?.recurring?.interval ?? plan?.interval ?? (obj?.object === "invoice" ? "month" : undefined);

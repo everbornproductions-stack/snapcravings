@@ -66,3 +66,28 @@ test('old subscription deletion does not end a newer one', async () => {
   assert.equal(r.reason, 'older_subscription');
   assert.equal(db.subs.get('bob@example.com').status, 'active');
 });
+
+const PRICE = 'price_1UV1Nv6wphxe2c5DdlBKSCId', PROD = 'prod_VW3Um2yJoNikOC', PLINK = 'plink_1UV1Pz6wphxe2c5DKeNKdWOL';
+test('matches by hardcoded price / product / payment link id when metadata is missing', async () => {
+  const noMeta = { metadata: {}, subscription_details: { metadata: {} } };
+  assert.equal((await processEvent(sess({ metadata: {}, payment_link: PLINK, amount_subtotal: 1 }), mem())).status, 'recorded');
+  assert.equal((await processEvent(sess({ metadata: {}, payment_link: { id: PLINK }, amount_subtotal: 1 }), mem())).status, 'recorded');
+  for (const lines of [
+    { data: [{ price: { id: PRICE }, period: { end: 1900000000 } }] },
+    { data: [{ price: { id: 'price_x', product: PROD }, period: { end: 1900000000 } }] },
+    { data: [{ pricing: { price_details: { price: PRICE, product: 'prod_zzz' } }, period: { end: 1900000000 } }] },
+    { data: [{ pricing: { price_details: { price: 'price_y', product: PROD } }, period: { end: 1900000000 } }] }]) {
+    const db = mem(); await processEvent(sess(), db);
+    db.subs.get('bob@example.com').current_period_end = null;
+    assert.equal((await processEvent(inv('invoice.paid', { ...noMeta, lines }), db)).status, 'updated');
+    assert.equal(db.subs.get('bob@example.com').current_period_end, new Date(1900000000e3).toISOString());
+  }
+  for (const items of [{ data: [{ price: { id: PRICE, product: PROD }, current_period_end: 1900000000 }] }, { data: [{ price: { id: 'p', product: { id: PROD } } }] }]) {
+    const db = mem(); await processEvent(sess(), db);
+    assert.equal((await processEvent(subEv('customer.subscription.deleted', { metadata: {}, items }, 'e_del'), db)).status, 'updated');
+    assert.equal(db.subs.get('bob@example.com').status, 'canceled');
+  }
+  // a different price / product (e.g. Meldmind) is still ignored
+  assert.equal((await processEvent(inv('invoice.paid', { ...noMeta, lines: { data: [{ price: { id: 'price_meld', product: 'prod_meld', unit_amount: 1899, recurring: { interval: 'month' } } }] } }), mem())).status, 'ignored');
+  assert.equal((await processEvent(subEv('customer.subscription.updated', { metadata: {}, items: { data: [{ price: { id: 'price_meld', product: 'prod_meld' } }] } }), mem())).status, 'ignored');
+});
