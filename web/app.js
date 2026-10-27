@@ -13,7 +13,7 @@ const DEV = LS.get('dev', null) || (() => { const d = (crypto.randomUUID ? crypt
 const planNow = () => sub.code ? 'owner' : (sub.token && sub.active) ? 'paid' : 'free';
 function track(event, screen, meta) {
   try {
-    if (navigator.doNotTrack === '1' || localStorage.getItem('sc.noTrack')) return;
+    if (localStorage.getItem('sc.noTrack')) return; // opt-out switch (no personal data is collected anyway)
     const body = JSON.stringify({ event, screen: screen || null, plan: planNow(), dev: DEV, meta: meta || {} });
     if (!(navigator.sendBeacon && navigator.sendBeacon('/api/ev', new Blob([body], { type: 'application/json' })))) fetch('/api/ev', { method: 'POST', body, keepalive: true, headers: { 'content-type': 'application/json' } }).catch(() => {});
   } catch {}
@@ -301,6 +301,16 @@ function renderCompare() {
 }
 
 /* GROCERY LIST */
+// Drop grocery items that break the saved diet/allergies (server does the matching; no AI call).
+async function cleanGlist() {
+  if (!dietOn() || !glist.length) return;
+  try {
+    const r = await fetch('/api/dietcheck', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prefs: prefs(), items: glist.map(g => g.name) }) }); if (!r.ok) return;
+    const rm = new Set((await r.json()).bad || []); if (!rm.size) return;
+    glist = glist.filter((g, i) => !rm.has(i)); LS.set('glist', glist); if (location.hash === '#list') renderList();
+    toast(`Removed ${rm.size} grocery item${rm.size === 1 ? '' : 's'} that don't fit your diet.`, 5000);
+  } catch {}
+}
 function addToList(name, src, price, recipe, quiet) {
   const k = name.trim().toLowerCase(); if (!k) return;
   const ex = glist.find(g => g.name.toLowerCase() === k);
@@ -333,6 +343,7 @@ document.addEventListener('click', e => {
   if (t.closest('a.big-choice.snap') || t.closest('a.tab[href="#scan"]')) { if (!state.photos.length && !state.ingredients.length) { e.preventDefault(); if (!LS.get('dietSeen', false)) { state.dietFirst = true; location.hash = '#settings'; return; } state.step = 0; location.hash = '#scan'; openSnap(); } return; }
   const dt = t.closest('[data-dtag]'); if (dt) { const k = dt.dataset.dtag; diet.tags = diet.tags.includes(k) ? diet.tags.filter(x => x !== k) : [...diet.tags, k]; saveDiet(); return renderSettings(); }
   const dm = t.closest('[data-dmood]'); if (dm) { const k = dm.dataset.dmood; const parts = diet.mood.split(/[,;]/).map(x => x.trim()).filter(Boolean); const has = parts.some(x => x.toLowerCase() === k.toLowerCase()); diet.mood = (has ? parts.filter(x => x.toLowerCase() !== k.toLowerCase()) : [...parts, k]).join(', '); saveDiet(); return renderSettings(); }
+  if (t.closest('#dietSnap') || t.closest('#dietDone') || t.closest('#dietSkip')) cleanGlist();
   if (t.closest('#dietSnap') || t.closest('#dietDone')) track('diet_saved', 'settings', { n: (diet.tags || []).length });
   if (t.closest('#dietSnap') || t.closest('#dietSkip')) { LS.set('dietSeen', true); state.dietFirst = false; state.step = 0; location.hash = '#scan'; if (t.closest('#dietSnap') && dietOn()) toast("Saved! Let's get cooking!"); return openSnap(); }
   if (t.closest('#dietDone')) { toast(state.dietReset ? 'Saved! Hit Show recipes for fresh ideas that fit.' : "Saved! Let's get cooking!"); state.dietReset = false; location.hash = '#home'; return; }
@@ -376,7 +387,8 @@ function renderLeft() { if (unlimited()) { el('scanLeft').textContent = 'Unlimit
 renderLeft();
 const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'favs', 'pro', 'settings'];
 const RENDER = { scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, favs: renderFavs, home: () => { renderFavCount(); renderDietCount(); }, settings: renderSettings, pro: renderPro, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList };
-let lastView = '';
+let lastView = '', hiddenAt = 0;
+document.addEventListener('visibilitychange', () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 30 * 60 * 1000) { hiddenAt = 0; track('page_view', lastView || 'home'); } }); // reopened installed app = a new visit
 function route() {
   const id = SCREENS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
   if (id !== 'settings') state.dietFirst = false;
@@ -386,7 +398,7 @@ function route() {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.for.split(' ').includes(id)));
 }
 window.addEventListener('hashchange', () => { route(); const a = document.querySelector('.screen.active'); a.classList.remove('anim'); void a.offsetWidth; a.classList.add('anim'); });
-route();
+route(); setTimeout(cleanGlist, 2500);
 /* INSTALL */
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
