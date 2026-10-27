@@ -41,12 +41,15 @@ async function planVariation(env) {
     phases: [{ cadence: 'MONTHLY', ordinal: 0, pricing: { type: 'STATIC', price_money: { amount: PRICE_CENTS, currency: 'USD' } } }] } } });
   return (cache.pv = v.catalog_object.id);
 }
-async function activeSub(env, email) {
+async function activeSubs(env, email) {
   const c = await sq(env, '/v2/customers/search', 'POST', { query: { filter: { email_address: { exact: email } } }, limit: 10 });
-  const ids = (c.customers || []).map(x => x.id); if (!ids.length) return null;
+  const ids = (c.customers || []).map(x => x.id); if (!ids.length) return [];
   const s = await sq(env, '/v2/subscriptions/search', 'POST', { query: { filter: { customer_ids: ids, location_ids: [await location(env)] } } });
-  return (s.subscriptions || []).find(x => x.status === 'ACTIVE') || null;
+  return (s.subscriptions || []).filter(x => x.status === 'ACTIVE');
 }
+const activeSub = async (env, email) => (await activeSubs(env, email))[0] || null;
+// The date Unlimited ends once cancelled (Square cancels at the end of the paid period).
+const endDate = s => s.canceled_date || null;
 
 export async function onRequest({ request, env, params }) {
   const route = (params.path || [])[0];
@@ -77,6 +80,23 @@ export async function onRequest({ request, env, params }) {
         pre_populated_data: { buyer_email: email } });
       return json({ url: j.payment_link.url, id: j.payment_link.id });
     }
+    if (route === 'mysub' || route === 'cancel') {
+      // Needs the signed unlock token from a real Square plan; owner-code unlocks have no subscription to manage.
+      const p = await verifyToken(env, body.token);
+      if (!p) return json({ error: 'Restore your purchase first, then try again.' }, 401);
+      if (!validEmail(p.e)) return json({ error: 'Your code unlock has no subscription to cancel.' }, 400);
+      const subs = await activeSubs(env, p.e);
+      if (!subs.length) return json({ error: "We couldn't find an active plan for that email." }, 404);
+      if (route === 'mysub') { const c = subs.find(x => endDate(x)); return json({ active: true, cancelled: !!c, until: c ? endDate(c) : null, charged_through: subs[0].charged_through_date || null }); }
+      let until = null;
+      for (const x of subs) {
+        if (endDate(x)) { until = until || endDate(x); continue; } // already scheduled to cancel
+        const j = await sq(env, `/v2/subscriptions/${encodeURIComponent(x.id)}/cancel`, 'POST'); // CancelSubscription: ends at the end of the paid period
+        until = until || j.subscription?.canceled_date || j.subscription?.charged_through_date || x.charged_through_date || null;
+      }
+      console.log('cancel ok', subs.length, until);
+      return json({ ok: true, cancelled: true, until });
+    }
     if (route === 'status') {
       if (body.token) { const p = await verifyToken(env, body.token); if (p) return json({ active: true, email: p.e, token: body.token }); }
       if (!validEmail(email)) return json({ error: 'Pop in the email you used at checkout!' }, 400);
@@ -84,6 +104,6 @@ export async function onRequest({ request, env, params }) {
       if (!s) return json({ active: false });
       return json({ active: true, email, token: await signToken(env, email), since: s.start_date });
     }
-  } catch (e) { return json({ error: 'Square is having a moment. Try again!' }, 502); }
+  } catch (e) { console.log('sub route error', route, e.message); return json({ error: 'Square is having a moment. Try again!' }, 502); }
   return json({ error: 'Not found' }, 404);
 }

@@ -20,7 +20,7 @@ async function checkSub(email, quiet) {
 function renderPro() {
   if (!el('proBody')) return;
   el('proPrice').textContent = '$' + Number(subCfg.price).toFixed(2);
-  if (unlimited()) { el('proBody').innerHTML = `<div class="card" style="background:var(--green-soft);border-color:#BFE3CC;text-align:center;margin-top:12px"><b style="color:#1F6B42">You're Unlimited! 🎉</b><div class="fine" style="color:#1F6B42">${esc(sub.email)} · unlimited photo scans. Let's get cooking!</div></div><a class="btn primary" href="#scan">📸 Snap it</a><p class="fine" style="text-align:center">Manage or cancel anytime from your Square receipt email.</p>`; return; }
+  if (unlimited()) { el('proBody').innerHTML = `<div class="card" style="background:var(--green-soft);border-color:#BFE3CC;text-align:center;margin-top:12px"><b style="color:#1F6B42">You're Unlimited! 🎉</b><div class="fine" style="color:#1F6B42">${esc(sub.email)} · unlimited photo scans. Let's get cooking!</div></div><a class="btn primary" href="#scan">📸 Snap it</a><p class="fine" style="text-align:center">${sub.code ? 'Your food preferences live in' : 'Manage or cancel anytime in'} <a href="#settings" style="color:var(--coral);font-weight:700">Settings</a>.</p>`; return; }
   if (sub.email && !el('proEmail').value) el('proEmail').value = sub.email;
   if (!subCfg.enabled) { el('proGo').textContent = 'Go Unlimited · coming soon!'; el('proGo').style.opacity = '.6'; el('proEmail').parentNode.style.display = 'none'; el('proRestore').style.display = 'none'; }
   el('proFine').textContent = subCfg.enabled ? `$${Number(subCfg.price).toFixed(2)}/month. Secure checkout by Square. We use your email only to find your plan.${subCfg.sandbox ? ' (Test mode)' : ''}` : 'Go Unlimited is coming soon. No payments yet.';
@@ -61,7 +61,7 @@ function toast(msg, ms = 3500) { const t = el('toast'); t.textContent = msg; t.s
 async function api(path, body, ms = 60000) {
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
   let r;
-  try { r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-sc-token': sub.token || '', 'x-sc-scan': state.scanId || '', 'x-sc-dev': DEV }, body: JSON.stringify(body), signal: ctl.signal }); }
+  try { r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-sc-token': sub.token || '', 'x-sc-scan': state.scanId || '', 'x-sc-dev': DEV }, body: JSON.stringify(path === 'scan' || path === 'recipes' || path === 'crave' ? { ...body, prefs: prefs() } : body), signal: ctl.signal }); }
   catch (e) { throw new Error(e.name === 'AbortError' ? 'That took too long. Check your signal and tap Retry!' : 'Lost the connection for a sec. Tap Retry!'); }
   finally { clearTimeout(t); }
   const j = await r.json().catch(() => ({ error: 'Something went sideways. Try again!' }));
@@ -83,6 +83,53 @@ async function shrink(file) {
   c.width = c.height = 0; return out;
 }
 const loading = (msg) => `<div class="card" style="text-align:center;padding:26px"><span class="spin"></span><div style="margin-top:10px;font-weight:700">${esc(msg)}</div></div>`;
+
+/* MY DIET + SETTINGS */
+const DIET_TAGS = ['Gluten-free', 'Dairy-free', 'Vegetarian', 'Vegan', 'Nut allergy', 'Shellfish allergy', 'Egg-free', 'Keto/low-carb', 'Halal'];
+const MOODS = ['Mexican', 'Asian', 'Italian', 'Comfort food', 'Mediterranean', 'Indian'];
+let diet = Object.assign({ tags: [], other: '', mood: '' }, LS.get('diet', {}));
+const dietOn = () => !!(diet.tags.length || diet.other.trim() || diet.mood.trim());
+const prefs = () => ({ tags: diet.tags, other: diet.other.trim(), mood: diet.mood.trim() });
+const dietLine = () => [...diet.tags, diet.other.trim()].filter(Boolean).join(', ');
+function renderDietCount() { if (el('dietCount')) el('dietCount').textContent = dietOn() ? (dietLine() || 'Mood: ' + diet.mood.trim()) : 'Tell us what to skip. Totally optional!'; }
+function saveDiet() { // changing the diet makes old recipes stale (they may not fit), so clear them
+  LS.set('diet', diet); LS.set('dietSeen', true); renderDietCount();
+  if (state.recipes || state.crave) { state.recipes = null; state.crave = null; LS.set('recipes', null); LS.set('crave', null); state.dietReset = true; }
+}
+let cancelUntil = LS.get('cancelUntil', null);
+const fmtDate = d => { const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(d || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : 'the end of your paid period'; };
+const canCancel = () => unlimited() && !sub.code;
+const planInner = () => cancelUntil ? `<div class="card" style="background:var(--green-soft);border-color:#BFE3CC"><b style="color:#1F6B42">Cancelled — you keep Unlimited until ${esc(fmtDate(cancelUntil))}</b><div class="fine" style="color:#1F6B42">No more charges after that. Changed your mind? Go Unlimited again anytime from Pro.</div></div>`
+  : `<div class="card"><b>You're Unlimited! 🎉</b><div class="fine" style="margin-top:2px">${esc(sub.email)} · $${Number(subCfg.price).toFixed(2)}/month</div><button class="btn ghost" id="subCancel" style="padding:12px">Cancel subscription</button><div class="fine">You keep Unlimited until the end of the period you've already paid for.</div></div>`;
+const planCard = () => canCancel() ? `<h3>Your plan</h3><div id="planBox">${planInner()}</div>` : '';
+function renderSettings() {
+  const first = !!state.dietFirst, y = el('settings').scrollTop;
+  const tag = t => { const on = diet.tags.includes(t); return `<button class="chip" data-dtag="${esc(t)}" aria-pressed="${on}" style="cursor:pointer;font-family:var(--font);${on ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : ''}">${on ? '✓ ' : ''}${esc(t)}</button>`; };
+  const moods = diet.mood.toLowerCase();
+  el('settingsBody').innerHTML = `<div class="kick">${first ? 'Before we snap!' : 'Your kitchen, your rules!'}</div>
+    <h2>${first ? 'Any food rules?' : 'My diet &amp; allergies'}</h2>
+    <p class="sub">${first ? "Totally optional. Tell us what to skip and every recipe stays safe and tasty. You can change it anytime from the ⚙️ on Home." : "Tap what applies. We'll keep every recipe and grocery list in line."}</p>
+    <h3>What should we skip?</h3>
+    <div class="chips">${DIET_TAGS.map(tag).join('')}</div>
+    <p class="fine">Allergies are treated as hard rules. Still, always double-check labels yourself.</p>
+    <h3>Anything else to skip?</h3>
+    <div class="input"><span>🚫</span><input id="dietOther" maxlength="200" autocomplete="off" placeholder="Like no cilantro" aria-label="Other foods to skip" value="${esc(diet.other)}"></div>
+    <h3>Foods I'm in the mood for <span style="color:var(--muted);font-weight:600">· optional</span></h3>
+    <div class="input"><span>😋</span><input id="dietMood" maxlength="120" autocomplete="off" placeholder="Like Mexican, Asian, comfort food" aria-label="Foods I'm in the mood for" value="${esc(diet.mood)}"></div>
+    <div class="chips">${MOODS.map(m => { const on = moods.includes(m.toLowerCase()); return `<button class="chip" data-dmood="${esc(m)}" style="cursor:pointer;font-family:var(--font);${on ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : ''}">${esc(m)}</button>`; }).join('')}</div>
+    ${first ? `<button class="btn primary" id="dietSnap">Save &amp; snap it 📸</button><button class="btn ghost" id="dietSkip">Skip for now</button>`
+      : `<button class="btn primary" id="dietDone">Done. Let's get cooking!</button>`}
+    ${first ? '' : planCard()}`;
+  el('settings').scrollTop = y;
+  if (!first && canCancel()) subCall('mysub', { token: sub.token }).then(j => { const u = j.cancelled ? (j.until || 'end') : null; if (u !== cancelUntil) { cancelUntil = u; LS.set('cancelUntil', u); if (location.hash === '#settings' && el('planBox')) el('planBox').innerHTML = planInner(); } }).catch(() => {});
+}
+async function cancelSub() {
+  if (!confirm("Cancel Unlimited? You'll keep unlimited scans until the end of the period you've already paid for, and we won't charge you again.")) return;
+  const b = el('subCancel'); if (b) { b.disabled = true; b.innerHTML = '<span class="spin"></span> Cancelling…'; }
+  try { const j = await subCall('cancel', { token: sub.token }); cancelUntil = j.until || 'end'; LS.set('cancelUntil', cancelUntil); toast(`Cancelled. You keep Unlimited until ${fmtDate(j.until)}.`, 6000); }
+  catch (e) { toast(e.message); }
+  renderSettings();
+}
 
 /* SNAP */
 function openSnap(lib) { el(lib ? 'snapLib' : 'snapCam').click(); }
@@ -116,8 +163,8 @@ async function scan() {
   try {
     const results = []; // two batches at a time
     for (let i = 0; i < batches.length; i += 2) results.push(...await Promise.all(batches.slice(i, i + 2).map(one)));
-    state.ingredients = mergeInv(results).map(i => ({ name: i.name, qty: i.qty || '', cat: i.category, low: !!i.low }));
-    state.low = state.ingredients.filter(i => i.low); // running-low items still count as "have" for cooking
+    state.ingredients = mergeInv(results).map(i => ({ name: i.name, qty: i.qty || '', cat: i.category, low: !!i.low, bad: !!i.conflict }));
+    state.low = state.ingredients.filter(i => i.low && !i.bad); // items that break your diet stay off the restock list // running-low items still count as "have" for cooking
     LS.set('ingredients', state.ingredients); LS.set('low', state.low);
     const wk = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5); wk.push(Date.now()); LS.set('scans', wk); renderLeft();
     state.low.forEach(l => addToList(l.name, 'low', 0, null, true));
@@ -147,8 +194,9 @@ function renderScan() {
   el('scanBody').innerHTML = `<div class="kick">Fridge to fabulous!</div>
     <h2>We found ${n} ingredient${n === 1 ? '' : 's'}</h2>
     <p class="sub">Tap to remove anything we got wrong, or add what we missed.</p><div style="height:10px"></div>
-    ${GROUPS.map(G => { const items = state.ingredients.map((g, i) => [g, i]).filter(([g]) => (GROUPS.includes(g.cat) ? g.cat : 'Pantry') === G); return `<h3 style="margin:14px 0 6px">${G === 'Spices & Seasonings' ? '🧂 ' : ''}${G} <span style="color:var(--muted);font-weight:600">· ${items.length}</span></h3><div class="chips">${items.map(([g, i]) => `<span class="chip ${g.low ? 'miss' : 'have'}" data-rmi="${i}" style="cursor:pointer">${esc(g.name)}${g.qty ? ' · ' + esc(g.qty) : ''}<span class="x">×</span></span>`).join('')}<span class="chip" data-addi="${G}" style="cursor:pointer">+ Add</span></div>`; }).join('')}
+    ${GROUPS.map(G => { const items = state.ingredients.map((g, i) => [g, i]).filter(([g]) => (GROUPS.includes(g.cat) ? g.cat : 'Pantry') === G); return `<h3 style="margin:14px 0 6px">${G === 'Spices & Seasonings' ? '🧂 ' : ''}${G} <span style="color:var(--muted);font-weight:600">· ${items.length}</span></h3><div class="chips">${items.map(([g, i]) => `<span class="chip ${g.low ? 'miss' : 'have'}" data-rmi="${i}" style="cursor:pointer">${esc(g.name)}${g.qty ? ' · ' + esc(g.qty) : ''}${g.bad ? ' 🚫' : ''}<span class="x">×</span></span>`).join('')}<span class="chip" data-addi="${G}" style="cursor:pointer">+ Add</span></div>`; }).join('')}
     <button class="chip" data-rescan style="cursor:pointer;margin-top:10px">🔄 Start over with new photos</button>
+    ${state.ingredients.some(i => i.bad) ? `<p class="fine">🚫 doesn't fit your diet, so we'll leave it out of recipes and your grocery list.</p>` : ''}
     ${state.low.length ? `<p class="fine">Coral = running low. We added ${state.low.length === 1 ? 'it' : 'them'} to your grocery list.</p>` : ''}
     <h3>What are you craving?</h3>
     <div class="chips">${CRAVINGS.map(c => `<span class="chip" data-cr="${esc(c)}" style="cursor:pointer;${c === state.craving ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : ''}">${esc(c)}</span>`).join('')}</div>
@@ -192,7 +240,7 @@ function renderRecipes() {
   if (!R) { el('recipesBody').innerHTML = `<div class="kick">Craving unlocked!</div><h2>No recipes yet</h2><p class="sub">Snap your fridge first and we'll match recipes to what you have.</p><a class="btn primary" href="#scan">📸 Snap it</a>`; return; }
   const ready = (R.ready || []).map((r, i) => `<a class="card recipe" href="#recipe" data-rec="ready:${i}"><div class="thumb" style="background:${THUMBS[i % 4]}">${esc(r.emoji || '🍳')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${esc(r.minutes)} min · ${esc(r.servings)} servings</div><span class="pill g">Pantry power! You have everything</span>${LEVEL_PILL(r.level)}</div>${heart('ready:' + i, r)}</a>`).join('') || `<p class="sub">Nothing makes the cut with only what you have. Check the ideas below!</p>`;
   const more = (R.more || []).map((r, i) => `<div class="card recipe"><a href="#recipe" data-rec="more:${i}" style="display:flex;gap:12px;align-items:center;flex:1;color:inherit;text-decoration:none"><div class="thumb" style="background:${THUMBS[(i + 1) % 4]}">${esc(r.emoji || '🍜')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${esc(r.minutes)} min · ${esc(r.servings)} servings</div><span class="pill c">Missing ${r.missing.length}: ${esc(r.missing.map(m => m.item).join(', '))}</span>${LEVEL_PILL(r.level)}</div></a><span style="display:flex;flex-direction:column;align-items:center;gap:4px">${heart('more:' + i, r)}<a class="chip" href="#list" data-addmiss="more:${i}" style="white-space:nowrap">🛒 + List</a></span></div>`).join('');
-  el('recipesBody').innerHTML = `<div class="kick">Craving unlocked!</div><h2>Matched to “${esc(R.craving || state.craving)}”</h2>
+  el('recipesBody').innerHTML = `<div class="kick">Craving unlocked!</div><h2>Matched to “${esc(R.craving || state.craving)}”</h2>${dietOn() && dietLine() ? `<p class="fine" style="margin-top:2px">🥗 Cooking for: ${esc(dietLine())} · <a href="#settings" style="color:var(--coral);font-weight:700">Change</a></p>` : ''}
     <h3>Ready now: let's get cooking!</h3><p class="sub">You already have everything for these. Pantry power!</p><div style="height:8px"></div>${ready}
     ${more ? `<h3>Make it with a few more things</h3><p class="sub">Just a few items away. Add them to your grocery list and restock time is done!</p><div style="height:8px"></div>${more}<a class="btn ghost" href="#list" data-addmiss="all">🛒 Restock time! Build my grocery list</a>` : ''}
     <button class="btn primary" id="moreIdeas" ${state.moreBusy ? 'disabled style="opacity:.7"' : ''}>${state.moreBusy ? '<span class="spin" style="border-top-color:#fff"></span> Cooking up more…' : 'Hungry for more? Tap for more ideas!'}</button>`;
@@ -273,7 +321,12 @@ document.addEventListener('click', e => {
   const t = e.target;
   const fv = t.closest('[data-fav]'); if (fv) { e.preventDefault(); e.stopPropagation(); toggleFav(pick(fv.dataset.fav)); const y = document.querySelector('.screen.active').scrollTop; if (location.hash === '#favs') renderFavs(); else renderRecipes(); document.querySelector('.screen.active').scrollTop = y; return; }
   if (t.closest('#recipeFav')) { toggleFav(state.recipe); el('recipeFav').textContent = isFav(state.recipe) ? '♥' : '♡'; return; }
-  if (t.closest('a.big-choice.snap') || t.closest('a.tab[href="#scan"]')) { if (!state.photos.length && !state.ingredients.length) { e.preventDefault(); state.step = 0; location.hash = '#scan'; openSnap(); } return; }
+  if (t.closest('a.big-choice.snap') || t.closest('a.tab[href="#scan"]')) { if (!state.photos.length && !state.ingredients.length) { e.preventDefault(); if (!LS.get('dietSeen', false)) { state.dietFirst = true; location.hash = '#settings'; return; } state.step = 0; location.hash = '#scan'; openSnap(); } return; }
+  const dt = t.closest('[data-dtag]'); if (dt) { const k = dt.dataset.dtag; diet.tags = diet.tags.includes(k) ? diet.tags.filter(x => x !== k) : [...diet.tags, k]; saveDiet(); return renderSettings(); }
+  const dm = t.closest('[data-dmood]'); if (dm) { const k = dm.dataset.dmood; const parts = diet.mood.split(/[,;]/).map(x => x.trim()).filter(Boolean); const has = parts.some(x => x.toLowerCase() === k.toLowerCase()); diet.mood = (has ? parts.filter(x => x.toLowerCase() !== k.toLowerCase()) : [...parts, k]).join(', '); saveDiet(); return renderSettings(); }
+  if (t.closest('#dietSnap') || t.closest('#dietSkip')) { LS.set('dietSeen', true); state.dietFirst = false; state.step = 0; location.hash = '#scan'; if (t.closest('#dietSnap') && dietOn()) toast("Saved! Let's get cooking!"); return openSnap(); }
+  if (t.closest('#dietDone')) { toast(state.dietReset ? 'Saved! Hit Show recipes for fresh ideas that fit.' : "Saved! Let's get cooking!"); state.dietReset = false; location.hash = '#home'; return; }
+  if (t.closest('#subCancel')) return cancelSub();
   if (t.closest('[data-addphoto]')) return openSnap();
   if (t.closest('[data-addlib]')) return openSnap(true);
   const rm = t.closest('[data-rmi]'); if (rm) { state.ingredients.splice(+rm.dataset.rmi, 1); LS.set('ingredients', state.ingredients); return renderScan(); }
@@ -304,16 +357,18 @@ document.addEventListener('click', e => {
   if (t.closest('#proCodeShow')) { el('proCodeBox').style.display = 'block'; el('proCode').focus(); return; }
   if (t.closest('#proRestore')) { const em = el('proEmail').value.trim() || sub.email; if (!em) return toast('Pop in the email you used at checkout!'); return checkSub(em.toLowerCase()); }
 });
+document.addEventListener('input', e => { if (e.target.id === 'dietOther') { diet.other = e.target.value; saveDiet(); } else if (e.target.id === 'dietMood') { diet.mood = e.target.value; saveDiet(); } });
 el('listAdd').addEventListener('keydown', e => { if (e.key === 'Enter') el('listAddBtn').click(); });
 el('craveInput').addEventListener('keydown', e => { if (e.key === 'Enter') crave(el('craveInput').value); });
 ['snapCam', 'snapLib'].forEach(id => el(id).addEventListener('change', e => { onPhotos(e.target.files); e.target.value = ''; }));
 
 function renderLeft() { if (unlimited()) { el('scanLeft').textContent = 'Unlimited scans. Let\'s get cooking!'; return; } const n = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5).length; el('scanLeft').textContent = n < 3 ? `${3 - n} of 3 free scans left this week` : 'Free scans used up. Beta bonus: keep snapping!'; }
 renderLeft();
-const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'favs', 'pro'];
-const RENDER = { scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, favs: renderFavs, home: renderFavCount, pro: renderPro, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList };
+const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'favs', 'pro', 'settings'];
+const RENDER = { scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, favs: renderFavs, home: () => { renderFavCount(); renderDietCount(); }, settings: renderSettings, pro: renderPro, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList };
 function route() {
   const id = SCREENS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
+  if (id !== 'settings') state.dietFirst = false;
   RENDER[id]?.();
   document.querySelectorAll('.screen').forEach(s => { s.classList.toggle('active', s.id === id); if (s.id === id) s.scrollTop = 0; });
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.for.split(' ').includes(id)));

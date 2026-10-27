@@ -162,7 +162,7 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 
   <!-- HOME -->
   <section class="screen" id="home">
-    <div class="brand"><div class="logo">SC</div><div><b>SnapCravings</b><div class="by">an Everborn product</div></div></div>
+    <div class="brand"><div class="logo">SC</div><div><b>SnapCravings</b><div class="by">an Everborn product</div></div><a class="back" href="#settings" id="gear" aria-label="My diet and settings" style="margin-left:auto">⚙️</a></div>
     <div class="kick">Snap. Cook. Yum!</div>
     <h1 style="margin-top:8px">Craving something?<br><em>Make it</em> or <em>buy it</em>, the smart way.</h1>
     <p class="sub">Snap your fridge for recipes, or name a craving and see which way is cheaper.</p>
@@ -185,6 +185,9 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
     </div>
     <a class="card" href="#favs" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)">
       <div style="font-size:22px">❤️</div><div style="flex:1;font-size:13px"><b>Your favorites</b><br><span class="sub" style="font-size:12px" id="favCount">Tap ♡ on any recipe to save it</span></div><span>›</span>
+    </a>
+    <a class="card" href="#settings" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)">
+      <div style="font-size:22px">🥗</div><div style="flex:1;font-size:13px"><b>My diet &amp; allergies</b><br><span class="sub" style="font-size:12px" id="dietCount">Tell us what to skip. Totally optional!</span></div><span>›</span>
     </a>
     <div class="card" id="installCard" hidden style="display:flex;align-items:center;gap:10px">
       <div style="font-size:22px">📲</div><div style="flex:1;font-size:13px"><b>Install SnapCravings</b><br><span class="sub" style="font-size:12px" id="installSub">Snap from your home screen, one tap away.</span></div>
@@ -282,6 +285,12 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
     <div id="favsBody"></div>
   </section>
 
+  <!-- SETTINGS / MY DIET -->
+  <section class="screen" id="settings">
+    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Settings</span></div>
+    <div id="settingsBody"></div>
+  </section>
+
   <!-- PRO -->
   <section class="screen" id="pro">
     <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Go Pro</span></div>
@@ -308,7 +317,7 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
   </section>
 
   <nav class="tabbar">
-    <a class="tab" href="#home" data-for="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9H3z"/></svg>Home</a>
+    <a class="tab" href="#home" data-for="home settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9H3z"/></svg>Home</a>
     <a class="tab" href="#scan" data-for="scan recipes recipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Snap</a>
     <a class="tab" href="#crave" data-for="crave compare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M4 6h16M4 18h10"/></svg>Crave</a>
     <a class="tab" href="#list" data-for="cart list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l3 12h11l2-8H6"/></svg>Cart</a>
@@ -320,6 +329,6 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 <input type="file" id="snapCam" accept="image/*" capture="environment" multiple hidden>
 <input type="file" id="snapLib" accept="image/*" multiple hidden>
 <div id="toast" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
-<script src="app.js?v=ui16"></script>
+<script src="app.js?v=ui17"></script>
 </body>
 </html>
