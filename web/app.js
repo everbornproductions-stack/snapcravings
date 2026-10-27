@@ -12,9 +12,9 @@ const DEV = LS.get('dev', null) || (() => { const d = (crypto.randomUUID ? crypt
 async function redeem() { const c = (el('proCode')?.value || '').trim(); if (!c) return toast('Pop in your code first!'); try { const j = await subCall('redeem', { code: c }); sub = { email: j.email, token: j.token, active: true, checked: Date.now(), code: true }; LS.set('sub', sub); renderLeft(); renderPro(); toast("Code unlocked! You're Unlimited! 🎉"); } catch (e) { toast(e.message); } }
 let subCfg = { enabled: false, price: 4.99 };
 const unlimited = () => !!sub.token && sub.active;
-async function subCall(path, body) { const r = await fetch('/api/sub/' + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Square is having a moment. Try again!'); return j; }
+async function subCall(path, body) { const r = await fetch('/api/sub/' + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "Hmm, that didn't work. Try again!"); return j; }
 async function checkSub(email, quiet) {
-  try { const j = await subCall('status', { email, token: sub.token }); sub = j.active ? { email: j.email || email, token: j.token, active: true, checked: Date.now() } : { email, active: false, checked: Date.now() }; LS.set('sub', sub); renderLeft(); renderPro(); if (!quiet) toast(j.active ? "You're Unlimited! Let's get cooking! 🎉" : "No active plan for that email yet."); return j.active; }
+  try { const sid = sub.sid && (!email || !sub.email || sub.email === email) ? sub.sid : ''; const j = await subCall('status', { email, token: sub.token, sid }); sub = j.active ? { email: j.email || email, token: j.token, active: true, sid: sid || undefined, checked: Date.now() } : { email, sid: sid || undefined, active: false, checked: Date.now() }; LS.set('sub', sub); renderLeft(); renderPro(); if (!quiet) toast(j.active ? "You're Unlimited! Let's get cooking! 🎉" : "No active plan for that email yet."); return j.active; }
   catch (e) { if (!quiet) toast(e.message); return false; }
 }
 function renderPro() {
@@ -22,19 +22,24 @@ function renderPro() {
   el('proPrice').textContent = '$' + Number(subCfg.price).toFixed(2);
   if (unlimited()) { el('proBody').innerHTML = `<div class="card" style="background:var(--green-soft);border-color:#BFE3CC;text-align:center;margin-top:12px"><b style="color:#1F6B42">You're Unlimited! 🎉</b><div class="fine" style="color:#1F6B42">${esc(sub.email)} · unlimited photo scans. Let's get cooking!</div></div><a class="btn primary" href="#scan">📸 Snap it</a><p class="fine" style="text-align:center">${sub.code ? 'Your food preferences live in' : 'Manage or cancel anytime in'} <a href="#settings" style="color:var(--coral);font-weight:700">Settings</a>.</p>`; return; }
   if (sub.email && !el('proEmail').value) el('proEmail').value = sub.email;
-  if (!subCfg.enabled) { el('proGo').textContent = 'Go Unlimited · coming soon!'; el('proGo').style.opacity = '.6'; el('proEmail').parentNode.style.display = 'none'; el('proRestore').style.display = 'none'; }
-  el('proFine').textContent = subCfg.enabled ? `$${Number(subCfg.price).toFixed(2)}/month. Secure checkout by Square. We use your email only to find your plan.${subCfg.sandbox ? ' (Test mode)' : ''}` : 'Go Unlimited is coming soon. No payments yet.';
+  if (!subCfg.enabled) { el('proGo').textContent = 'Unlimited · coming soon!'; el('proGo').style.opacity = '.6'; el('proEmail').parentNode.style.display = 'none'; el('proRestore').style.display = 'none'; }
+  else { if (!el('proGo').querySelector('.spin')) el('proGo').textContent = "Go Unlimited — let's get cooking!"; el('proGo').style.opacity = ''; el('proEmail').parentNode.style.display = ''; el('proRestore').style.display = ''; }
+  el('proFine').textContent = subCfg.enabled ? `$${Number(subCfg.price).toFixed(2)}/month. Secure checkout by Stripe. We use your email only to find your plan.` : 'Unlimited is coming soon. Free scans and codes still work!';
 }
 async function goUnlimited() {
-  if (!subCfg.enabled) return toast('Go Unlimited is coming soon!');
+  if (!subCfg.enabled || !subCfg.link) return toast('Unlimited is coming soon!');
   const email = el('proEmail').value.trim(); if (!email) return toast('Pop in your email first!');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast('Pop in a real email so we can find your plan later!');
   el('proGo').innerHTML = '<span class="spin" style="border-top-color:#fff"></span> Heading to checkout…';
-  try { const j = await subCall('checkout', { email }); sub = { email: email.toLowerCase(), active: false }; LS.set('sub', sub); location.href = j.url; }
-  catch (e) { toast(e.message); el('proGo').textContent = "Go Unlimited — let's get cooking!"; }
+  const cid = 'sc' + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => (b % 36).toString(36)).join('');
+  sub = { email: email.toLowerCase(), active: false, cid }; LS.set('sub', sub);
+  location.href = subCfg.link + (subCfg.link.includes('?') ? '&' : '?') + 'prefilled_email=' + encodeURIComponent(email) + '&client_reference_id=' + cid;
 }
 fetch('/api/sub/config').then(r => r.json()).then(c => { subCfg = c; renderPro();
-  if (!c.enabled || !sub.email || sub.code) return;
-  if (/[?&]paid=1/.test(location.search)) { history.replaceState(null, '', '/#pro'); let n = 0; const poll = async () => { if (await checkSub(sub.email, n < 5) || ++n > 6) return; setTimeout(poll, 4000); }; toast('Thanks! Checking your plan…'); poll(); }
+  if (!c.enabled || sub.code) return;
+  const sid = (/[?&]sid=(cs_[A-Za-z0-9_]+)/.exec(location.search) || [])[1];
+  if (/[?&]paid=1/.test(location.search) && (sid || sub.email)) { history.replaceState(null, '', '/#pro'); if (sid) { sub = { ...sub, sid }; LS.set('sub', sub); } let n = 0; const poll = async () => { if (await checkSub(sub.email || '', n < 10) || ++n > 11) return; setTimeout(poll, 3000); }; toast('Thanks! Checking your plan…'); poll(); }
+  else if (!sub.email) return;
   else if (!sub.checked || Date.now() - sub.checked > 3 * 864e5) checkSub(sub.email, true);
 }).catch(() => {});
 let favs = LS.get('favs', []);
@@ -96,11 +101,8 @@ function saveDiet() { // changing the diet makes old recipes stale (they may not
   LS.set('diet', diet); LS.set('dietSeen', true); renderDietCount();
   if (state.recipes || state.crave) { state.recipes = null; state.crave = null; LS.set('recipes', null); LS.set('crave', null); state.dietReset = true; }
 }
-let cancelUntil = LS.get('cancelUntil', null);
-const fmtDate = d => { const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(d || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : 'the end of your paid period'; };
 const canCancel = () => unlimited() && !sub.code;
-const planInner = () => cancelUntil ? `<div class="card" style="background:var(--green-soft);border-color:#BFE3CC"><b style="color:#1F6B42">Cancelled — you keep Unlimited until ${esc(fmtDate(cancelUntil))}</b><div class="fine" style="color:#1F6B42">No more charges after that. Changed your mind? Go Unlimited again anytime from Pro.</div></div>`
-  : `<div class="card"><b>You're Unlimited! 🎉</b><div class="fine" style="margin-top:2px">${esc(sub.email)} · $${Number(subCfg.price).toFixed(2)}/month</div><button class="btn ghost" id="subCancel" style="padding:12px">Cancel subscription</button><div class="fine">You keep Unlimited until the end of the period you've already paid for.</div></div>`;
+const planInner = () => `<div class="card"><b>You're Unlimited! 🎉</b><div class="fine" style="margin-top:2px">${esc(sub.email)} · $${Number(subCfg.price).toFixed(2)}/month</div>${subCfg.portal ? `<button class="btn ghost" id="subCancel" style="padding:12px">Cancel subscription</button><div class="fine">Opens Stripe's secure page. Use the email you paid with. You keep Unlimited until the end of the period you've already paid for.</div>` : `<div class="fine">To cancel, use the link in your Stripe receipt email. You keep Unlimited until the end of the period you've already paid for.</div>`}</div>`;
 const planCard = () => canCancel() ? `<h3>Your plan</h3><div id="planBox">${planInner()}</div>` : '';
 function renderSettings() {
   const first = !!state.dietFirst, y = el('settings').scrollTop;
@@ -121,15 +123,8 @@ function renderSettings() {
       : `<button class="btn primary" id="dietDone">Done. Let's get cooking!</button>`}
     ${first ? '' : planCard()}`;
   el('settings').scrollTop = y;
-  if (!first && canCancel()) subCall('mysub', { token: sub.token }).then(j => { const u = j.cancelled ? (j.until || 'end') : null; if (u !== cancelUntil) { cancelUntil = u; LS.set('cancelUntil', u); if (location.hash === '#settings' && el('planBox')) el('planBox').innerHTML = planInner(); } }).catch(() => {});
 }
-async function cancelSub() {
-  if (!confirm("Cancel Unlimited? You'll keep unlimited scans until the end of the period you've already paid for, and we won't charge you again.")) return;
-  const b = el('subCancel'); if (b) { b.disabled = true; b.innerHTML = '<span class="spin"></span> Cancelling…'; }
-  try { const j = await subCall('cancel', { token: sub.token }); cancelUntil = j.until || 'end'; LS.set('cancelUntil', cancelUntil); toast(`Cancelled. You keep Unlimited until ${fmtDate(j.until)}.`, 6000); }
-  catch (e) { toast(e.message); }
-  renderSettings();
-}
+function cancelSub() { if (!subCfg.portal) return; window.open(subCfg.portal, '_blank', 'noopener'); }
 
 /* SNAP */
 function openSnap(lib) { el(lib ? 'snapLib' : 'snapCam').click(); }

@@ -15,9 +15,11 @@
     npx wrangler@3 pages deploy web --project-name snapcravings --branch main
 Then: https://snapcravings.pages.dev  (noindex via meta + _headers)
 
-## Go Unlimited (Square subscription)
-- `functions/api/sub/[[path]].js`: `/api/sub/config`, `/api/sub/checkout` (Square payment link with `subscription_plan_id`, buyer email prefilled), `/api/sub/status` (customer by email -> ACTIVE subscription at the location -> signed 35-day unlock token). Price: `PRICE_CENTS` (499). Plan "SnapCravings Unlimited" + monthly variation are created in the Square Catalog on first checkout (or set `SQUARE_PLAN_VARIATION_ID`).
-- Secrets: `SQUARE_ACCESS_TOKEN`, `SUB_SECRET`; vars `SQUARE_ENV` (`sandbox` for test), optional `SQUARE_LOCATION_ID`, `PAYWALL=off` to hide.
+## Go Unlimited (Stripe subscription)
+- Payments: a Stripe Payment Link (`PAYMENT_LINK_URL` in `functions/_lib/sub.js`; empty = "Unlimited is coming soon", no checkout) + Supabase Edge Function `snapcravings-stripe-webhook` (see `supabase/`, `docs/billing-stripe.md`). No Stripe secret key anywhere in this app; no new Cloudflare env vars.
+- `functions/api/sub/[[path]].js`: `/api/sub/config` (returns the link + portal URL), `/api/sub/status` (calls the Supabase RPC `snap_check_sub` with the public publishable key; when active, issues the signed unlock token, valid through the paid period, max 35 days), `/api/sub/redeem` (owner code).
+- The app opens the Payment Link with `?prefilled_email=&client_reference_id=`; Stripe redirects to `/?paid=1&sid={CHECKOUT_SESSION_ID}#pro`. Cancel = Stripe customer portal login link (`PORTAL_URL`).
+- Secrets (Cloudflare): `SUB_SECRET`, `OWNER_CODE`. `PAYWALL=off` hides Unlimited.
 - Free limit (3 scans/week per IP, Unlimited token skips) is enforced server-side only when `ENFORCE_FREE=1` and a KV namespace is bound as `RATE_KV`.
-- Production currently: no Square token set, so Pro shows "coming soon". Sandbox test site: https://sandbox.snapcravings.pages.dev (preview env, Square sandbox).
+- Production: Pro shows "coming soon" until `PAYMENT_LINK_URL` is filled.
 - Local: `.dev.vars` (git-ignored) + `wrangler pages dev web --kv RATE_KV`.
