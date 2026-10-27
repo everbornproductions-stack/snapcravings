@@ -49,15 +49,15 @@ svg{display:block;width:100%;height:auto}
 <main>
   <div class="brand"><div class="logo">S</div><b>SnapCravings</b></div>
   <section id="login" hidden>
-    <h1>Stats <em>key</em></h1>
-    <p class="sub">Paste your stats key. It stays on this device only.</p>
-    <input id="key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Stats key" aria-label="Stats key">
+    <h1>Owner <em>code</em></h1>
+    <p class="sub">Enter your owner code. It stays on this device only.</p>
+    <input id="key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Owner code" aria-label="Owner code">
     <button id="go">Show my stats</button>
     <div id="err"></div>
   </section>
   <section id="dash" hidden>
     <h1>How's it <em>cooking?</em></h1>
-    <div class="bar"><div class="seg"><button data-d="7" class="on">7 days</button><button data-d="30">30 days</button></div><button class="ghost" id="refresh">Refresh</button><button class="ghost" id="logout">Forget key</button></div>
+    <div class="bar"><div class="seg"><button data-d="7" class="on">7 days</button><button data-d="30">30 days</button></div><button class="ghost" id="refresh">Refresh</button><button class="ghost" id="logout">Forget code</button></div>
     <p class="fine" id="gen"></p>
     <div class="grid" id="cards"></div>
     <h3>Visits and unique visitors</h3><div class="card"><div id="cVisits"></div><div class="legend"><span><i style="background:#F2B6A1"></i>Visits (screen views)</span><span><i style="background:var(--coral)"></i>Unique visitors</span></div></div>
@@ -78,7 +78,7 @@ async function load() {
   $('login').hidden = true; $('dash').hidden = false; $('cards').innerHTML = ''; $('gen').textContent = 'Loading…';
   let r, j;
   try { r = await fetch('/api/stats', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key, days }) }); j = await r.json(); } catch { $('gen').textContent = 'Could not reach the server. Tap Refresh.'; return; }
-  if (r.status === 403) { localStorage.removeItem(LSK); key = ''; $('dash').hidden = true; $('login').hidden = false; $('err').textContent = 'That key did not work.'; return; }
+  if (r.status === 403) { localStorage.removeItem(LSK); key = ''; $('dash').hidden = true; $('login').hidden = false; $('err').textContent = 'That code did not work.'; return; }
   if (!r.ok) { $('gen').textContent = j.error || 'Stats are having a moment.'; return; }
   render(j);
 }
@@ -113,7 +113,7 @@ function render(s) {
   const sm = Math.max(1, ...(s.screens || []).map(x => x.views));
   $('screens').innerHTML = (s.screens || []).map(x => hrow(x.screen, x.views, sm, '#E8613A')).join('') || '<p class="fine">No views yet.</p>';
 }
-$('go').onclick = () => { key = $('key').value.trim(); if (key.length < 20) { $('err').textContent = 'That key looks too short.'; return; } localStorage.setItem(LSK, key); $('err').textContent = ''; load(); };
+$('go').onclick = () => { key = $('key').value.trim(); if (!key) { $('err').textContent = 'Enter your owner code.'; return; } localStorage.setItem(LSK, key); $('err').textContent = ''; load(); };
 $('key').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').click(); });
 $('refresh').onclick = load;
 $('logout').onclick = () => { localStorage.removeItem(LSK); key = ''; $('dash').hidden = true; $('login').hidden = false; $('key').value = ''; };
