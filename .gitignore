@@ -2,3 +2,5 @@ node_modules/
 .wrangler/
 .dev.vars
 OWNER_CODE.txt
+.logic-final
+STATS_KEY.txt

@@ -9,6 +9,15 @@ const state = { photos: [], ingredients: LS.get('ingredients', []), low: LS.get(
 let glist = LS.get('glist', []);
 sub = LS.get('sub', {});
 const DEV = LS.get('dev', null) || (() => { const d = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2)); LS.set('dev', d); return d; })();
+/* Usage events: anonymous, fire-and-forget (no cookies, no IP/email). Hashed server-side by /api/ev. */
+const planNow = () => sub.code ? 'owner' : (sub.token && sub.active) ? 'paid' : 'free';
+function track(event, screen, meta) {
+  try {
+    if (navigator.doNotTrack === '1' || localStorage.getItem('sc.noTrack')) return;
+    const body = JSON.stringify({ event, screen: screen || null, plan: planNow(), dev: DEV, meta: meta || {} });
+    if (!(navigator.sendBeacon && navigator.sendBeacon('/api/ev', new Blob([body], { type: 'application/json' })))) fetch('/api/ev', { method: 'POST', body, keepalive: true, headers: { 'content-type': 'application/json' } }).catch(() => {});
+  } catch {}
+}
 async function redeem() { const c = (el('proCode')?.value || '').trim(); if (!c) return toast('Pop in your code first!'); try { const j = await subCall('redeem', { code: c }); sub = { email: j.email, token: j.token, active: true, checked: Date.now(), code: true }; LS.set('sub', sub); renderLeft(); renderPro(); toast("Code unlocked! You're Unlimited! 🎉"); } catch (e) { toast(e.message); } }
 let subCfg = { enabled: false, price: 4.99 };
 const unlimited = () => !!sub.token && sub.active;
@@ -33,18 +42,19 @@ async function goUnlimited() {
   el('proGo').innerHTML = '<span class="spin" style="border-top-color:#fff"></span> Heading to checkout…';
   const cid = 'sc' + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => (b % 36).toString(36)).join('');
   sub = { email: email.toLowerCase(), active: false, cid }; LS.set('sub', sub);
+  track('upgrade_click', 'pro');
   location.href = subCfg.link + (subCfg.link.includes('?') ? '&' : '?') + 'prefilled_email=' + encodeURIComponent(email) + '&client_reference_id=' + cid;
 }
 fetch('/api/sub/config').then(r => r.json()).then(c => { subCfg = c; renderPro();
   if (!c.enabled || sub.code) return;
   const sid = (/[?&]sid=(cs_[A-Za-z0-9_]+)/.exec(location.search) || [])[1];
-  if (/[?&]paid=1/.test(location.search) && (sid || sub.email)) { history.replaceState(null, '', '/#pro'); if (sid) { sub = { ...sub, sid }; LS.set('sub', sub); } let n = 0; const poll = async () => { if (await checkSub(sub.email || '', n < 10) || ++n > 11) return; setTimeout(poll, 3000); }; toast('Thanks! Checking your plan…'); poll(); }
+  if (/[?&]paid=1/.test(location.search) && (sid || sub.email)) { history.replaceState(null, '', '/#pro'); track('checkout_return', 'pro'); if (sid) { sub = { ...sub, sid }; LS.set('sub', sub); } let n = 0; const poll = async () => { if (await checkSub(sub.email || '', n < 10) || ++n > 11) return; setTimeout(poll, 3000); }; toast('Thanks! Checking your plan…'); poll(); }
   else if (!sub.email) return;
   else if (!sub.checked || Date.now() - sub.checked > 3 * 864e5) checkSub(sub.email, true);
 }).catch(() => {});
 let favs = LS.get('favs', []);
 const isFav = r => !!r && favs.some(f => f.name.toLowerCase() === r.name.toLowerCase());
-function toggleFav(r) { if (!r) return; if (isFav(r)) { favs = favs.filter(f => f.name.toLowerCase() !== r.name.toLowerCase()); toast('Removed from favorites.'); } else { favs.unshift({ ...r, savedAt: Date.now() }); toast('Saved to favorites! ❤️'); } LS.set('favs', favs); renderFavCount(); }
+function toggleFav(r) { if (!r) return; if (isFav(r)) { favs = favs.filter(f => f.name.toLowerCase() !== r.name.toLowerCase()); toast('Removed from favorites.'); } else { favs.unshift({ ...r, savedAt: Date.now() }); toast('Saved to favorites! ❤️'); track('favorite', 'recipe'); } LS.set('favs', favs); renderFavCount(); }
 const heart = (key, r) => `<button data-fav="${key}" aria-label="${isFav(r) ? 'Unsave' : 'Save'}" style="background:none;border:0;font-size:20px;cursor:pointer;color:var(--coral);padding:4px;flex-shrink:0">${isFav(r) ? '♥' : '♡'}</button>`;
 function renderFavCount() { const n = favs.length; el('favCount').textContent = n ? `${n} saved recipe${n === 1 ? '' : 's'}. Pantry power!` : 'Tap ♡ on any recipe to save it'; }
 function renderFavs() {
@@ -163,6 +173,7 @@ async function scan() {
     LS.set('ingredients', state.ingredients); LS.set('low', state.low);
     const wk = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5); wk.push(Date.now()); LS.set('scans', wk); renderLeft();
     state.low.forEach(l => addToList(l.name, 'low', 0, null, true));
+    track('scan', 'scan', { photos: n, items: state.ingredients.length });
     state.busy = false; renderScan();
   } catch (e) {
     state.busy = false;
@@ -201,7 +212,7 @@ function renderScan() {
 
 /* RECIPES */
 async function moreIdeas() {
-  if (state.moreBusy || !state.recipes) return; state.moreBusy = true; renderRecipes();
+  if (state.moreBusy || !state.recipes) return; state.moreBusy = true; renderRecipes(); track('more_ideas', 'recipes');
   const R = state.recipes; const avoid = [...(R.ready || []), ...(R.more || [])].map(r => r.name).slice(-40);
   const ingredients = state.ingredients.slice(0, 80).map(i => (i.cat === 'Spices & Seasonings' ? '[spice] ' : '') + i.name + (i.qty ? ' (' + i.qty + ')' : ''));
   const seen = new Set(avoid.map(n => n.toLowerCase()));
@@ -221,6 +232,7 @@ async function getRecipes() {
   state.moreBusy = false;
   try { const [ready0, more0] = await Promise.all([call('ready'), call('more')]); const ready = pick3(dedupe(ready0, []), ready0, []); const more = pick3(dedupe(more0, ready.map(r => r.name)), more0, ready.map(r => r.name)); state.recipes = { craving: state.craving, ready, more }; LS.set('recipes', state.recipes); }
   catch (e) { el('recipesBody').innerHTML = `<div class="kick">Oops, kitchen hiccup!</div><h2>Recipes didn't come through</h2><p class="sub">${esc(e.message)} Your ingredients are saved.</p><button class="btn primary" id="goRecipes">Retry 🔄</button>`; return; }
+  track('recipes_shown', 'recipes', { n: (state.recipes?.ready?.length || 0) + (state.recipes?.more?.length || 0) });
   renderRecipes();
 }
 const STOP = new Set(['and', 'with', 'the', 'a', 'of', 'in', 'on', 'style', 'quick', 'easy', 'simple', 'classic', 'homemade', 'savory', 'creamy', 'crispy', 'cheesy', 'spicy', 'garlic', 'butter', 'herb', 'herbed']);
@@ -319,6 +331,7 @@ document.addEventListener('click', e => {
   if (t.closest('a.big-choice.snap') || t.closest('a.tab[href="#scan"]')) { if (!state.photos.length && !state.ingredients.length) { e.preventDefault(); if (!LS.get('dietSeen', false)) { state.dietFirst = true; location.hash = '#settings'; return; } state.step = 0; location.hash = '#scan'; openSnap(); } return; }
   const dt = t.closest('[data-dtag]'); if (dt) { const k = dt.dataset.dtag; diet.tags = diet.tags.includes(k) ? diet.tags.filter(x => x !== k) : [...diet.tags, k]; saveDiet(); return renderSettings(); }
   const dm = t.closest('[data-dmood]'); if (dm) { const k = dm.dataset.dmood; const parts = diet.mood.split(/[,;]/).map(x => x.trim()).filter(Boolean); const has = parts.some(x => x.toLowerCase() === k.toLowerCase()); diet.mood = (has ? parts.filter(x => x.toLowerCase() !== k.toLowerCase()) : [...parts, k]).join(', '); saveDiet(); return renderSettings(); }
+  if (t.closest('#dietSnap') || t.closest('#dietDone')) track('diet_saved', 'settings', { n: (diet.tags || []).length });
   if (t.closest('#dietSnap') || t.closest('#dietSkip')) { LS.set('dietSeen', true); state.dietFirst = false; state.step = 0; location.hash = '#scan'; if (t.closest('#dietSnap') && dietOn()) toast("Saved! Let's get cooking!"); return openSnap(); }
   if (t.closest('#dietDone')) { toast(state.dietReset ? 'Saved! Hit Show recipes for fresh ideas that fit.' : "Saved! Let's get cooking!"); state.dietReset = false; location.hash = '#home'; return; }
   if (t.closest('#subCancel')) return cancelSub();
@@ -361,10 +374,12 @@ function renderLeft() { if (unlimited()) { el('scanLeft').textContent = 'Unlimit
 renderLeft();
 const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'favs', 'pro', 'settings'];
 const RENDER = { scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, favs: renderFavs, home: () => { renderFavCount(); renderDietCount(); }, settings: renderSettings, pro: renderPro, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList };
+let lastView = '';
 function route() {
   const id = SCREENS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
   if (id !== 'settings') state.dietFirst = false;
   RENDER[id]?.();
+  if (id !== lastView) { lastView = id; track('page_view', id); }
   document.querySelectorAll('.screen').forEach(s => { s.classList.toggle('active', s.id === id); if (s.id === id) s.scrollTop = 0; });
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.for.split(' ').includes(id)));
 }
@@ -376,7 +391,7 @@ const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platfo
 let deferredInstall = null;
 function showInstall(sub, btn) { const c = el('installCard'); if (standalone()) { c.hidden = true; c.style.display = 'none'; return; } c.hidden = false; c.style.display = 'flex'; if (sub) el('installSub').textContent = sub; el('installBtn').style.display = btn === false ? 'none' : ''; }
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; showInstall(null, true); });
-window.addEventListener('appinstalled', () => { deferredInstall = null; el('installCard').style.display = 'none'; toast('Installed! Find SnapCravings on your home screen.'); });
+window.addEventListener('appinstalled', () => { track('install', 'home'); deferredInstall = null; el('installCard').style.display = 'none'; toast('Installed! Find SnapCravings on your home screen.'); });
 const isAndroid = /android/i.test(navigator.userAgent), isMobile = isIOS || isAndroid || /mobi/i.test(navigator.userAgent);
 const isSafariMac = !isMobile && /safari/i.test(navigator.userAgent) && !/chrome|crios|edg|android/i.test(navigator.userAgent);
 const isFirefox = /firefox|fxios/i.test(navigator.userAgent);

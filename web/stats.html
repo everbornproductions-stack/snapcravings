@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>SnapCravings stats</title>
+<style>
+:root{--bg:#FBF6EF;--card:#fff;--ink:#1C1A17;--muted:#6F675E;--line:#ECE3D6;--coral:#E8613A;--coral-soft:#FDE9E0;--green:#2F8F5B;--green-soft:#E3F3E9;--gold:#B8862F;--dark:#1E1B18;--font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);min-height:100vh;padding:max(16px,env(safe-area-inset-top)) 16px 40px}
+main{max-width:760px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:8px;margin:6px 0 2px}
+.logo{width:30px;height:30px;border-radius:9px;background:var(--coral);display:grid;place-items:center;color:#fff;font-weight:800;font-size:15px}
+.brand b{font-size:15px}
+h1{font-size:28px;letter-spacing:-.7px;margin:14px 0 4px}
+h1 em{font-style:normal;color:var(--coral)}
+h3{font-size:15px;margin:20px 0 8px}
+.sub,.fine{color:var(--muted);font-size:13px;line-height:1.4}
+.bar{display:flex;gap:8px;align-items:center;margin:12px 0}
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;font:700 13px var(--font);padding:7px 16px;border-radius:999px;color:var(--muted);cursor:pointer}
+.seg button.on{background:var(--dark);color:#fff}
+.ghost{border:1px solid var(--line);background:var(--card);border-radius:999px;font:700 13px var(--font);padding:9px 14px;cursor:pointer;color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:620px){.grid{grid-template-columns:repeat(4,1fr)}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:10px}
+.grid .card{margin:0}
+.k{font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.v{font-size:30px;font-weight:800;letter-spacing:-.8px;margin-top:4px}
+.v small{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:0}
+.hot .v{color:var(--coral)} .good .v{color:var(--green)}
+svg{display:block;width:100%;height:auto}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--muted);font-weight:600}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.row{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+.row .n{width:84px;font-weight:700;flex-shrink:0}
+.row .t{flex:1;height:12px;background:#F3ECE1;border-radius:6px;overflow:hidden;display:flex}
+.row .t span{display:block;height:100%}
+.row .c{width:48px;text-align:right;font-weight:700;color:var(--muted)}
+#login{max-width:360px;margin:12vh auto 0;text-align:center}
+#login input{width:100%;border:1px solid var(--line);border-radius:14px;padding:14px;font:600 15px var(--font);margin:14px 0 8px;background:#fff}
+#login button{width:100%;border:0;border-radius:16px;padding:15px;font:700 15px var(--font);background:var(--coral);color:#fff;cursor:pointer}
+#err{color:#A8401F;font-size:13px;margin-top:10px;min-height:18px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><div class="logo">S</div><b>SnapCravings</b></div>
+  <section id="login" hidden>
+    <h1>Stats <em>key</em></h1>
+    <p class="sub">Paste your stats key. It stays on this device only.</p>
+    <input id="key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Stats key" aria-label="Stats key">
+    <button id="go">Show my stats</button>
+    <div id="err"></div>
+  </section>
+  <section id="dash" hidden>
+    <h1>How's it <em>cooking?</em></h1>
+    <div class="bar"><div class="seg"><button data-d="7" class="on">7 days</button><button data-d="30">30 days</button></div><button class="ghost" id="refresh">Refresh</button><button class="ghost" id="logout">Forget key</button></div>
+    <p class="fine" id="gen"></p>
+    <div class="grid" id="cards"></div>
+    <h3>Visits and unique visitors</h3><div class="card"><div id="cVisits"></div><div class="legend"><span><i style="background:#F2B6A1"></i>Visits (screen views)</span><span><i style="background:var(--coral)"></i>Unique visitors</span></div></div>
+    <h3>Scans per day</h3><div class="card"><div id="cScans"></div></div>
+    <h3>Free vs paid vs owner</h3><div class="card" id="plans"></div>
+    <h3>Upgrade funnel</h3><div class="card" id="funnel"></div>
+    <h3>Top screens</h3><div class="card" id="screens"></div>
+    <p class="fine">Anonymous: no cookies, no emails, no IPs. Devices are counted by a one-way hash. Days are Pacific time.</p>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const LSK = 'sc.statskey';
+let days = 7, key = localStorage.getItem(LSK) || '';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = n => Number(n || 0).toLocaleString();
+async function load() {
+  $('login').hidden = true; $('dash').hidden = false; $('cards').innerHTML = ''; $('gen').textContent = 'Loading…';
+  let r, j;
+  try { r = await fetch('/api/stats', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key, days }) }); j = await r.json(); } catch { $('gen').textContent = 'Could not reach the server. Tap Refresh.'; return; }
+  if (r.status === 403) { localStorage.removeItem(LSK); key = ''; $('dash').hidden = true; $('login').hidden = false; $('err').textContent = 'That key did not work.'; return; }
+  if (!r.ok) { $('gen').textContent = j.error || 'Stats are having a moment.'; return; }
+  render(j);
+}
+function bars(el, daily, series, h = 120) {
+  const W = 340, pad = 18, n = daily.length, bw = (W - pad) / n, max = Math.max(1, ...daily.flatMap(d => series.map(s => d[s.k] || 0)));
+  const sw = Math.max(2, (bw - 3) / series.length);
+  let g = '';
+  [0, .5, 1].forEach(f => { const y = h - 4 - f * (h - 14); g += `<line x1="${pad}" x2="${W}" y1="${y}" y2="${y}" stroke="#ECE3D6" stroke-width="1"/><text x="0" y="${y + 3}" font-size="8" fill="#6F675E">${Math.round(max * f)}</text>`; });
+  daily.forEach((d, i) => {
+    series.forEach((s, j) => { const v = d[s.k] || 0, bh = v / max * (h - 14); g += `<rect x="${pad + i * bw + 1 + j * sw}" y="${h - 4 - bh}" width="${sw - .5}" height="${Math.max(bh, v ? 1 : 0)}" rx="1.5" fill="${s.c}"><title>${d.day}: ${v}</title></rect>`; });
+    if (n <= 8 || i % 5 === 0 || i === n - 1) g += `<text x="${pad + i * bw + bw / 2}" y="${h + 10}" font-size="8" text-anchor="middle" fill="#6F675E">${d.day.slice(5)}</text>`;
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${h + 14}" role="img">${g}</svg>`;
+}
+function hrow(name, count, total, color) { const p = total ? Math.round(count / total * 100) : 0; return `<div class="row"><span class="n">${esc(name)}</span><span class="t"><span style="width:${p}%;background:${color}"></span></span><span class="c">${fmt(count)}</span></div>`; }
+function render(s) {
+  const t = s.totals, sb = s.subscribers, p = s.plans || {};
+  const dev = x => (p[x]?.devices) || 0, convDev = t.checkout_return_devices, upDev = t.upgrade_devices;
+  const card = (k, v, cls = '', note = '') => `<div class="card ${cls}"><div class="k">${k}</div><div class="v">${v}${note ? ` <small>${note}</small>` : ''}</div></div>`;
+  $('cards').innerHTML = card('Visits', fmt(t.visits)) + card('Unique visitors', fmt(t.unique_devices)) + card('Scans', fmt(t.scans)) + card('Recipe sets', fmt(t.recipes_shown))
+    + card('Upgrade clicks', fmt(t.upgrade_clicks), 'hot') + card('Paid conversions', fmt(t.checkout_returns), 'good', 'returned from checkout') + card('New subscribers', fmt(sb.new_in_range), 'good') + card('Active subscribers', fmt(sb.active), 'good', sb.canceling ? `${sb.canceling} canceling` : '')
+    + card('More ideas', fmt(t.more_ideas)) + card('Favorites', fmt(t.favorites)) + card('Diet saved', fmt(t.diet_saved)) + card('Installs', fmt(t.installs));
+  $('gen').textContent = `Last ${s.days} days · updated ${new Date(s.generated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  bars($('cVisits'), s.daily, [{ k: 'visits', c: '#F2B6A1' }, { k: 'unique_devices', c: '#E8613A' }]);
+  bars($('cScans'), s.daily, [{ k: 'scans', c: '#2F8F5B' }]);
+  const tot = dev('free') + dev('paid') + dev('owner');
+  $('plans').innerHTML = (tot ? hrow('Free', dev('free'), tot, '#E8613A') + hrow('Paid', dev('paid'), tot, '#2F8F5B') + hrow('Owner', dev('owner'), tot, '#1E1B18') : '<p class="fine">No visitors yet.</p>')
+    + `<p class="fine" style="margin-top:8px">Devices by plan. Scans: free ${fmt(p.free?.scans)}, paid ${fmt(p.paid?.scans)}, owner ${fmt(p.owner?.scans)}. A device that upgraded mid-range counts in both.</p>`;
+  const max = Math.max(1, t.unique_devices);
+  $('funnel').innerHTML = hrow('Visitors', t.unique_devices, max, '#F2B6A1') + hrow('Scanned', Math.min(t.scans, t.unique_devices) , max, '#2F8F5B') + hrow('Clicked upgrade', upDev, max, '#E8613A') + hrow('Back from checkout', convDev, max, '#1E1B18')
+    + `<p class="fine" style="margin-top:8px">${upDev ? `${Math.round(convDev / upDev * 100)}% of devices that clicked Upgrade came back from checkout.` : 'No upgrade clicks yet.'} "Scanned" is capped at visitors (scan count is not unique).</p>`;
+  const sm = Math.max(1, ...(s.screens || []).map(x => x.views));
+  $('screens').innerHTML = (s.screens || []).map(x => hrow(x.screen, x.views, sm, '#E8613A')).join('') || '<p class="fine">No views yet.</p>';
+}
+$('go').onclick = () => { key = $('key').value.trim(); if (key.length < 20) { $('err').textContent = 'That key looks too short.'; return; } localStorage.setItem(LSK, key); $('err').textContent = ''; load(); };
+$('key').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').click(); });
+$('refresh').onclick = load;
+$('logout').onclick = () => { localStorage.removeItem(LSK); key = ''; $('dash').hidden = true; $('login').hidden = false; $('key').value = ''; };
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => { days = +b.dataset.d; document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b)); load(); });
+if (key) load(); else $('login').hidden = false;
+</script>
+</body>
+</html>

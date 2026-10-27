@@ -19,3 +19,9 @@ With a Checkout Session id (kept from the post-payment redirect) the RPC looks u
 ## Notes
 - The Meldmind `stripe-webhook` endpoint in the same Stripe account also receives these events but ignores them (no matching price/plan). A full refund on a charge for a customer who is also a SnapCravings customer ends Snap access (edge case, accepted).
 - Tests: `node --test test/` (webhook logic). The SQL was exercised against a real Postgres (PGlite): idempotent re-run, anon cannot read tables, RPC cases.
+
+## Usage stats (privacy-light)
+- Migration `supabase/migrations/20261026_snapcravings_events.sql` (run AFTER `20261026_snapcravings_subs.sql`): `snap_events` (RLS on, no public access), RPC `snap_log_event` (anon, validated + rate limited), RPC `snap_stats(p_key, p_days)` (aggregates only with the stats key). `snap_settings.stats_key` stores the SHA-256 of the key, never the key. The key is in `STATS_KEY.txt` (gitignored).
+- App: `track()` in `web/app.js` sends events with `navigator.sendBeacon` to `/api/ev`, which hashes the anonymous device id (salted SHA-256) before calling the RPC. Events: page_view, scan, recipes_shown, more_ideas, favorite, upgrade_click, checkout_return, diet_saved, install, each tagged plan free|paid|owner. Respects Do Not Track. While the RPCs are missing, `/api/ev` is a silent no-op and `/api/stats` answers 503.
+- Dashboard: `/stats.html` (noindex, not linked). Asks for the key once (localStorage), calls `/api/stats`.
+- Test: `node supabase/tests/snap-events.pglite.mjs` (needs `@electric-sql/pglite`).
