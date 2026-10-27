@@ -100,13 +100,13 @@ async function shrink(file) {
 const loading = (msg) => `<div class="card" style="text-align:center;padding:26px"><span class="spin"></span><div style="margin-top:10px;font-weight:700">${esc(msg)}</div></div>`;
 
 /* MY DIET + SETTINGS */
-const DIET_TAGS = ['Gluten-free', 'Dairy-free', 'Vegetarian', 'Vegan', 'Nut allergy', 'Shellfish allergy', 'Egg-free', 'Keto/low-carb', 'Halal'];
+const DIET_TAGS = ['Gluten-free', 'Dairy-free', 'Vegetarian', 'Vegan', 'Nut allergy', 'Shellfish allergy', 'Egg-free', 'Soy allergy', 'Keto/low-carb', 'Halal'];
 const MOODS = ['Mexican', 'Asian', 'Italian', 'Comfort food', 'Mediterranean', 'Indian'];
 let diet = Object.assign({ tags: [], other: '', mood: '' }, LS.get('diet', {}));
 const dietOn = () => !!(diet.tags.length || diet.other.trim() || diet.mood.trim());
 const prefs = () => ({ tags: diet.tags, other: diet.other.trim(), mood: diet.mood.trim() });
 const dietLine = () => [...diet.tags, diet.other.trim()].filter(Boolean).join(', ');
-function renderDietCount() { if (el('dietCount')) el('dietCount').textContent = dietOn() ? (dietLine() || 'Mood: ' + diet.mood.trim()) : 'Tell us what to skip. Totally optional!'; }
+function renderDietCount() { if (el('dietCount')) el('dietCount').textContent = dietOn() ? (dietLine() || 'Mood: ' + diet.mood.trim()) : 'Gluten-free, vegan, allergies and more'; }
 function saveDiet() { // changing the diet makes old recipes stale (they may not fit), so clear them
   LS.set('diet', diet); LS.set('dietSeen', true); renderDietCount();
   if (state.recipes || state.crave) { state.recipes = null; state.crave = null; LS.set('recipes', null); LS.set('crave', null); state.dietReset = true; }
@@ -120,12 +120,14 @@ function renderSettings() {
   const moods = diet.mood.toLowerCase();
   el('settingsBody').innerHTML = `<div class="kick">${first ? 'Before we snap!' : 'Your kitchen, your rules!'}</div>
     <h2>${first ? 'Any food rules?' : 'My diet &amp; allergies'}</h2>
-    <p class="sub">${first ? "Totally optional. Tell us what to skip and every recipe stays safe and tasty. You can change it anytime from the ⚙️ on Home." : "Tap what applies. We'll keep every recipe and grocery list in line."}</p>
-    <h3>What should we skip?</h3>
-    <div class="chips">${DIET_TAGS.map(tag).join('')}</div>
+    <p class="sub">${first ? "Totally optional. Pick your diet and allergies, and every recipe will fit. You can change it anytime from the ⚙️ on Home." : "Tap what applies. We'll keep every recipe and grocery list in line."}</p>
+    <h3>My diet</h3>
+    <div class="chips">${DIET_TAGS.filter(t=>!/allergy/i.test(t)).map(tag).join('')}</div>
+    <h3>My allergies</h3>
+    <div class="chips">${DIET_TAGS.filter(t=>/allergy/i.test(t)).map(tag).join('')}</div>
     <p class="fine">Allergies are treated as hard rules. Still, always double-check labels yourself.</p>
-    <h3>Anything else to skip?</h3>
-    <div class="input"><span>🚫</span><input id="dietOther" maxlength="200" autocomplete="off" placeholder="Like no cilantro" aria-label="Other foods to skip" value="${esc(diet.other)}"></div>
+    <h3>Other allergies or foods I don't eat</h3>
+    <div class="input"><span>🚫</span><input id="dietOther" maxlength="200" autocomplete="off" placeholder="Like soy, sesame, or cilantro" aria-label="Other foods to skip" value="${esc(diet.other)}"></div>
     <h3>Foods I'm in the mood for <span style="color:var(--muted);font-weight:600">· optional</span></h3>
     <div class="input"><span>😋</span><input id="dietMood" maxlength="120" autocomplete="off" placeholder="Like Mexican, Asian, comfort food" aria-label="Foods I'm in the mood for" value="${esc(diet.mood)}"></div>
     <div class="chips">${MOODS.map(m => { const on = moods.includes(m.toLowerCase()); return `<button class="chip" data-dmood="${esc(m)}" style="cursor:pointer;font-family:var(--font);${on ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : ''}">${esc(m)}</button>`; }).join('')}</div>
