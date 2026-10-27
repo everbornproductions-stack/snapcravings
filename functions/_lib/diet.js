@@ -70,10 +70,12 @@ export function hits(d, text) {
 export const bad = (d, text) => !!d.hard && hits(d, text).length > 0;
 
 // Recipe check: name, every ingredient/missing item, and the steps (optional garnishes hide there).
+// Dish-style words that are fine in a NAME when the ingredient list is clean ("Chicken Scampi", "Soy-free Teriyaki"); they are still checked as ingredients.
+const NAMEOK = /\b(scampi|paella|gumbo|jambalaya|cioppino|ceviche|chowder|tom yum|bouillabaisse|pad thai|kung pao|satay|teriyaki|general tso|bulgogi|alfredo|ranch|carbonara|pesto|caesar|parmesan|parmigiana|fried rice|stuffing)\b/gi;
 export function recipeHits(d, r) {
   if (!d.hard || !r) return [];
   const out = [];
-  for (const t of [r.name, ...(r.ingredients || []).map(i => i?.item), ...(r.missing || []).map(i => i?.item)]) if (t) out.push(...hits(d, String(t)));
+  for (const t of [String(r.name ?? '').replace(NAMEOK, ' '), ...(r.ingredients || []).map(i => i?.item), ...(r.missing || []).map(i => i?.item)]) if (t) out.push(...hits(d, String(t)));
   for (const s of r.steps || []) for (const sent of String(s).split(/(?<=[.!?])\s+/)) for (const p of phrases(sent)) {
     if (NEG.test(p)) continue; // "swap the butter for olive oil" / "skip the cheese"
     out.push(...hits(d, p));

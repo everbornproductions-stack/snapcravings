@@ -74,3 +74,9 @@ test('scan flags conflicting items; no diet means no flags; prompt names every t
   assert.equal(flagScan({ ingredients: [{ name: 'Milk' }] }, dietOf({})).ingredients[0].conflict, undefined);
   for (const t of ['Soy allergy', 'Nut allergy', 'Shellfish allergy', 'Keto/low-carb', 'Halal', 'Vegan']) assert.match(dietPrompt(D(t)), new RegExp(t.split('/')[0].toUpperCase().replace(' ALLERGY', ' ALLERGY')));
 });
+test('dish-style words are fine in a recipe name when ingredients are clean', () => {
+  const d = D('Shellfish allergy');
+  assert.equal(recipeHits(d, R('Chicken Scampi', ['chicken', 'garlic', 'lemon'])).length, 0);
+  assert.ok(recipeHits(d, R('Chicken Scampi', ['chicken', 'shrimp'])).includes('shrimp'));
+  assert.ok(recipeHits(D('Soy allergy'), R('Teriyaki Chicken', ['chicken', 'soy sauce'])).length > 0);
+});

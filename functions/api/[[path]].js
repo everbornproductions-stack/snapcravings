@@ -142,7 +142,7 @@ export async function onRequest({ request, env, params }) {
         try { attempt = (await gemini(env, route, [...parts, ...fb])).data; tried += (attempt.recipes || []).length; } catch { break; }
       }
       console.log('diet', dd.tags.join('+'), 'kept', keep.length, 'of', tried);
-      if (!keep.length) return json({ error: "We couldn't find recipes that fit your diet with these ingredients. Tap Retry or add a few more ingredients!" }, 502);
+      if (!keep.length) return json({ error: "We couldn't find recipes that fit your diet with these ingredients. Tap Retry or add a few more ingredients!", why: [...banned].slice(0, 12) }, 502);
       data = { recipes: keep.slice(0, 8) };
     }
     if (route === 'crave' && dd.hard) {
@@ -151,7 +151,7 @@ export async function onRequest({ request, env, params }) {
         const again = await gemini(env, route, [...parts, { text: `IMPORTANT: your previous answer broke the user's rules by using: ${h.slice(0, 12).join(', ')}. Never use these (or anything made with them), not as an ingredient, garnish or step. If the craving normally needs them, make a compliant version and say so in the name.` }]);
         data = again.data; h = recipeHits(dd, data.recipe);
       }
-      if (h.length) return json({ error: "Couldn't make that one fit your diet. Try a different craving!" }, 502);
+      if (h.length) return json({ error: "Couldn't make that one fit your diet. Try a different craving!", why: h.slice(0, 12) }, 502);
     }
     return json({ ...data, craving: body.craving, usage });
   } catch (e) { return json({ error: e.message || 'Something went sideways. Try again!' }, 502); }
