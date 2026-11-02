@@ -80,3 +80,11 @@ test('dish-style words are fine in a recipe name when ingredients are clean', ()
   assert.ok(recipeHits(d, R('Chicken Scampi', ['chicken', 'shrimp'])).includes('shrimp'));
   assert.ok(recipeHits(D('Soy allergy'), R('Teriyaki Chicken', ['chicken', 'soy sauce'])).length > 0);
 });
+test('baked goods from a safe flour are fine in name and steps; real flour still fails', () => {
+  const d = D('Gluten-free');
+  const r = R("Grandma's Cookies", ['gluten-free flour blend', 'dairy-free butter', 'sugar'], ['Stir until a dough forms.', 'Bake the cookies 12 minutes.']);
+  assert.deepEqual(recipeHits(d, r), []);
+  assert.ok(recipeHits(d, R("Grandma's Cookies", ['all-purpose flour', 'sugar'], ['Bake.'])).length > 0);
+  assert.ok(recipeHits(d, R('Soup', ['gluten-free flour blend'], ['Serve with soy sauce.'])).length > 0);
+  assert.ok(recipeHits(d, R('Chili', ['beans'], ['Serve with cornbread cookies.'])).length > 0); // no safe flour listed
+});

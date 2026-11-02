@@ -294,13 +294,13 @@ function renderRecipes() {
     ${more ? `<h3>${t('Make it with a few more things')}</h3><p class="sub">${t('Just a few items away. Add them to your grocery list and restock time is done!')}</p><div style="height:8px"></div>${more}<a class="btn ghost" href="#list" data-addmiss="all">${t('🛒 Restock time! Build my grocery list')}</a>` : ''}
     <button class="btn primary" id="moreIdeas" ${state.moreBusy ? 'disabled style="opacity:.7"' : ''}>${state.moreBusy ? '<span class="spin" style="border-top-color:#fff"></span> ' + t('Cooking up more…') : t('Hungry for more? Tap for more ideas!')}</button>`;
 }
-const pick = key => { if (key === 'crave') return state.crave?.recipe; if (key.startsWith('fav:')) return favs[+key.slice(4)]; const [k, i] = key.split(':'); return state.recipes?.[k]?.[+i]; };
+const pick = key => { if (key === 'crave') return state.crave?.recipe; if (key === 'x') return state.ext; if (key.startsWith('fav:')) return favs[+key.slice(4)]; const [k, i] = key.split(':'); return state.recipes?.[k]?.[+i]; };
 
 /* RECIPE */
 function renderRecipe() {
   const r = state.recipe;
   if (!r) { el('recipeBody').innerHTML = `<p class="sub">${t('Pick a recipe first!')}</p><a class="btn primary" href="#recipes">${t('See recipes')}</a>`; return; }
-  el('recipeBack').href = state.from === 'crave' ? '#compare' : state.from === 'favs' ? '#favs' : '#recipes';
+  el('recipeBack').href = state.from === 'crave' ? '#compare' : state.from === 'favs' ? '#favs' : state.from === 'lib' ? '#lib' : state.from === 'family' ? '#family' : '#recipes';
   el('recipeFav').textContent = isFav(r) ? '♥' : '♡';
   const miss = r.missing || []; const cost = r2(miss.reduce((s, m) => s + (+m.est_price || 0), 0));
   el('recipeBody').innerHTML = `<div class="hero">${esc(r.emoji || '🍳')}</div><div class="kick">${t('Craving unlocked!')}</div><h2>${esc(r.name)}</h2>
@@ -403,7 +403,7 @@ document.addEventListener('click', e => {
   if (t.closest('#goRecipes')) return getRecipes();
   if (t.closest('#moreIdeas')) return moreIdeas();
   const am = t.closest('[data-addmiss]'); if (am) { const k = am.dataset.addmiss; if (k === 'all') (state.recipes?.more || []).forEach(addMissing); else addMissing(k === 'cur' ? state.recipe : pick(k)); }
-  const rc = t.closest('[data-rec]'); if (rc) { state.recipe = pick(rc.dataset.rec); state.from = rc.dataset.rec === 'crave' ? 'crave' : rc.dataset.rec.startsWith('fav:') ? 'favs' : 'recipes'; }
+  const rc = t.closest('[data-rec]'); if (rc) { state.recipe = pick(rc.dataset.rec); state.from = rc.dataset.rec === 'crave' ? 'crave' : rc.dataset.rec === 'x' ? (state.extFrom || 'lib') : rc.dataset.rec.startsWith('fav:') ? 'favs' : 'recipes'; }
   const ci = t.closest('[data-craveit]'); if (ci) el('craveInput').value = ci.dataset.craveit;
   const hc = t.closest('[data-crave]'); if (hc) el('craveInput').value = hc.dataset.crave;
   if (t.closest('#craveGo')) return crave(el('craveInput').value);
@@ -429,8 +429,8 @@ el('craveInput').addEventListener('keydown', e => { if (e.key === 'Enter') crave
 
 function renderLeft() { if (unlimited()) { el('scanLeft').textContent = t("Unlimited scans. Let's get cooking!"); return; } const n = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5).length; el('scanLeft').textContent = n < 3 ? t('{n} of 3 free scans left this week', { n: 3 - n }) : t('Free scans used up. Beta bonus: keep snapping!'); }
 renderLeft();
-const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'favs', 'pro', 'settings', 'prep'];
-const RENDER = { scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, favs: renderFavs, home: () => { renderFavCount(); renderDietCount(); }, settings: renderSettings, pro: renderPro, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList, prep: () => window.renderPrep?.() };
+const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'favs', 'pro', 'settings', 'prep', 'lib', 'family'];
+const RENDER = { scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, favs: renderFavs, home: () => { renderFavCount(); renderDietCount(); }, settings: renderSettings, pro: renderPro, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList, prep: () => window.renderPrep?.(), lib: () => window.renderLib?.(), family: () => window.renderFamily?.() };
 let lastView = '', hiddenAt = 0;
 document.addEventListener('visibilitychange', () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 30 * 60 * 1000) { hiddenAt = 0; track('page_view', lastView || 'home'); } }); // reopened installed app = a new visit
 function route() {

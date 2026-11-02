@@ -186,6 +186,12 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
     <a class="card" href="#prep" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)">
       <div style="font-size:22px">🍱</div><div style="flex:1;font-size:13px"><b>Meal prep</b><br><span class="sub" style="font-size:12px">A week of meals, one grocery list and a prep-day guide.</span></div><span>›</span>
     </a>
+    <a class="card" href="#lib" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)">
+      <div style="font-size:22px">📚</div><div style="flex:1;font-size:13px"><b>SnapCravings Library</b><br><span class="sub" style="font-size:12px">Top-rated recipes and seasonal collections.</span></div><span>›</span>
+    </a>
+    <a class="card" href="#family" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)">
+      <div style="font-size:22px">👵</div><div style="flex:1;font-size:13px"><b>My family recipes</b><br><span class="sub" style="font-size:12px">Save your own recipes and adapt them to your diet.</span></div><span>›</span>
+    </a>
     <a class="card" href="#favs" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)">
       <div style="font-size:22px">❤️</div><div style="flex:1;font-size:13px"><b>Your favorites</b><br><span class="sub" style="font-size:12px" id="favCount">Tap ♡ on any recipe to save it</span></div><span>›</span>
     </a>
@@ -300,6 +306,18 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
     <div id="prepBody"></div>
   </section>
 
+  <!-- LIBRARY -->
+  <section class="screen" id="lib">
+    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">SnapCravings Library</span></div>
+    <div id="libBody"></div>
+  </section>
+
+  <!-- FAMILY RECIPES -->
+  <section class="screen" id="family">
+    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">My family recipes</span></div>
+    <div id="familyBody"></div>
+  </section>
+
   <!-- PRO -->
   <section class="screen" id="pro">
     <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Go Pro</span></div>
@@ -341,5 +359,6 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 <script src="i18n.js?v=ui28"></script>
 <script src="app.js?v=ui28"></script>
 <script src="prep.js?v=ui28"></script>
+<script src="more.js?v=ui28"></script>
 </body>
 </html>

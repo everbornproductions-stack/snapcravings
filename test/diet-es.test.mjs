@@ -58,3 +58,14 @@ test('es: recipe steps, negations and scan flags', () => {
   const out = flagScan({ ingredients: [{ name: 'Salsa de soya' }, { name: 'Leche' }, { name: 'Zanahorias' }] }, D('Soy allergy', 'Vegan'));
   assert.deepEqual(out.ingredients.map(i => !!i.conflict), [true, true, false]);
 });
+test('a step naming a safe listed ingredient is fine; a real banned one in steps still fails', async () => {
+  const { dietOf, recipeHits } = await import('../functions/_lib/diet.js');
+  const d = dietOf({ tags: ['Dairy-free', 'Gluten-free'] });
+  const r = { name: 'Enchiladas', ingredients: [{ item: 'queso cheddar vegano libre de lacteos' }, { item: 'tortillas de maiz' }], missing: [], steps: ['Hornea hasta que el queso se derrita.'] };
+  assert.deepEqual(recipeHits(d, r), []);
+  assert.ok(recipeHits(d, { ...r, steps: ['Agrega mantequilla y hornea.'] }).length > 0);
+  assert.ok(recipeHits(d, { ...r, ingredients: [{ item: 'tortillas de maiz' }] }).length > 0); // no safe cheese listed -> bare queso still flagged
+  assert.deepEqual(recipeHits(d, { ...r, steps: ['Rellena cada tortilla con pollo.'] }), []);
+  const en = { name: 'Mac', ingredients: [{ item: 'dairy-free cheese' }], missing: [], steps: ['Stir in the cheese until melted.'] };
+  assert.deepEqual(recipeHits(d, en), []);
+});
