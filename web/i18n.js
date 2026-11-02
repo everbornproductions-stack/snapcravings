@@ -123,6 +123,7 @@
     "You've used your 3 free scans this week.": 'Ya usaste tus 3 escaneos gratis de esta semana.', 'Our kitchen is busy. Tap Retry in a moment!': 'Nuestra cocina está llena. ¡Toca Reintentar en un momento!',
     'That took too long. Tap Retry!': 'Tardó demasiado. ¡Toca Reintentar!', 'The recipe brain hiccuped. Tap Retry!': 'El cerebro de recetas tuvo un hipo. ¡Toca Reintentar!',
     'Whoa, hungry! You hit the hourly limit. Try again soon.': '¡Uy, qué hambre! Llegaste al límite por hora. Intenta de nuevo pronto.',
+    '$39.99/yr, save 33% vs $4.99/mo list price': '$39.99/año, ahorra 33% vs. $4.99/mes de lista', '$39.99 billed once a year. Secure checkout by Stripe. We use your email only to find your plan.': '$39.99 cobrado una vez al año. Pago seguro con Stripe. Usamos tu correo solo para encontrar tu plan.',
     'Add some ingredients first!': '¡Primero agrega algunos ingredientes!', 'Invalid code': 'Código inválido'
   };
   const pick = () => { const s = localStorage.getItem('sc.lang'); if (s) { try { const v = JSON.parse(s); if (v === 'es' || v === 'en') return v; } catch {} } return /^es\b/i.test(navigator.language || '') || (navigator.languages || []).slice(0, 1).some(l => /^es\b/i.test(l)) ? 'es' : 'en'; };

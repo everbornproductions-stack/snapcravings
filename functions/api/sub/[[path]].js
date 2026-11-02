@@ -2,7 +2,7 @@
 // the subscription. This function never talks to Stripe and holds no Stripe key. It asks Supabase (RPC snap_check_sub, anon-callable,
 // returns only {active, period_end, email}) and, when active, issues the signed unlock token (SUB_SECRET).
 // Constants (PAYMENT_LINK_URL, PORTAL_URL, ...) live in ../../_lib/sub.js. Secret: SUB_SECRET. Var: PAYWALL=off hides it.
-import { signToken, verifyToken, PAYWALL_ON, PAYMENT_LINK_URL, PORTAL_URL, PRICE_CENTS, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../../_lib/sub.js';
+import { signToken, verifyToken, PAYWALL_ON, PAYMENT_LINK_URL, YEARLY_LINK_URL, YEARLY_CENTS, PORTAL_URL, PRICE_CENTS, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../../_lib/sub.js';
 export { PRICE_CENTS };
 export const PLAN_NAME = 'SnapCravings Unlimited';
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -19,7 +19,7 @@ async function check(email, sid) {
 export async function onRequest({ request, env, params }) {
   const route = (params.path || [])[0];
   const on = PAYWALL_ON(env);
-  if (route === 'config') return json({ enabled: on, price: PRICE_CENTS / 100, plan: PLAN_NAME, freePerWeek: 3, link: on ? PAYMENT_LINK_URL : '', portal: on ? PORTAL_URL : '' });
+  if (route === 'config') return json({ enabled: on, price: PRICE_CENTS / 100, plan: PLAN_NAME, freePerWeek: 3, link: on ? PAYMENT_LINK_URL : '', linkYearly: on ? YEARLY_LINK_URL : '', yearly: YEARLY_CENTS / 100, list: 4.99, portal: on ? PORTAL_URL : '' });
   if (route === 'redeem' && request.method === 'POST') {
     const ip = request.headers.get('cf-connecting-ip') || 'local';
     if (env.RATE_KV) { const k = `redeem:${ip}:${Math.floor(Date.now() / 36e5)}`; const n = +(await env.RATE_KV.get(k) || 0) + 1; await env.RATE_KV.put(k, String(n), { expirationTtl: 3700 }); if (n > 8) return json({ error: 'Too many tries. Take a snack break and try later!' }, 429); }

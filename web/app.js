@@ -33,8 +33,11 @@ function renderPro() {
   if (sub.email && !el('proEmail').value) el('proEmail').value = sub.email;
   if (!subCfg.enabled) { el('proGo').textContent = t('Unlimited · coming soon!'); el('proGo').style.opacity = '.6'; el('proEmail').parentNode.style.display = 'none'; el('proRestore').style.display = 'none'; }
   else { if (!el('proGo').querySelector('.spin')) el('proGo').textContent = t("Go Unlimited — let's get cooking!"); el('proGo').style.opacity = ''; el('proEmail').parentNode.style.display = ''; el('proRestore').style.display = ''; }
+  if (el('proYrSub')) el('proYrSub').textContent = subCfg.linkYearly ? t('$39.99/yr, save 33% vs $4.99/mo list price') : t('Coming soon · about $3.33/mo');
+  if (yearlyPicked()) { el('proFine').textContent = t('$39.99 billed once a year. Secure checkout by Stripe. We use your email only to find your plan.'); return; }
   el('proFine').textContent = subCfg.enabled ? t('${price}/mo founders price, first 100 members, locked in. Secure checkout by Stripe. We use your email only to find your plan.', { price: Number(subCfg.price).toFixed(2) }) : t('Unlimited is coming soon. Free scans and codes still work!');
 }
+const yearlyPicked = () => !(typeof inPlay === 'function' && inPlay()) && !!subCfg.linkYearly && !!document.querySelector('.plan.on[data-plan="yr"]');
 async function goUnlimited() {
   if (!subCfg.enabled || !subCfg.link) return toast(t('Unlimited is coming soon!'));
   const email = el('proEmail').value.trim(); if (!email) return toast(t('Pop in your email first!'));
@@ -43,7 +46,8 @@ async function goUnlimited() {
   const cid = 'sc' + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => (b % 36).toString(36)).join('');
   sub = { email: email.toLowerCase(), active: false, cid }; LS.set('sub', sub);
   track('upgrade_click', 'pro');
-  location.href = subCfg.link + (subCfg.link.includes('?') ? '&' : '?') + 'prefilled_email=' + encodeURIComponent(email) + '&client_reference_id=' + cid;
+  const link = yearlyPicked() ? subCfg.linkYearly : subCfg.link; track('plan_pick', 'pro', { plan: yearlyPicked() ? 'yr' : 'mo' });
+  location.href = link + (link.includes('?') ? '&' : '?') + 'prefilled_email=' + encodeURIComponent(email) + '&client_reference_id=' + cid;
 }
 fetch('/api/sub/config').then(r => r.json()).then(c => { subCfg = c; renderPro();
   if (!c.enabled || sub.code) return;
@@ -375,7 +379,7 @@ document.addEventListener('click', e => {
   if (t.closest('#listClear')) { glist = glist.filter(g => !g.done); LS.set('glist', glist); el('listLinks').innerHTML = ''; return renderList(); }
   const tip = t.closest('[data-tip]'); if (tip) document.querySelectorAll('#tipSeg button').forEach(b => b.classList.toggle('on', b === tip));
   const s = t.closest('[data-mem]'); if (s) s.classList.toggle('on');
-  const p = t.closest('.plan'); if (p) { if (p.dataset.plan === 'yr') toast(I18N.t('Yearly is coming soon! Monthly is ready now.')); else document.querySelectorAll('.plan').forEach(x => x.classList.toggle('on', x === p)); }
+  const p = t.closest('.plan'); if (p) { if (p.dataset.plan === 'yr' && !subCfg.linkYearly && !(typeof inPlay === 'function' && inPlay())) toast(I18N.t('Yearly is coming soon! Monthly is ready now.')); else { document.querySelectorAll('.plan').forEach(x => x.classList.toggle('on', x === p)); renderPro(); } }
   if (t.closest('#proGo')) return goUnlimited();
   if (t.closest('#proCodeGo')) return redeem();
   if (t.closest('#proCodeShow')) { el('proCodeBox').style.display = 'block'; el('proCode').focus(); return; }

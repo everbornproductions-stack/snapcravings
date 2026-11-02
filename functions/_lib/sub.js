@@ -2,6 +2,8 @@
 // Payments run on Stripe (Payment Link + Supabase Edge Function webhook). No Stripe secret key lives here.
 // Fill these two once the Stripe objects exist; while PAYMENT_LINK_URL is empty the app shows "Unlimited is coming soon".
 export const PAYMENT_LINK_URL = 'https://buy.stripe.com/cNi00cawf7hfcL5h0DgQE09';   // SnapCravings Unlimited founders $3.99/mo (plink_1UXAxN6wphxe2c5DkkcPaShj, capped at 100; old $4.99 link plink_1UV1Pz... still live)
+export const YEARLY_LINK_URL = 'https://buy.stripe.com/aFadR2eMvdFD12n4dRgQE0a'; // SnapCravings Unlimited yearly $39.99 (plink_1UXEnH6wphxe2c5DD2UyJNbt, price_1UXEkJ6wphxe2c5DhyJaqZdQ)
+export const YEARLY_CENTS = 3999;
 export const PORTAL_URL = 'https://billing.stripe.com/p/login/00wbIUdIrcBz8uP9ybgQE00';
 export const PRICE_CENTS = 399;       // display only; the real price lives on the Stripe Payment Link
 // Public Supabase project (everborn-command). The publishable key is designed to be public: it can only call

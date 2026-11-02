@@ -23,6 +23,7 @@ await pg.evaluate(() => document.querySelector('#prepCopy').scrollIntoView({ blo
 await pg.evaluate(() => document.querySelector('#prepNew').scrollIntoView({ block: 'end' })); await wait(300); await pg.screenshot({ path: O + `plan-${tag}-prepguide.png` });
 if (process.env.SWAP) { const before = info.names[0]; await pg.evaluate(() => document.querySelector('[data-pswap="0"]').click()); await pg.waitForFunction(() => !document.querySelector('#prepBody .spin'), { timeout: 90000 }).catch(() => {}); await wait(800);
   const after = await pg.evaluate(() => JSON.parse(localStorage.getItem('sc.plan')).meals[0].name); console.log('swap', before, '->', after); await pg.screenshot({ path: O + `plan-${tag}-swap.png` }); }
-await pg.goto(base + '/#pro'); await wait(1500); await pg.evaluate(() => document.querySelector('.plan[data-plan="yr"]').click()); await wait(500); await pg.screenshot({ path: O + `paywall-${tag}.png` });
+if (!tok) { await pg.goto(base + "/#pro"); await wait(1500); await pg.evaluate(() => document.querySelector('.plan[data-plan="yr"]').click()); await wait(500); await pg.screenshot({ path: O + `paywall-${tag}.png` });
 console.log('paywall:', await pg.evaluate(() => document.querySelector('#proYrSub').innerText + ' | ' + document.querySelector('#proFine').innerText + ' | yr on=' + !!document.querySelector('.plan.on[data-plan="yr"]')));
+}
 await b.close();

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { planInput, checkPlan, groceryList, inFridge, planPrompt, mealHits } from '../functions/_lib/plan.js';
+import { emojiOf, planInput, checkPlan, groceryList, inFridge, planPrompt, mealHits } from '../functions/_lib/plan.js';
 import { repair } from '../functions/api/plan.js';
 const M = (day, slot, name, items, steps = ['Reheat and serve.']) => ({ day, slot, name, emoji: '🍱', minutes: 15, servings: 2, ingredients: items.map(([item, aisle = 'Produce', have = false]) => ({ item, qty: '1', aisle, have })), steps, est_cook_cost: 5, keeps_days: 3 });
 const week = (bad, lang) => { const out = []; for (let d = 1; d <= 7; d++) out.push(d === 3 ? bad : M(d, 'Dinner', (lang === 'es' ? 'Tazón de pollo ' : 'Chicken bowl ') + d, [[lang === 'es' ? 'muslos de pollo' : 'chicken thighs', 'Meat & Seafood'], [lang === 'es' ? 'arroz' : 'rice', 'Bakery & Grains']])); return out; };
@@ -39,3 +39,4 @@ test('grocery list: merged, grouped by aisle, minus fridge and staples', () => {
   assert.equal(g.find(x => x.aisle === 'Meat & Seafood').items[0].meals, 2);
   assert.ok(inFridge('baby spinach', ['spinach'])); assert.ok(!inFridge('peanut butter', ['butter lettuce']));
 });
+test('emoji text code points are fixed', () => { assert.equal(emojiOf('1f35d'), '🍝'); assert.equal(emojiOf('U+1F35D'), '🍝'); assert.equal(emojiOf('pasta'), '🍱'); assert.equal(emojiOf('🌮'), '🌮'); });

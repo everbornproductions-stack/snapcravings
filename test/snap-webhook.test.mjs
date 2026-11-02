@@ -91,3 +91,14 @@ test('matches by hardcoded price / product / payment link id when metadata is mi
   assert.equal((await processEvent(inv('invoice.paid', { ...noMeta, lines: { data: [{ price: { id: 'price_meld', product: 'prod_meld', unit_amount: 1899, recurring: { interval: 'month' } } }] } }), mem())).status, 'ignored');
   assert.equal((await processEvent(subEv('customer.subscription.updated', { metadata: {}, items: { data: [{ price: { id: 'price_meld', product: 'prod_meld' } }] } }), mem())).status, 'ignored');
 });
+import { isSnap as isSnapY } from '../supabase/functions/snapcravings-stripe-webhook/logic.js';
+test('yearly $39.99 is ours; monthly prices still are; a yearly $4.99 or other amounts are not', () => {
+  assert.equal(isSnapY({ object: 'subscription', items: { data: [{ price: { id: 'price_x', unit_amount: 3999, recurring: { interval: 'year' } } }] } }), true);
+  assert.equal(isSnapY({ object: 'subscription', items: { data: [{ price: { id: 'price_1UXEkJ6wphxe2c5DhyJaqZdQ' } }] } }), true);
+  assert.equal(isSnapY({ object: 'checkout.session', payment_link: 'plink_1UXEnH6wphxe2c5DD2UyJNbt' }), true);
+  assert.equal(isSnapY({ object: 'checkout.session', mode: 'subscription', amount_subtotal: 3999, currency: 'usd' }), true);
+  assert.equal(isSnapY({ object: 'invoice', lines: { data: [{ pricing: { unit_amount_decimal: '3999' } }] } }), true);
+  for (const a of [399, 499]) assert.equal(isSnapY({ object: 'subscription', items: { data: [{ price: { id: 'p', unit_amount: a, recurring: { interval: 'month' } } }] } }), true);
+  assert.equal(isSnapY({ object: 'subscription', items: { data: [{ price: { id: 'p', unit_amount: 3999, recurring: { interval: 'month' } } }] } }), false);
+  assert.equal(isSnapY({ object: 'subscription', items: { data: [{ price: { id: 'p', unit_amount: 2999, recurring: { interval: 'year' } } }] } }), false);
+});
