@@ -26,6 +26,7 @@ m = mk('SUBSCRIPTION_STATE_EXPIRED', 'ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED', Date.
 j = await (await call(env(m.f), { purchaseToken: TOK })).json(); assert.equal(j.active, false); assert.equal(j.token, undefined);
 m = mk(404); j = await (await call(env(m.f), { purchaseToken: TOK })).json(); assert.equal(j.active, false);
 r = await call(env(m.f), { purchaseToken: 'bad token!' }); assert.equal(r.status, 400);
-r = await call({ SUB_SECRET: 's' }, { purchaseToken: TOK }); assert.equal(r.status, 503);
+// isolate from the gitignored local play_key.js: an explicit null key means 'not configured'
+r = await call({ SUB_SECRET: 's', PLAY_SA_JSON: 'null' }, { purchaseToken: TOK }); assert.equal(r.status, 503);
 r = await onRequest({ request: new Request('https://x/api/play/verify'), env: {} }); assert.equal(r.status, 404);
 console.log('play verify: 7 checks ok');

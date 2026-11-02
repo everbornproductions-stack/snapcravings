@@ -23,7 +23,7 @@ async function scanGate(env, request, ip) {
     return { allowed: j?.allowed !== false, why: j?.allowed === false ? 'limit' : 'ok', used: j?.used };
   } catch { return { allowed: true, why: 'error' }; } finally { clearTimeout(t); }
 }
-const MODEL = 'gemini-3.8-flash'; // gemini-2.5-flash is closed to new API users (404); see CHAIN for fallbacks
+const MODEL = 'gemini-3.5-flash-lite'; // gemini-2.5-flash is closed to new API users (404); see CHAIN for fallbacks
 const MAX_IMAGES = 10, MAX_IMAGE_BYTES = 1_500_000, MAX_BODY = 9_000_000;
 const LIMIT = { scan: 60, recipes: 30, crave: 30 }, WINDOW_S = 3600; // per IP per hour
 const mem = new Map(); // fallback limiter when no KV binding (per isolate, best effort)
@@ -51,30 +51,53 @@ const SCHEMAS = {
 };
 const VOICE = 'You write for SnapCravings, a fun, upbeat cooking app. Plain, friendly words. No em-dashes. Recipe steps are complete, specific (times, temperatures, amounts) and safe (cook meat through). For every recipe fill kcal, protein_g, carbs_g and fat_g as realistic PER SERVING estimates for the listed quantities.';
 
-// Model chain: Google's 3.8 Flash is often overloaded (429/503 "high demand") and slow; fall back fast.
-const CHAIN = [['gemini-3.8-flash', 22000, { thinkingBudget: 0 }], ['gemini-3.5-flash-lite', 18000, null], ['gemini-2.5-flash-lite', 15000, { thinkingBudget: 0 }]];
+// Model chain: Google's 3.8 Flash is often overloaded (429/503 "high demand") and slow, and a slow model used to block
+// the next one for its whole timeout (22 s + 18 s + 15 s, past the phone's patience). Now the models are hedged: the next
+// model starts as soon as the previous one fails OR has not answered within its head start, and the first good answer wins.
+// Thinking is off on every model (default thinking on flash-lite added ~10 s to each scan for no visible gain).
+// Measured 2026-11-02: 3.8-flash = 429 quota on this key, 2.5-flash-lite = 404 retired, 3.5-flash-lite rejects
+// thinkingBudget:0 (400) but takes thinkingLevel 'minimal' (~5 s vs ~17 s with default thinking).
+// The free key also has a per-minute limit (429): retry the fast model after a short pause before the slow fallbacks.
+const CHAIN = [['gemini-3.5-flash-lite', { thinkingLevel: 'minimal' }], ['gemini-3.5-flash-lite', { thinkingLevel: 'minimal' }, 2000], ['gemini-3.8-flash', { thinkingBudget: 0 }], ['gemini-3.5-flash-lite', { thinkingLevel: 'minimal' }, 5000], ['gemini-3.5-flash-lite', null]];
+const HEAD_START = 9000, PER_MODEL = 30000, DEADLINE = 45000;
 async function gemini(env, route, parts) {
-  const chain = env.GEMINI_MODEL ? [[env.GEMINI_MODEL, 25000, null], ...CHAIN] : CHAIN;
+  const chain = env.GEMINI_MODEL ? [[env.GEMINI_MODEL, null], ...CHAIN] : CHAIN;
+  const tries = []; const ctls = []; const T0 = Date.now();
   let last = 'The recipe brain hiccuped. Tap Retry!';
-  for (const [model, ms, thinking] of chain) {
-    const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), ms); const t0 = Date.now();
+  const one = async ([model, thinking, wait]) => {
+    if (wait) await new Promise(r => setTimeout(r, wait));
+    const ctl = new AbortController(); ctls.push(ctl); const timer = setTimeout(() => ctl.abort(), PER_MODEL); const t0 = Date.now();
+    const note = st => { tries.push([model, st, Date.now() - t0]); };
     try {
       const gc = { responseMimeType: 'application/json', responseSchema: SCHEMAS[route], temperature: 0.6, maxOutputTokens: 8000 };
       if (thinking) gc.thinkingConfig = thinking;
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', signal: ctl.signal,
+      const r = await (env.__fetch || fetch)(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', signal: ctl.signal,
         headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
         body: JSON.stringify({ systemInstruction: { parts: [{ text: VOICE }] }, contents: [{ role: 'user', parts }], generationConfig: gc }) });
-      if (!r.ok) { console.log('gemini', model, r.status, (await r.text()).slice(0, 200)); if (r.status === 429) last = 'Our kitchen is busy. Tap Retry in a moment!'; continue; }
+      if (!r.ok) { const msg = (await r.text()).slice(0, 300); note(r.status + ' ' + (/"message":\s*"([^"]{0,140})/.exec(msg)?.[1] || '')); console.log('gemini', model, r.status, msg); if (r.status === 429) last = 'Our kitchen is busy. Tap Retry in a moment!'; return null; }
       const j = await r.json();
       const text = j.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text || '').join('') || '';
-      let data; try { data = JSON.parse(text); } catch { console.log('bad json', model, j.candidates?.[0]?.finishReason); continue; }
-      const u = j.usageMetadata || {};
+      let data; try { data = JSON.parse(text); } catch { note('badjson'); console.log('bad json', model, j.candidates?.[0]?.finishReason); return null; }
+      const u = j.usageMetadata || {}; note(200);
       console.log('ok', route, model, Date.now() - t0, 'ms', u.promptTokenCount, u.candidatesTokenCount);
-      return { data, usage: { model, ms: Date.now() - t0, in: u.promptTokenCount, out: u.candidatesTokenCount } };
-    } catch (e) { console.log('timeout/err', model, Date.now() - t0, e.name); last = 'That took too long. Tap Retry!'; }
+      return { data, usage: { model, ms: Date.now() - t0, total: Date.now() - T0, in: u.promptTokenCount, out: u.candidatesTokenCount, tries } };
+    } catch (e) { note(e.name === 'AbortError' ? 'timeout' : 'err'); console.log('timeout/err', model, Date.now() - t0, e.name); last = 'That took too long. Tap Retry!'; return null; }
     finally { clearTimeout(timer); }
-  }
-  throw new Error(last);
+  };
+  const res = await new Promise(resolve => {
+    let i = 0, running = 0, done = false, kick;
+    const finish = v => { if (done) return; done = true; clearTimeout(kick); clearTimeout(dl); resolve(v); };
+    const dl = setTimeout(() => finish(null), DEADLINE);
+    const next = () => {
+      clearTimeout(kick); if (done || i >= chain.length) { if (!running && !done) finish(null); return; }
+      running++; one(chain[i++]).then(v => { running--; if (v) finish(v); else next(); });
+      if (i < chain.length) kick = setTimeout(next, HEAD_START);
+    };
+    next();
+  });
+  ctls.forEach(c => { try { c.abort(); } catch {} });
+  if (res) return res;
+  const e = new Error(last); e.tries = tries; throw e;
 }
 
 
@@ -188,7 +211,7 @@ async function handle({ request, env, params }) {
       if (h.length) return json({ error: "Couldn't make that one fit your diet. Try a different craving!", why: h.slice(0, 12) }, 502);
     }
     return json({ ...data, craving: body.craving, usage });
-  } catch (e) { return json({ error: e.message || 'Something went sideways. Try again!' }, 502); }
+  } catch (e) { return json({ error: e.message || 'Something went sideways. Try again!', tries: e.tries }, 502); }
 }
 
 function mock(route, body) {
