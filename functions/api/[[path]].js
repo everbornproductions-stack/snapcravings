@@ -58,16 +58,57 @@ const VOICE = 'You write for SnapCravings, a fun, upbeat cooking app. Plain, fri
 // Measured 2026-11-02: 3.8-flash = 429 quota on this key, 2.5-flash-lite = 404 retired, 3.5-flash-lite rejects
 // thinkingBudget:0 (400) but takes thinkingLevel 'minimal' (~5 s vs ~17 s with default thinking).
 // The free key also has a per-minute limit (429): retry the fast model after a short pause before the slow fallbacks.
-const CHAIN = [['gemini-3.5-flash-lite', { thinkingLevel: 'minimal' }], ['gemini-3.5-flash-lite', { thinkingLevel: 'minimal' }, 2000], ['gemini-3.8-flash', { thinkingBudget: 0 }], ['gemini-3.5-flash-lite', { thinkingLevel: 'minimal' }, 5000], ['gemini-3.5-flash-lite', null]];
+// Free backup: Cloudflare Workers AI via the Pages AI binding (env.AI), 10,000 free neurons/day. It joins the hedge after
+// two Gemini attempts (so after a 429 burst, or ~18 s of slowness). A per-day neuron budget (CF_BUDGET) keeps it under
+// the free allowance even if the account is ever on Workers Paid; past the budget the fallback is simply skipped.
+// Measured 2026-11-02 on the preview branch: Scout reads fridge photos in ~5 s; for 5 recipes Scout, Gemma 4, gpt-oss-20b and
+// Llama 3.3 70B took 38-40+ s, Qwen3 30B (thinking off, plain JSON mode) ~15 s and is the cheapest per token.
+const CF_MODEL = { scan: '@cf/meta/llama-4-scout-17b-16e-instruct', text: '@cf/qwen/qwen3-30b-a3b-fp8' };
+const CF_MODE = { scan: 'schema', text: 'noschema-nothink' };
+const CHAIN = [['gemini-3.5-flash-lite', { thinkingLevel: 'minimal' }], ['gemini-3.5-flash-lite', { thinkingLevel: 'minimal' }, 2000], ['cf'], ['gemini-3.8-flash', { thinkingBudget: 0 }], ['gemini-3.5-flash-lite', { thinkingLevel: 'minimal' }, 5000], ['gemini-3.5-flash-lite', null]];
 const HEAD_START = 9000, PER_MODEL = 30000, DEADLINE = 45000;
+// Daily neuron guard for Workers AI (approximate: per-isolate memory + per-colo Cache API counter), priced with Scout's
+// rates (24.5k / 77.3k neurons per M in/out tokens, the dearer of the two models), so the count errs high.
+const CF_PRICE = { in: 24545 / 1e6, out: 77273 / 1e6 }; let cfMem = { day: '', n: 0 };
+const cfDay = () => new Date().toISOString().slice(0, 10);
+async function cfUsed(add = 0) {
+  const day = cfDay(); if (cfMem.day !== day) cfMem = { day, n: 0 };
+  let n = cfMem.n; const key = `https://cf-budget.internal/${day}`;
+  try { const c = typeof caches !== 'undefined' && caches.default; if (c) { const r = await c.match(key); if (r) n = Math.max(n, +(await r.text()) || 0);
+    if (add) await c.put(key, new Response(String(n + add), { headers: { 'cache-control': 'max-age=90000' } })); } } catch {}
+  cfMem.n = n + add; return n + add;
+}
+async function workersAI(env, route, parts, signal) {
+  const budget = +(env.CF_BUDGET || 6000);
+  if (!env.AI) throw Object.assign(new Error('no AI binding'), { st: 'nobinding' });
+  if (await cfUsed() >= budget) throw Object.assign(new Error('budget'), { st: 'budget' });
+  const content = parts.map(p => p.inlineData ? { type: 'image_url', image_url: { url: `data:${p.inlineData.mimeType};base64,${p.inlineData.data}` } } : { type: 'text', text: p.text });
+  const model = (env.__cfModel && env.__cfModel.startsWith('@cf/')) ? env.__cfModel : route === 'scan' ? CF_MODEL.scan : CF_MODEL.text;
+  const mode = env.__cfMode || (route === 'scan' ? CF_MODE.scan : CF_MODE.text); const noSchema = mode.includes('noschema');
+  const sys = VOICE + ' Reply with ONE JSON object only, no prose, matching this JSON schema: ' + JSON.stringify(SCHEMAS[route]) + (mode.includes('nothink') ? ' /no_think' : '');
+  const run = env.AI.run(model, { messages: [{ role: 'system', content: sys }, { role: 'user', content }],
+    ...(noSchema ? { response_format: { type: 'json_object' } } : { response_format: { type: 'json_schema', json_schema: SCHEMAS[route] } }), max_tokens: 6000, temperature: 0.6 });
+  const out = await Promise.race([run, new Promise((_, rej) => signal.addEventListener('abort', () => rej(Object.assign(new Error('timeout'), { name: 'AbortError' }))))]);
+  const u = out?.usage || {}; await cfUsed(Math.ceil((u.prompt_tokens || 3000) * CF_PRICE.in + (u.completion_tokens || 3000) * CF_PRICE.out));
+  let data = out?.response ?? out?.choices?.[0]?.message?.content; if (typeof data === 'string') { const t = data.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/^```(json)?|```$/g, '').trim(); data = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); }
+  if (!data || typeof data !== 'object' || !(route === 'scan' ? Array.isArray(data.ingredients) : route === 'recipes' ? Array.isArray(data.recipes) && data.recipes.length : data.recipe)) throw Object.assign(new Error('badjson'), { st: 'badjson' });
+  return { data, model, in: u.prompt_tokens, out: u.completion_tokens };
+}
 async function gemini(env, route, parts) {
   const chain = env.GEMINI_MODEL ? [[env.GEMINI_MODEL, null], ...CHAIN] : CHAIN;
   const tries = []; const ctls = []; const T0 = Date.now();
   let last = 'The recipe brain hiccuped. Tap Retry!';
   const one = async ([model, thinking, wait]) => {
     if (wait) await new Promise(r => setTimeout(r, wait));
-    const ctl = new AbortController(); ctls.push(ctl); const timer = setTimeout(() => ctl.abort(), PER_MODEL); const t0 = Date.now();
-    const note = st => { tries.push([model, st, Date.now() - t0]); };
+    const ctl = new AbortController(); ctls.push(ctl); const timer = setTimeout(() => ctl.abort(), model === 'cf' ? 40000 : PER_MODEL); const t0 = Date.now();
+    const note = st => { tries.push([model === 'cf' ? (env.__cfModel || (route === 'scan' ? CF_MODEL.scan : CF_MODEL.text)) : model, st, Date.now() - t0]); };
+    if (model === 'cf') {
+      try { const v = await workersAI(env, route, parts, ctl.signal); note(200); console.log('ok cf', route, v.model, Date.now() - t0, 'ms');
+        return { data: v.data, usage: { model: v.model, provider: 'workers-ai', ms: Date.now() - t0, total: Date.now() - T0, in: v.in, out: v.out, tries } }; }
+      catch (e) { note(e.st || (e.name === 'AbortError' ? 'timeout' : 'err ' + String(e.message).slice(0, 120))); console.log('cf fail', e.message); return null; }
+      finally { clearTimeout(timer); }
+    }
+    if (env.__forceGeminiFail) { note('forced-fail'); clearTimeout(timer); return null; }
     try {
       const gc = { responseMimeType: 'application/json', responseSchema: SCHEMAS[route], temperature: 0.6, maxOutputTokens: 8000 };
       if (thinking) gc.thinkingConfig = thinking;
@@ -133,7 +174,7 @@ export async function onRequest(ctx) {
   const e = ERR[j.error] || (/^Up to \d+ photos at a time\.$/.test(j.error) ? j.error.replace(/^Up to (\d+) photos at a time\./, 'Hasta $1 fotos a la vez.') : j.error);
   return json({ ...j, error: e }, res.status);
 }
-async function handle({ request, env, params }) {
+async function handle({ request, env, params }) { // env may be wrapped below for the fallback test hook
   const route = (params.path || [])[0];
   if (route === 'health') return json({ ok: true, model: env.GEMINI_MODEL || MODEL, ai: !!env.GEMINI_API_KEY || env.MOCK_AI === '1' ? 'ready' : 'missing GEMINI_API_KEY' });
   if (route === 'dietcheck' && request.method === 'POST') { // no AI: which of these names break the user's diet (used to clean the grocery list)
@@ -147,6 +188,9 @@ async function handle({ request, env, params }) {
   const ip = request.headers.get('cf-connecting-ip') || 'local';
   if (await limited(env, ip, route)) return json({ error: 'Whoa, hungry! You hit the hourly limit. Try again soon.' }, 429);
   let body; try { body = await request.json(); } catch { return json({ error: 'Bad request' }, 400); }
+  // Test hook: skip Gemini so the free Workers AI fallback answers. Owner code only (or '1' on a preview branch host).
+  const ff = String(request.headers.get('x-sc-force-fallback') || '').trim().toLowerCase(), host = new URL(request.url).hostname;
+  if (ff && ((env.OWNER_CODE && ff === String(env.OWNER_CODE).trim().toLowerCase()) || (ff === '1' && (/\.snapcravings\.pages\.dev$/.test(host) || host === 'localhost' || host === '127.0.0.1')))) env = Object.assign(Object.create(env), { __forceGeminiFail: true, __cfModel: ff === '1' ? String(request.headers.get('x-sc-cf-model') || '').slice(0, 80) : '', __cfMode: ff === '1' ? String(request.headers.get('x-sc-cf-mode') || '') : '' });
   // Free plan: 3 scans (a scan = one Go, many photo batches share one scan id) per IP per week; Unlimited token skips it.
   if (!env.GEMINI_API_KEY && env.MOCK_AI !== '1') return json({ error: 'AI is not set up yet (missing GEMINI_API_KEY).' }, 503);
 
