@@ -15,7 +15,7 @@
     'Go Pro': 'Hazte Pro', 'Costs are AI estimates of grocery prices, not quotes. We never invent restaurant prices.': 'Los costos son estimaciones de IA de precios del súper, no cotizaciones. Nunca inventamos precios de restaurantes.',
     'AI-generated plan. Check doneness, storage and allergens yourself.': 'Plan generado por IA. Revisa la cocción, el almacenamiento y los alérgenos tú mismo.', 'Nothing to buy. Pantry power!': 'Nada que comprar. ¡Poder de alacena!',
     'Produce': 'Frutas y verduras', 'Meat & Seafood': 'Carnes y mariscos', 'Dairy & Eggs': 'Lácteos y huevos', 'Bakery & Grains': 'Panadería y granos', 'Pantry': 'Alacena', 'Canned & Jarred': 'Latas y frascos', 'Frozen': 'Congelados', 'Spices': 'Especias', 'Other': 'Otros',
-    'Ingredients': 'Ingredientes', 'Steps': 'Pasos', 'SnapCravings meal prep grocery list': 'Lista del súper de SnapCravings (plan semanal)', 'used in {n} meals': 'en {n} comidas', 'Plan your week': 'Planea tu semana', 'Edit': 'Editar', 'Tap Retry': 'Reintentar'
+    'Ingredients': 'Ingredientes', 'Steps': 'Pasos', 'SnapCravings meal prep grocery list': 'Lista del súper de SnapCravings (plan semanal)', 'used in {n} meals': 'en {n} comidas', 'Plan your week': 'Planea tu semana', 'Southern': 'Sureña', 'Quick 15-min': 'Rápida (15 min)', 'High-protein': 'Alta en proteína', 'Budget': 'Económica', 'Kid-friendly': 'Para niños', 'Style': 'Estilo', '· optional, applies to snaps, cravings and plans': '· opcional, aplica a fotos, antojos y planes', 'Edit': 'Editar', 'Tap Retry': 'Reintentar'
   });
   const opts = Object.assign({ days: 7, meals: 'dinner', servings: 2, budget: '', fridge: true }, LS.get('prepOpts', {}));
   let plan = LS.get('plan', null), busy = false;
@@ -29,6 +29,7 @@
     <h3>${t('Meals per day')}</h3>${seg('meals', [['dinner', 'Dinner only'], ['lunch_dinner', 'Lunch + dinner'], ['all', 'All 3']])}
     <h3>${t('Servings per meal')}</h3><div class="card"><div class="row" style="padding:0"><b>${t('Servings per meal')}</b><span class="qty"><button data-psv="-1">−</button>${opts.servings}<button data-psv="1">+</button></span></div></div>
     <h3>${t('Budget for the week (optional)')}</h3><div class="input"><span>$</span><input id="prepBudget" inputmode="numeric" placeholder="${esc(t('Budget in USD, like 80'))}" value="${esc(opts.budget)}" aria-label="${esc(t('Budget for the week (optional)'))}"></div>
+    <h3>${t('Style')} <span style="color:var(--muted);font-weight:600;font-size:12px">${t('· optional, applies to snaps, cravings and plans')}</span></h3><div class="chips">${MOODS.map(m0 => { const m = t(m0); const on = diet.mood.split(/[,;]/).map(x => x.trim().toLowerCase()).includes(m.toLowerCase()); return `<button class="chip" data-dmood="${esc(m)}" style="cursor:pointer;font-family:var(--font);${on ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : ''}">${esc(m)}</button>`; }).join('')}</div>
     <div class="card">${n ? `<div class="toggle">${t('Use my fridge scan ({n} items)', { n })}<button class="sw ${opts.fridge ? 'on' : ''}" id="prepFridge" aria-label="${esc(t('Use my fridge scan ({n} items)', { n }))}"></button></div>` : `<div class="fine" style="margin:0">${t('No fridge scan yet. Snap it first to use what you have.')}</div>`}
     ${dietOn() && dietLine() ? `<div class="fine">${t('🥗 Cooking for: {d} · ', { d: esc(dietLine()) })}<a href="#settings" style="color:var(--coral);font-weight:700">${t('Edit')}</a></div>` : ''}</div>
     <button class="btn primary" id="prepGo">${t('Build my week')}</button>`;
@@ -82,6 +83,7 @@
     const x = e.target; if (!x.closest || !x.closest('#prep')) return;
     const po = x.closest('[data-po]'); if (po) { opts[po.dataset.po] = po.dataset.po === 'days' ? +po.dataset.v : po.dataset.v; opts.budget = el('prepBudget')?.value || opts.budget; save(); return render(); }
     const sv = x.closest('[data-psv]'); if (sv) { opts.servings = Math.min(8, Math.max(1, opts.servings + +sv.dataset.psv)); opts.budget = el('prepBudget')?.value || opts.budget; save(); return render(); }
+    if (x.closest('[data-dmood]')) { opts.budget = el('prepBudget')?.value || opts.budget; save(); return setTimeout(render); }
     if (x.closest('#prepFridge')) { opts.fridge = !opts.fridge; opts.budget = el('prepBudget')?.value || opts.budget; save(); return render(); }
     if (x.closest('#prepGo') || x.closest('#prepRetry')) return build();
     if (x.closest('#prepNew')) { plan = null; LS.set('plan', null); return render(); }

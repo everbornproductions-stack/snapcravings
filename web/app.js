@@ -105,7 +105,7 @@ const loading = (msg) => `<div class="card" style="text-align:center;padding:26p
 
 /* MY DIET + SETTINGS */
 const DIET_TAGS = ['Gluten-free', 'Dairy-free', 'Vegetarian', 'Vegan', 'Nut allergy', 'Shellfish allergy', 'Egg-free', 'Soy allergy', 'Keto/low-carb', 'Halal'];
-const MOODS = ['Mexican', 'Asian', 'Italian', 'Comfort food', 'Mediterranean', 'Indian'];
+const MOODS = ['Mexican', 'Asian', 'Italian', 'Southern', 'Comfort food', 'Mediterranean', 'Indian', 'Quick 15-min', 'High-protein', 'Budget', 'Kid-friendly'];
 let diet = Object.assign({ tags: [], other: '', mood: '' }, LS.get('diet', {}));
 const dietOn = () => !!(diet.tags.length || diet.other.trim() || diet.mood.trim());
 const prefs = () => ({ tags: diet.tags, other: diet.other.trim(), mood: diet.mood.trim() });
