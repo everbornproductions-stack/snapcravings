@@ -1,0 +1,30 @@
+Hola, {{FIRST_NAME|qué tal}}:
+
+SnapCravings convierte una foto de tu refri en recetas que van con lo que se te antoja. Estamos invitando a un grupo pequeño a probarla antes del lanzamiento y nos encantaría que fueras de los primeros.
+
+- Tómale foto a tu refri y mira qué puedes cocinar ahora mismo
+- Dinos tu antojo y recibe recetas a la medida
+- ¿Lo cocinas o lo pides? Descubre si cocinar sale mejor que pedir a domicilio
+
+PRUEBA SNAPCRAVINGS (gratis, funciona en cualquier celular desde hoy):
+https://snapcravings.pages.dev
+
+¿Quieres la app en tu celular?
+
+IPHONE: agrégala a tu pantalla de inicio hoy
+Abre https://snapcravings.pages.dev en Safari, toca Compartir y luego "Agregar a inicio". La versión del App Store llega pronto.
+[opcional, después: Únete a la beta de iPhone en TestFlight: {{IOS_TESTFLIGHT_LINK}}]
+
+ANDROID: únete a nuestra prueba gratis de 14 días en Google Play
+Entra a Google Play con una cuenta de Gmail, abre este enlace y elige "Convertirse en verificador": {{TESTER_LINK}}
+Luego instala SnapCravings y úsala algunas veces durante 14 días.
+O abre https://snapcravings.pages.dev en Chrome y toca "Instalar app".
+
+¿Ideas o errores? Solo responde este correo. Leemos cada mensaje.
+
+Gracias por ayudarnos a cocinar esto,
+El equipo de SnapCravings
+Una producción de Everborn
+
+Recibes este correo porque estás en nuestros contactos. ¿No quieres recibir correos como este? Responde "cancelar suscripción" y te quitamos de la lista.
+Everborn Marketing LLC · 521 Woodside Oaks Apt 2 · Sacramento, CA 95825

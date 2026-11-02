@@ -83,9 +83,34 @@ const staplesFor = d => dietStaples(d, STAPLES);
 
 // The craving itself may name a forbidden food ("shrimp scampi" with a shellfish allergy): say so, so the model adapts instead of repeating it.
 const cravingNote = (d, craving) => { const h = d.hard ? [...new Set(hits(d, craving).map(x => x.toLowerCase()))] : []; return h.length ? `NOTE: the craving mentions ${h.join(', ')}, which the user must NEVER eat. Do not use ${h.join(' or ')} anywhere. Make a fully compliant dish inspired by the craving (for example swap in a safe main ingredient) and say what you swapped in the recipe name.\n` : ''; };
+// Language: 'es' gets Spanish output (recipes, steps, ingredient names) and Spanish error messages. Enums stay English.
+const langOf = (b, request) => { const l = String(b?.lang || request?.headers.get('x-sc-lang') || '').toLowerCase(); return l.startsWith('es') ? 'es' : 'en'; };
+const LANG_NOTE = { es: '\nLANGUAGE: Write every user-facing text value in natural, friendly Latin American Spanish (Mexico-neutral): recipe names, ingredient item names, quantities (use metric or common Spanish units like taza, cucharada, cucharadita, pieza), missing items and every step. Use common Latin American food words (for example jitomate or tomate, frijoles, elote, camarón, cacahuate, aguacate). Keep the JSON keys and the enum values for level (Easy, Medium, Chef mode) and category exactly in English. Prices stay in USD. The diet and allergy rules above apply exactly the same in Spanish.', en: '' };
+const ERR = {
+  'Not found': 'No encontrado', 'Those photos are too big. Try fewer photos.': 'Esas fotos pesan mucho. Prueba con menos fotos.',
+  'Whoa, hungry! You hit the hourly limit. Try again soon.': '¡Uy, qué hambre! Llegaste al límite por hora. Intenta de nuevo pronto.', 'Bad request': 'Solicitud inválida',
+  'AI is not set up yet (missing GEMINI_API_KEY).': 'La IA todavía no está lista.', 'Add at least one photo!': '¡Agrega al menos una foto!',
+  'Photos must be JPEG, PNG or WebP.': 'Las fotos deben ser JPEG, PNG o WebP.', 'One photo is too big (max 1.5 MB).': 'Una foto pesa demasiado (máx. 1.5 MB).',
+  "You've used your 3 free scans this week.": 'Ya usaste tus 3 escaneos gratis de esta semana.',
+  'None of your ingredients fit your diet. Add a few that do, or edit My diet!': 'Ninguno de tus ingredientes va con tu dieta. ¡Agrega algunos que sí, o cambia Mi dieta!',
+  'Add some ingredients first!': '¡Primero agrega algunos ingredientes!', 'Name a craving first!': '¡Primero dinos qué se te antoja!',
+  "We couldn't find recipes that fit your diet with these ingredients. Tap Retry or add a few more ingredients!": 'No encontramos recetas que vayan con tu dieta con estos ingredientes. ¡Toca Reintentar o agrega más ingredientes!',
+  "Couldn't make that one fit your diet. Try a different craving!": 'No pudimos adaptar ese platillo a tu dieta. ¡Prueba otro antojo!',
+  'Something went sideways. Try again!': 'Algo salió mal. ¡Intenta de nuevo!', 'The recipe brain hiccuped. Tap Retry!': 'El cerebro de recetas tuvo un hipo. ¡Toca Reintentar!',
+  'Our kitchen is busy. Tap Retry in a moment!': 'Nuestra cocina está llena. ¡Toca Reintentar en un momento!', 'That took too long. Tap Retry!': 'Tardó demasiado. ¡Toca Reintentar!'
+};
 const clean = (a, n = 60) => (Array.isArray(a) ? a : []).map(s => String(s).slice(0, 80)).filter(Boolean).slice(0, n);
 
-export async function onRequest({ request, env, params }) {
+export async function onRequest(ctx) {
+  const res = await handle(ctx);
+  const lang = ctx.request.headers.get('x-sc-lang') || '';
+  if (!String(lang).toLowerCase().startsWith('es') || res.status < 400) return res;
+  const j = await res.clone().json().catch(() => null);
+  if (!j || !j.error) return res;
+  const e = ERR[j.error] || (/^Up to \d+ photos at a time\.$/.test(j.error) ? j.error.replace(/^Up to (\d+) photos at a time\./, 'Hasta $1 fotos a la vez.') : j.error);
+  return json({ ...j, error: e }, res.status);
+}
+async function handle({ request, env, params }) {
   const route = (params.path || [])[0];
   if (route === 'health') return json({ ok: true, model: env.GEMINI_MODEL || MODEL, ai: !!env.GEMINI_API_KEY || env.MOCK_AI === '1' ? 'ready' : 'missing GEMINI_API_KEY' });
   if (route === 'dietcheck' && request.method === 'POST') { // no AI: which of these names break the user's diet (used to clean the grocery list)
@@ -102,7 +127,7 @@ export async function onRequest({ request, env, params }) {
   // Free plan: 3 scans (a scan = one Go, many photo batches share one scan id) per IP per week; Unlimited token skips it.
   if (!env.GEMINI_API_KEY && env.MOCK_AI !== '1') return json({ error: 'AI is not set up yet (missing GEMINI_API_KEY).' }, 503);
 
-  let parts;
+  let parts; const lang = langOf(body, request); const LN = LANG_NOTE[lang];
   if (route === 'scan') {
     const imgs = Array.isArray(body.images) ? body.images : [];
     if (!imgs.length) return json({ error: 'Add at least one photo!' }, 400);
@@ -117,7 +142,7 @@ export async function onRequest({ request, env, params }) {
       if (m[3].length * 0.75 > MAX_IMAGE_BYTES) return json({ error: 'One photo is too big (max 1.5 MB).' }, 413);
       parts.push({ inlineData: { mimeType: m[1], data: m[3] } });
     }
-    parts.push({ text: `These ${imgs.length} photos are all from ONE kitchen; each is labeled with its area (fridge, freezer, pantry, spices). Analyze ALL photos together and return ONE combined, de-duplicated inventory: if the same item appears in several photos, list it once. List every distinct food item you can see, explicitly including spices, dried herbs, seasonings and blends, salt and pepper, sauces, oils, vinegars and condiments (read jar and bottle labels). For each give a short common name (e.g. "smoked paprika", "soy sauce", "olive oil"), a rough quantity (e.g. "6 eggs", "half a jar", "about 1 lb"), a category (Produce, Proteins, Dairy, Pantry, Spices & Seasonings; sauces, oils and condiments go in Pantry; spices, dried herbs, salt, pepper and seasoning blends go in Spices & Seasonings), and low=true if it looks nearly empty or running low. Ignore non-food items. If no food is visible, return an empty list.` });
+    parts.push({ text: `These ${imgs.length} photos are all from ONE kitchen; each is labeled with its area (fridge, freezer, pantry, spices). Analyze ALL photos together and return ONE combined, de-duplicated inventory: if the same item appears in several photos, list it once. List every distinct food item you can see, explicitly including spices, dried herbs, seasonings and blends, salt and pepper, sauces, oils, vinegars and condiments (read jar and bottle labels). For each give a short common name (e.g. "smoked paprika", "soy sauce", "olive oil"), a rough quantity (e.g. "6 eggs", "half a jar", "about 1 lb"), a category (Produce, Proteins, Dairy, Pantry, Spices & Seasonings; sauces, oils and condiments go in Pantry; spices, dried herbs, salt, pepper and seasoning blends go in Spices & Seasonings), and low=true if it looks nearly empty or running low. Ignore non-food items. If no food is visible, return an empty list.${lang === 'es' ? ' LANGUAGE: write each name and qty in natural Latin American Spanish (for example "pimentón ahumado", "salsa de soya", "aceite de oliva", "6 huevos", "medio frasco"). Keep category values exactly in English as listed.' : ''}` });
     const g = await scanGate(env, request, ip);
     if (!g.allowed) return json({ error: "You've used your 3 free scans this week.", paywall: true }, 402);
   } else if (route === 'recipes') {
@@ -128,11 +153,11 @@ export async function onRequest({ request, env, params }) {
     const ask = section === 'ready'
       ? 'Give exactly 5 recipes that use ONLY the ingredients on hand plus staples. missing must be an empty list and every ingredient have=true.' + (diet.hard ? ' Any diet substitution must also come from the on-hand items or staples; if it cannot, pick a different dish.' : '')
       : 'Give exactly 5 recipes matching the craving that need 1 to 4 extra items. List those in missing with a rough US grocery price in USD (est_price) for the smallest common package, and mark them have=false in ingredients.';
-    parts = [{ text: `Ingredients on hand (items marked [spice] are spices/seasonings the user owns; use them to flavor the recipes): ${ing.join('; ')}.\nAlways available staples: ${staplesFor(diet)}.\nCraving: ${craving}.\n${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}${ask} Use a handful of the on-hand items per recipe, not all of them. Make the 5 a mix: 2 quick Easy dishes (level Easy, at most 8 ingredients, 5 short steps), 2 Medium dishes (level Medium, at most 10 ingredients, 7 steps), and 1 elaborate restaurant-style showstopper (if you can, a 2nd different one is welcome instead of a 2nd Easy) (level Chef mode: more technique, layered flavors, a pan sauce, glaze, marinade or crispy element, and a plating tip in the last step; up to 14 ingredients and 10 clear steps). Keep each step to one or two sentences. REQUIRED: at least 1 of the 5 MUST be level Chef mode, even when extra items are needed.${section === 'more' ? ' Build the Chef mode dish around a special ingredient from the missing list (e.g. a premium protein, seafood, or specialty item), not chicken.' : ' Build the Chef mode dish around an on-hand protein or vegetable.'}${avoid.length ? ' Each dish, especially the Chef mode one, must use a different main ingredient and technique than the already-shown recipes.' : ''} Order them Easy, Medium, Chef mode. All 5 must be clearly different dishes.${avoid.length ? ' Do NOT repeat or closely copy these already-shown recipes: ' + avoid.join('; ') + '. Give new, different dishes.' : ''} One food emoji per recipe. 2 servings unless the dish needs more.` }];
+    parts = [{ text: `Ingredients on hand (items marked [spice] are spices/seasonings the user owns; use them to flavor the recipes): ${ing.join('; ')}.\nAlways available staples: ${staplesFor(diet)}.\nCraving: ${craving}.\n${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}${ask} Use a handful of the on-hand items per recipe, not all of them. Make the 5 a mix: 2 quick Easy dishes (level Easy, at most 8 ingredients, 5 short steps), 2 Medium dishes (level Medium, at most 10 ingredients, 7 steps), and 1 elaborate restaurant-style showstopper (if you can, a 2nd different one is welcome instead of a 2nd Easy) (level Chef mode: more technique, layered flavors, a pan sauce, glaze, marinade or crispy element, and a plating tip in the last step; up to 14 ingredients and 10 clear steps). Keep each step to one or two sentences. REQUIRED: at least 1 of the 5 MUST be level Chef mode, even when extra items are needed.${section === 'more' ? ' Build the Chef mode dish around a special ingredient from the missing list (e.g. a premium protein, seafood, or specialty item), not chicken.' : ' Build the Chef mode dish around an on-hand protein or vegetable.'}${avoid.length ? ' Each dish, especially the Chef mode one, must use a different main ingredient and technique than the already-shown recipes.' : ''} Order them Easy, Medium, Chef mode. All 5 must be clearly different dishes.${avoid.length ? ' Do NOT repeat or closely copy these already-shown recipes: ' + avoid.join('; ') + '. Give new, different dishes.' : ''} One food emoji per recipe. 2 servings unless the dish needs more.${LN}` }];
   } else {
     const diet = dietOf(body.prefs); const craving = String(body.craving || '').slice(0, 80).trim(); const ing = clean(body.ingredients).filter(x => !bad(diet, x));
     if (!craving) return json({ error: 'Name a craving first!' }, 400);
-    parts = [{ text: `Craving: ${craving}.\nIngredients the user has: ${ing.length ? ing.join('; ') : 'unknown, assume only staples'}.\nStaples: ${staplesFor(diet)}.\n${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}Give one home recipe for this craving (2 servings)${diet.hard ? ', adapted so it fully follows the rules above (swap forbidden ingredients and name the swaps)' : ''}. Mark have=true for ingredients they have or staples. List everything else in missing with a rough US grocery price estimate in USD for the smallest common package. est_cook_cost = estimated cost of ALL ingredients used in the recipe (portion actually used), USD.` }];
+    parts = [{ text: `Craving: ${craving}.\nIngredients the user has: ${ing.length ? ing.join('; ') : 'unknown, assume only staples'}.\nStaples: ${staplesFor(diet)}.\n${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}Give one home recipe for this craving (2 servings)${diet.hard ? ', adapted so it fully follows the rules above (swap forbidden ingredients and name the swaps)' : ''}. Mark have=true for ingredients they have or staples. List everything else in missing with a rough US grocery price estimate in USD for the smallest common package. est_cook_cost = estimated cost of ALL ingredients used in the recipe (portion actually used), USD.${LN}` }];
   }
 
   const dd = route === 'scan' ? null : dietOf(body.prefs); const sd = route === 'scan' ? dietOf(body.prefs) : null;
@@ -147,7 +172,7 @@ export async function onRequest({ request, env, params }) {
       for (let i = 0; i < 3; i++) {
         for (const r of attempt.recipes || []) { const h = recipeHits(dd, r); if (h.length) h.forEach(x => banned.add(x)); else if (!keep.some(k => k.name?.toLowerCase() === r.name?.toLowerCase())) keep.push(r); }
         if (keep.length >= 4 || Date.now() - t0 > 40000 || i === 2) break;
-        const fb = banned.size ? [{ text: `IMPORTANT: your previous answer broke the user's rules by using: ${[...banned].slice(0, 12).join(', ')}. Never use these (or anything made with them), not as an ingredient, garnish or step. Give 5 NEW compliant dishes.` }] : [];
+        const fb = banned.size ? [{ text: `IMPORTANT: your previous answer broke the user's rules by using: ${[...banned].slice(0, 12).join(', ')}. Never use these (or anything made with them), not as an ingredient, garnish or step. Give 5 NEW compliant dishes.${LN}` }] : [];
         try { attempt = (await gemini(env, route, [...parts, ...fb])).data; tried += (attempt.recipes || []).length; } catch { break; }
       }
       console.log('diet', dd.tags.join('+'), 'kept', keep.length, 'of', tried);
@@ -157,7 +182,7 @@ export async function onRequest({ request, env, params }) {
     if (route === 'crave' && dd.hard) {
       let h = recipeHits(dd, data.recipe);
       for (let i = 0; i < 2 && h.length; i++) {
-        const again = await gemini(env, route, [...parts, { text: `IMPORTANT: your previous answer broke the user's rules by using: ${h.slice(0, 12).join(', ')}. Never use these (or anything made with them), not as an ingredient, garnish or step. If the craving normally needs them, make a compliant version and say so in the name.` }]);
+        const again = await gemini(env, route, [...parts, { text: `IMPORTANT: your previous answer broke the user's rules by using: ${h.slice(0, 12).join(', ')}. Never use these (or anything made with them), not as an ingredient, garnish or step. If the craving normally needs them, make a compliant version and say so in the name.${LN}` }]);
         data = again.data; h = recipeHits(dd, data.recipe);
       }
       if (h.length) return json({ error: "Couldn't make that one fit your diet. Try a different craving!", why: h.slice(0, 12) }, 502);

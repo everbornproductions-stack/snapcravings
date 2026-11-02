@@ -1,0 +1,30 @@
+Hi {{FIRST_NAME|there}},
+
+SnapCravings turns a photo of your fridge into recipes that match what you're craving. We're inviting a small group to try it before launch, and we'd love you to be one of the first.
+
+- Snap your fridge and see what you can cook right now
+- Name a craving and get recipes that fit it
+- Make it or take it? See if cooking beats delivery
+
+TRY SNAPCRAVINGS (free, works on any phone right now):
+https://snapcravings.pages.dev
+
+Want the app on your phone?
+
+IPHONE: add it to your Home Screen today
+Open https://snapcravings.pages.dev in Safari, tap Share, then "Add to Home Screen". The App Store version is coming soon.
+[optional, later: Join the iPhone beta on TestFlight: {{IOS_TESTFLIGHT_LINK}}]
+
+ANDROID: join our free 14-day Google Play test
+Sign in to Google Play with a Gmail account, open this link and choose "Become a tester": {{TESTER_LINK}}
+Then install SnapCravings and use it a few times over 14 days.
+Or open https://snapcravings.pages.dev in Chrome and tap "Install app".
+
+Ideas or bugs? Just reply. We read every note.
+
+Thanks for helping us cook this up,
+The SnapCravings team
+An Everborn Production
+
+You're receiving this because you're in our contacts. Don't want emails like this? Reply "unsubscribe" and we'll take you off the list.
+Everborn Marketing LLC · 521 Woodside Oaks Apt 2 · Sacramento, CA 95825

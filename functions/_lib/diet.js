@@ -36,28 +36,49 @@ const KETOSTRIP = new RegExp('(?:cauliflower|zucchini|shirataki|konjac|almond|co
 const KETO = [/\b(sugar|brown sugar|powdered sugar|honey|maple syrup|agave|syrup|molasses|flour|bread|breadcrumbs?|panko|pasta|noodles?|spaghetti|macaroni|couscous|rice|risotto|potatoes?|fries|chips|corn|cornmeal|cornstarch|polenta|oats|oatmeal|granola|cereal|quinoa|barley|bulgur|farro|beans?|lentils?|chickpeas?|hummus|tortillas?|wraps|pita|naan|buns?|rolls|bagels?|crackers?|pretzels?|dough|ketchup|bbq sauce|barbecue sauce|teriyaki|hoisin|sweet chili|jam|jelly|banana|mango|grapes?|raisins?|dates|pineapple|orange juice|apple juice|fruit juice|grape juice|cranberry juice|beer|gnocchi|udon|ramen|sweet potato|yams?|(?<!cheese )cake|cookies?|pancakes?|waffles?|muffins?|candy|soda)\b/i, /keto|low[- ]carb/i, KETOSTRIP];
 const HALALSTRIP = /(?:rice|wine|balsamic|cider|malt) vinegar|(?:chicken|turkey|beef|lamb|veal|halal) (?:sausages?|bacon|hot dogs?)|vanilla extract/gi;
 const HALAL = [/\b(pork|bacon|ham|prosciutto|pancetta|pepperoni|salami|lard|gelatin|chorizo|wine|beer|rum|bourbon|whiskey|whisky|vodka|sake|mirin|brandy|liqueur|champagne|sherry|marsala|cognac|hot dogs?|sausages?|gammon|speck|guanciale|alcohol|liquor|stout|lager|ale|tequila|amaretto)\b/i, /halal|non[- ]alcoholic|alcohol[- ]free/i, HALALSTRIP];
+// Spanish equivalents (text is accent-stripped before matching, so write these without accents).
+const W = s => new RegExp('\\b(' + s + ')\\b', 'i');
+const ES = {
+  NUT: [W('cacahuates?|cacahuetes?|mani|manies|almendras?|nuez|nueces|anacardos?|maranon(?:es)?|pecanas?|pistaches?|pistachos?|avellanas?|pinones?|pinon|castanas?|mazapan|turron|crema de cacahuate|mantequilla de mani|frutos secos|garapinados?'), /sin (?:nueces|frutos secos|cacahuate|mani)|libre de (?:nueces|frutos secos)/i, /nuez moscada|castanas? de agua|coco/gi],
+  SHELL: [W('camarones|camaron|gambas?|langostinos?|langostas?|cangrejos?|jaibas?|almejas?|mejillones|mejillon|ostras?|ostion(?:es)?|vieiras?|callos de hacha|calamares|calamar|pulpos?|mariscos?|surimi|pasta de camaron|salsa de ostion(?:es)?|salsa de ostras?|chilpachole'), /sin mariscos|vegan[oa]s?|de origen vegetal/i, /(?:hongos?|setas?) (?:ostra|ostion)/gi],
+  SOY: [W('soja|salsa de soya|salsa de soja|leche de soya|lecitina de soya|salsa teriyaki|salsa hoisin'), /sin soya|sin soja|libre de soya/i, null],
+  GLUTEN: [W('trigo|harina|harinas|pan|panes|pan rallado|pan molido|empanizad[oa]s?|capeado|capeados?|fideos?|tallarines|espagueti|espaguetis|macarrones|cuscus|cebada|centeno|semola|galletas?|cerveza|seitan|salsa de soya|salsa de soja|bolillos?|teleras?|empanadas?|pasteles?|pastel|panqueques?|hot ?cakes|avena|bizcochos?|tostado de pan|crutones'), /sin gluten|libre de gluten|certificad/i, /(?:harina|pasta|fideos?|tallarines|tortillas?|pan|galletas?|tostadas?)\s+(?:de|sin)\s+(?:arroz|maiz|garbanzo|almendra|coco|yuca|papa|quinoa|tapioca|gluten)|maicena|fecula de maiz|vinagre de arroz|papel de arroz|tostadas? de maiz/gi],
+  DAIRY: [W('leche|leches|queso|quesos|mantequilla|crema|nata|yogur|yogurt|yogures|requeson|jocoque|suero de leche|helados?|cajeta|dulce de leche|lacteos?|panela|cotija|oaxaca|manchego|parmesano|chihuahua|crema agria|media crema|leche condensada|leche evaporada|natillas?|flan|chongos'), /sin lacteos|libre de lacteos|vegan[oa]s?|de origen vegetal|no lacteo/i, /(?:leche|crema|yogur|yogurt|queso|mantequilla)\s+de\s+(?:coco|almendras?|avena|soya|soja|arroz|cacahuate|mani|nuez|anacardo|maranon)|mantequilla de cacao|levadura nutricional|crema tartara|crema de cacahuate|crema de (?:coco|verduras|calabaza)|aceite de coco|sin crema/gi],
+  EGG: [W('huevos?|yemas?|claras? de huevo|mayonesa|merengues?|natillas?|flan|panqueques?|hot ?cakes|pasteles?|pastel|galletas?|capeado|capeados?|rompope|tortilla espanola|tortilla de papas|pan de yema'), /sin huevo|vegan[oa]s?|libre de huevo|huevo de linaza|linaza/i, null],
+  MEAT: [W('pollo|res|carne|carnes|cerdo|puerco|tocino|jamon|salchichas?|pavo|cordero|ternera|pato|bistec|bisteces|chuletas?|barbacoa|pescados?|atun|anchoas?|sardinas?|bacalao|trucha|camarones|camaron|mariscos?|calamar|calamares|pulpo|gelatina|manteca|suadero|pastor|cecina|machaca|birria|longaniza|chicharron|higado|tripas|menudo|caldo de pollo|caldo de res|consome|caldo de pescado|salsa de pescado|salsa de ostion(?:es)?|albondigas|milanesa'), /vegetarian[oa]s?|vegan[oa]s?|de origen vegetal|sin carne/i, /(?:caldo|consome) de (?:verduras|vegetales|hongos)|bistec de coliflor|chicharron de (?:harina|queso)|carne de soya|tofu|tempeh/gi],
+  MEAT2: [W('caldo|consome|consomme|caldo de pollo en polvo|consomate|knorr'), /vegetarian[oa]s?|vegan[oa]s?|de verduras|de vegetales|de hongos/i, null],
+  HONEY: [W('miel'), /vegan[oa]s?|miel de (?:agave|maple)|jarabe de agave/i, /miel de (?:agave|maple)/gi],
+  KETO: [W('azucar|azucar morena|miel|jarabe|piloncillo|harina|pan|panes|fideos?|tallarines|espagueti|arroz|papas?|patatas?|maiz|elote|avena|frijoles|lentejas|garbanzos|habas|tostadas?|totopos|platanos?|uvas?|pasas|datiles|pina|jugo|jugos|cerveza|camote|bolillos?|galletas?|pasteles?|pastel|dulces|refresco|catsup|salsa barbecue|mermelada|ate'), /keto|bajo en carbohidratos|sin azucar/i, /arroz de coliflor|fideos de calabacita|espagueti de calabaza|harina de (?:almendra|coco)|tortillas? de (?:almendra|coco|lechuga)|pan de (?:nube|almendra)|vinagre de (?:arroz|vino|manzana)|sin azucar|edulcorante|stevia|ejotes|chiles?|vainilla/gi],
+  HALAL: [W('cerdo|puerco|tocino|jamon|manteca de cerdo|manteca|gelatina|salchichas?|longaniza|carnitas|chicharron|vino|vinos|cerveza|ron|tequila|mezcal|licor|alcohol|brandy|jerez|al pastor|cochinita'), /halal|sin alcohol/i, /vinagre de (?:vino|manzana|arroz)|(?:salchichas?|chorizo|jamon|tocino) de (?:pollo|pavo|res|cordero)|extracto de vainilla/gi]
+};
+// Pair each English rule with its Spanish twin so safe labels and safe compounds work in both languages
+// ("tortillas de maiz" clears the English "tortillas"; "gluten-free" clears the Spanish "pasta").
+const orRe = (a, b, f) => a && b ? new RegExp(a.source + '|' + b.source, f) : (a || b);
+const pair = (en, es) => [[en[0], orRe(en[1], es[1], 'i'), orRe(en[2], es[2], 'gi')], [es[0], orRe(es[1], en[1], 'i'), orRe(es[2], en[2], 'gi')]];
 export const RULES = {
-  'Gluten-free': [GLUTEN], 'Dairy-free': [DAIRY], 'Vegetarian': [MEAT, MEAT2], 'Vegan': [MEAT, MEAT2, DAIRY, EGG, [/\b(honey|beeswax|royal jelly)\b/i, /vegan|agave|maple/i, null]],
-  'Nut allergy': [NUT], 'Shellfish allergy': [SHELL], 'Egg-free': [EGG], 'Soy allergy': [SOY], 'Keto/low-carb': [KETO], 'Halal': [HALAL]
+  'Gluten-free': pair(GLUTEN, ES.GLUTEN), 'Dairy-free': pair(DAIRY, ES.DAIRY), 'Vegetarian': [...pair(MEAT, ES.MEAT), ...pair(MEAT2, ES.MEAT2)],
+  'Vegan': [...pair(MEAT, ES.MEAT), ...pair(MEAT2, ES.MEAT2), ...pair(DAIRY, ES.DAIRY), ...pair(EGG, ES.EGG), ...pair([/\b(honey|beeswax|royal jelly)\b/i, /vegan|agave|maple/i, null], ES.HONEY)],
+  'Nut allergy': pair(NUT, ES.NUT), 'Shellfish allergy': pair(SHELL, ES.SHELL), 'Egg-free': pair(EGG, ES.EGG), 'Soy allergy': pair(SOY, ES.SOY), 'Keto/low-carb': pair(KETO, ES.KETO), 'Halal': pair(HALAL, ES.HALAL)
 };
 const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const SPLIT = /[,;\/&+]|\s(?:and|with|or|plus|over|on top of)\s/;
-const phrases = t => String(t ?? '').toLowerCase().replace(/[()\[\]]/g, ' ').split(SPLIT).map(s => s.trim()).filter(Boolean);
-const NEG = /\b(no|not|without|skip|omit|never|instead of|free|avoid|replace[sd]?|substitut\w*|swap\w*|leave out|don'?t|do not)\b/;
+const SPLIT = /[,;\/&+]|\s(?:and|with|or|plus|over|on top of|y|con|o|u|mas|sobre|encima de)\s/;
+const deacc = t => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const phrases = t => deacc(t).toLowerCase().replace(/[()\[\]]/g, ' ').split(SPLIT).map(s => s.trim()).filter(Boolean);
+const NEG = /\b(no|not|without|skip|omit|never|instead of|free|avoid|replace[sd]?|substitut\w*|swap\w*|leave out|don'?t|do not|sin|omite|omitir|evita|evitar|en lugar de|en vez de|reemplaza\w*|sustituye\w*|cambia\w*|quita\w*|nunca)\b/;
 
 export function dietOf(p) {
   p = p && typeof p === 'object' ? p : {};
   const tags = (Array.isArray(p.tags) ? p.tags : []).map(String).filter(t => DIET_TAGS.includes(t));
   const flat = v => String(v || '').replace(/[\r\n\t]+/g, ', ').replace(/[<>{}\[\]`"\\]/g, '').trim();
-  const other = flat(p.other).slice(0, 200), mood = flat(p.mood).slice(0, 120);
+  const other = deacc(flat(p.other)).slice(0, 200), mood = flat(p.mood).slice(0, 120);
   const rules = tags.flatMap(t => RULES[t] || []);
   // "Other allergies or foods I don't eat": a plain list ("soy, sesame, cilantro") or phrases ("no olives", "allergic to kiwi").
   const terms = [];
-  for (const chunk of other.toLowerCase().split(/[,;\n]|\band\b|\bor\b/)) {
-    const m = /^\s*(?:i\s+)?(?:am\s+|'m\s+)?(?:allergic to|allergy to|allergies to|no|without|avoid|hate|can'?t eat|cannot eat|don'?t like|dont like|don'?t eat|dont eat|skip)?\s*(?:(?:any|the|all)\s+)?([a-z][a-z' -]{1,30})\s*$/.exec(chunk);
-    if (m) { const w = m[1].trim(); if (w.length > 2 && !/^(allerg\w*|foods?|anything|nothing|none|n\/a|na|other)$/.test(w)) terms.push(w); }
+  for (const chunk of other.toLowerCase().split(/[,;\n]|\band\b|\bor\b|\sy\s|\so\s/)) {
+    const m = /^\s*(?:i\s+)?(?:am\s+|'m\s+)?(?:allergic to|allergy to|allergies to|no|without|avoid|hate|can'?t eat|cannot eat|don'?t like|dont like|don'?t eat|dont eat|skip|soy alergic[oa] a|alergic[oa] a|alergia a(?:l)?|alergias a|no como|no puedo comer|no me gusta|nada de|sin|evito)?\s*(?:(?:any|the|all|el|la|los|las)\s+)?([a-z][a-z' -]{1,30})\s*$/.exec(chunk);
+    if (m) { const w = m[1].trim(); if (w.length > 2 && !/^(allerg\w*|alergi\w*|foods?|anything|nothing|none|n\/a|na|other|nada|ninguna?|otros?|comida)$/.test(w)) terms.push(w); }
   }
-  if (terms.length) rules.push([new RegExp('\\b(' + terms.map(t => escRe(t.replace(/(es|s)$/, '')) + '(?:es|s)?').join('|') + ')\\b', 'i'), /\b[a-z]*-?free\b/i, null]);
+  if (terms.length) rules.push([new RegExp('\\b(' + terms.map(t => escRe(t.replace(/(es|s)$/, '')) + '(?:es|s)?').join('|') + ')\\b', 'i'), /\b[a-z]*-?free\b|\bsin [a-z]+/i, null]);
   return { tags, other, mood, rules, terms, active: !!(tags.length || other || mood), hard: !!(tags.length || terms.length) };
 }
 
