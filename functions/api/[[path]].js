@@ -98,12 +98,12 @@ async function cfUsed(add = 0) {
   cfMem.n = n + add; return n + add;
 }
 // Compact answer shapes for providers without schema-constrained decoding (much shorter than the JSON schema).
-const SHAPE = {
-  scan: '{"ingredients":[{"name":str,"qty":str,"category":"Produce"|"Proteins"|"Dairy"|"Pantry"|"Spices & Seasonings","low":bool}]}',
-  recipe: '{"name":str,"emoji":str,"minutes":int,"servings":int,"level":"Easy"|"Medium"|"Chef mode","ingredients":[{"item":str,"qty":str,"have":bool}],"missing":[{"item":str,"qty":str,"est_price":number}],"steps":[str],"kcal":int,"protein_g":int,"carbs_g":int,"fat_g":int}'
+const SHAPE = { // example values show the types; Qwen misread "int" placeholders as keys
+  scan: '{"ingredients":[{"name":"smoked paprika","qty":"half a jar","category":"Spices & Seasonings","low":false}]} (category is one of Produce, Proteins, Dairy, Pantry, Spices & Seasonings)',
+  recipe: '{"name":"...","emoji":"🍳","minutes":20,"servings":2,"level":"Easy","ingredients":[{"item":"eggs","qty":"2","have":true}],"missing":[{"item":"...","qty":"...","est_price":2.5}],"steps":["..."],"kcal":450,"protein_g":25,"carbs_g":40,"fat_g":18} (level is Easy, Medium or Chef mode)'
 };
 SHAPE.recipes = `{"recipes":[${SHAPE.recipe}]}`; SHAPE.crave = `{"recipe":${SHAPE.recipe},"est_cook_cost":number}`;
-const okShape = (route, d) => !!d && typeof d === 'object' && (route === 'scan' ? Array.isArray(d.ingredients) : route === 'recipes' ? Array.isArray(d.recipes) && d.recipes.length > 0 : !!d.recipe);
+const okShape = (route, d) => !!d && typeof d === 'object' && (route === 'scan' ? Array.isArray(d.ingredients) : route === 'recipes' ? Array.isArray(d.recipes) && d.recipes.length > 0 && d.recipes.every(r => r && r.name && Array.isArray(r.steps) && Number.isFinite(+r.minutes)) : !!d.recipe);
 const parseLoose = s => { const t = String(s).replace(/<think>[\s\S]*?<\/think>/g, '').replace(/^```(json)?|```$/g, '').trim(); return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); };
 const sysFor = route => VOICE + ' Reply with ONE JSON object only, no prose, shaped exactly like: ' + SHAPE[route];
 const err = (st, m) => Object.assign(new Error(m || st), { st });
