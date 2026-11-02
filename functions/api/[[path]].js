@@ -51,21 +51,40 @@ const SCHEMAS = {
 };
 const VOICE = 'You write for SnapCravings, a fun, upbeat cooking app. Plain, friendly words. No em-dashes. Recipe steps are complete, specific (times, temperatures, amounts) and safe (cook meat through). For every recipe fill kcal, protein_g, carbs_g and fat_g as realistic PER SERVING estimates for the listed quantities.';
 
-// Model chain: Google's 3.8 Flash is often overloaded (429/503 "high demand") and slow, and a slow model used to block
-// the next one for its whole timeout (22 s + 18 s + 15 s, past the phone's patience). Now the models are hedged: the next
-// model starts as soon as the previous one fails OR has not answered within its head start, and the first good answer wins.
-// Thinking is off on every model (default thinking on flash-lite added ~10 s to each scan for no visible gain).
-// Measured 2026-11-02: 3.8-flash = 429 quota on this key, 2.5-flash-lite = 404 retired, 3.5-flash-lite rejects
-// thinkingBudget:0 (400) but takes thinkingLevel 'minimal' (~5 s vs ~17 s with default thinking).
-// The free key also has a per-minute limit (429): retry the fast model after a short pause before the slow fallbacks.
-// Free backup: Cloudflare Workers AI via the Pages AI binding (env.AI), 10,000 free neurons/day. It joins the hedge after
-// two Gemini attempts (so after a 429 burst, or ~18 s of slowness). A per-day neuron budget (CF_BUDGET) keeps it under
-// the free allowance even if the account is ever on Workers Paid; past the budget the fallback is simply skipped.
-// Measured 2026-11-02 on the preview branch: Scout reads fridge photos in ~5 s; for 5 recipes Scout, Gemma 4, gpt-oss-20b and
-// Llama 3.3 70B took 38-40+ s, Qwen3 30B (thinking off, plain JSON mode) ~15 s and is the cheapest per token.
+// AI engine: a hedged race over FREE providers, ordered by measured speed. Each keyed provider switches on by itself once its
+// secret exists (GROQ_API_KEY, CEREBRAS_API_KEY, MISTRAL_API_KEY, OPENROUTER_API_KEY); Gemini (GEMINI_API_KEY) and the
+// Workers AI binding (env.AI) are always in. The next entry starts when the previous one fails OR after its head start, and
+// the first good answer wins. Gemini free quotas are per model, so several Gemini models are separate buckets.
+// Measured 2026-11-02 (4-5 recipes, minimal thinking): 3.1-flash-lite ~3 s, 3.5-flash-lite ~5 s, 3-flash-preview ~5 s,
+// 3.6-flash often 503, 3.7/3.8-flash 429 (no free quota on this key), 2.5-flash* 404 (closed to new users), Gemma 4 ~60 s.
+// Workers AI: Scout reads photos in ~5 s; Qwen3 30B (thinking off, plain JSON mode) ~15 s for recipes.
+// Streaming: with a sink, each finished recipe is handed over as soon as its closing brace arrives (Gemini SSE and
+// OpenAI-style SSE), so the first card can show while the rest are still being written.
 const CF_MODEL = { scan: '@cf/meta/llama-4-scout-17b-16e-instruct', text: '@cf/qwen/qwen3-30b-a3b-fp8' };
 const CF_MODE = { scan: 'schema', text: 'noschema-nothink' };
-const CHAIN = [['gemini-3.5-flash-lite', { thinkingLevel: 'minimal' }], ['gemini-3.5-flash-lite', { thinkingLevel: 'minimal' }, 2000], ['cf'], ['gemini-3.8-flash', { thinkingBudget: 0 }], ['gemini-3.5-flash-lite', { thinkingLevel: 'minimal' }, 5000], ['gemini-3.5-flash-lite', null]];
+// OpenAI-compatible free providers. text = recipes/crave model, vision = scan model. Override with <NAME>_MODEL / <NAME>_VISION_MODEL.
+const OAI = {
+  cerebras: { key: 'CEREBRAS_API_KEY', url: 'https://api.cerebras.ai/v1/chat/completions', text: 'gpt-oss-120b', vision: 'qwen-3.8-27b' },
+  groq: { key: 'GROQ_API_KEY', url: 'https://api.groq.com/openai/v1/chat/completions', text: 'openai/gpt-oss-20b', vision: 'qwen/qwen3.8-27b' },
+  mistral: { key: 'MISTRAL_API_KEY', url: 'https://api.mistral.ai/v1/chat/completions', text: 'mistral-small-latest', vision: 'mistral-small-latest' },
+  openrouter: { key: 'OPENROUTER_API_KEY', url: 'https://openrouter.ai/api/v1/chat/completions', text: 'google/gemma-4-26b-a4b-it:free', vision: 'google/gemma-4-26b-a4b-it:free' }
+};
+const MIN = { thinkingLevel: 'minimal' };
+// [provider, model, thinking, wait-before-start ms, head start ms]
+function chainFor(env, route) {
+  const L = [];
+  if (env.GEMINI_MODEL) L.push(['gemini', env.GEMINI_MODEL, null]);
+  const has = p => !!env[OAI[p].key];
+  if (has('cerebras')) L.push(['cerebras', null, null, 0, 3500]);
+  if (has('groq')) L.push(['groq', null, null, 0, 3500]);
+  if (route === 'scan') L.push(['gemini', 'gemini-3.5-flash-lite', MIN, 0, 5000], ['gemini', 'gemini-3.1-flash-lite', MIN, 0, 6000]);
+  else L.push(['gemini', 'gemini-3.1-flash-lite', MIN, 0, 3000], ['gemini', 'gemini-3.5-flash-lite', MIN, 0, 5000]);
+  L.push(['gemini', 'gemini-3-flash-preview', MIN, 0, 7000]);
+  if (has('mistral')) L.push(['mistral', null, null, 0, 7000]);
+  if (has('openrouter')) L.push(['openrouter', null, null, 0, 8000]);
+  L.push(['cf'], ['gemini', 'gemini-3.5-flash-lite', MIN, 3000], ['gemini', 'gemini-3.1-flash-lite', MIN, 5000], ['gemini', 'gemini-3.5-flash-lite', null]);
+  return L;
+}
 const HEAD_START = 9000, PER_MODEL = 30000, DEADLINE = 45000;
 // Daily neuron guard for Workers AI (approximate: per-isolate memory + per-colo Cache API counter), priced with Scout's
 // rates (24.5k / 77.3k neurons per M in/out tokens, the dearer of the two models), so the count errs high.
@@ -78,65 +97,133 @@ async function cfUsed(add = 0) {
     if (add) await c.put(key, new Response(String(n + add), { headers: { 'cache-control': 'max-age=90000' } })); } } catch {}
   cfMem.n = n + add; return n + add;
 }
+// Compact answer shapes for providers without schema-constrained decoding (much shorter than the JSON schema).
+const SHAPE = {
+  scan: '{"ingredients":[{"name":str,"qty":str,"category":"Produce"|"Proteins"|"Dairy"|"Pantry"|"Spices & Seasonings","low":bool}]}',
+  recipe: '{"name":str,"emoji":str,"minutes":int,"servings":int,"level":"Easy"|"Medium"|"Chef mode","ingredients":[{"item":str,"qty":str,"have":bool}],"missing":[{"item":str,"qty":str,"est_price":number}],"steps":[str],"kcal":int,"protein_g":int,"carbs_g":int,"fat_g":int}'
+};
+SHAPE.recipes = `{"recipes":[${SHAPE.recipe}]}`; SHAPE.crave = `{"recipe":${SHAPE.recipe},"est_cook_cost":number}`;
+const okShape = (route, d) => !!d && typeof d === 'object' && (route === 'scan' ? Array.isArray(d.ingredients) : route === 'recipes' ? Array.isArray(d.recipes) && d.recipes.length > 0 : !!d.recipe);
+const parseLoose = s => { const t = String(s).replace(/<think>[\s\S]*?<\/think>/g, '').replace(/^```(json)?|```$/g, '').trim(); return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); };
+const sysFor = route => VOICE + ' Reply with ONE JSON object only, no prose, shaped exactly like: ' + SHAPE[route];
+const err = (st, m) => Object.assign(new Error(m || st), { st });
+
+// Pulls each complete object out of {"recipes":[{...},{...  while the text is still arriving.
+function recipeTap(onObj) {
+  let buf = '', pos = 0, depth = 0, inStr = false, esc = false, start = -1;
+  return chunk => {
+    buf += chunk;
+    for (; pos < buf.length; pos++) {
+      const c = buf[pos];
+      if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; continue; }
+      if (c === '"') inStr = true;
+      else if (c === '{' || c === '[') { depth++; if (c === '{' && depth === 3) start = pos; }
+      else if (c === '}' || c === ']') { if (c === '}' && depth === 3 && start >= 0) { try { onObj(JSON.parse(buf.slice(start, pos + 1))); } catch {} start = -1; } depth--; }
+    }
+  };
+}
+// Reads an SSE body and calls onData(parsedJson) per event.
+async function readSSE(body, onData, signal) {
+  const rd = body.getReader(); const dec = new TextDecoder(); let buf = '';
+  const stop = () => { try { rd.cancel(); } catch {} }; signal?.addEventListener('abort', stop);
+  try {
+    for (;;) { const { value, done } = await rd.read(); if (done) break; buf += dec.decode(value, { stream: true }); let k;
+      while ((k = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, k).trim(); buf = buf.slice(k + 1);
+        if (!line.startsWith('data:')) continue; const d = line.slice(5).trim(); if (!d || d === '[DONE]') continue; try { onData(JSON.parse(d)); } catch {} } }
+  } finally { signal?.removeEventListener('abort', stop); }
+  if (signal?.aborted) throw Object.assign(new Error('timeout'), { name: 'AbortError' });
+}
+
 async function workersAI(env, route, parts, signal) {
   const budget = +(env.CF_BUDGET || 6000);
-  if (!env.AI) throw Object.assign(new Error('no AI binding'), { st: 'nobinding' });
-  if (await cfUsed() >= budget) throw Object.assign(new Error('budget'), { st: 'budget' });
+  if (!env.AI) throw err('nobinding');
+  if (await cfUsed() >= budget) throw err('budget');
   const content = parts.map(p => p.inlineData ? { type: 'image_url', image_url: { url: `data:${p.inlineData.mimeType};base64,${p.inlineData.data}` } } : { type: 'text', text: p.text });
   const model = (env.__cfModel && env.__cfModel.startsWith('@cf/')) ? env.__cfModel : route === 'scan' ? CF_MODEL.scan : CF_MODEL.text;
   const mode = env.__cfMode || (route === 'scan' ? CF_MODE.scan : CF_MODE.text); const noSchema = mode.includes('noschema');
-  const sys = VOICE + ' Reply with ONE JSON object only, no prose, matching this JSON schema: ' + JSON.stringify(SCHEMAS[route]) + (mode.includes('nothink') ? ' /no_think' : '');
+  const sys = noSchema ? sysFor(route) + (mode.includes('nothink') ? ' /no_think' : '') : VOICE + ' Reply with ONE JSON object only.';
   const run = env.AI.run(model, { messages: [{ role: 'system', content: sys }, { role: 'user', content }],
     ...(noSchema ? { response_format: { type: 'json_object' } } : { response_format: { type: 'json_schema', json_schema: SCHEMAS[route] } }), max_tokens: 6000, temperature: 0.6 });
   const out = await Promise.race([run, new Promise((_, rej) => signal.addEventListener('abort', () => rej(Object.assign(new Error('timeout'), { name: 'AbortError' }))))]);
   const u = out?.usage || {}; await cfUsed(Math.ceil((u.prompt_tokens || 3000) * CF_PRICE.in + (u.completion_tokens || 3000) * CF_PRICE.out));
-  let data = out?.response ?? out?.choices?.[0]?.message?.content; if (typeof data === 'string') { const t = data.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/^```(json)?|```$/g, '').trim(); data = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); }
-  if (!data || typeof data !== 'object' || !(route === 'scan' ? Array.isArray(data.ingredients) : route === 'recipes' ? Array.isArray(data.recipes) && data.recipes.length : data.recipe)) throw Object.assign(new Error('badjson'), { st: 'badjson' });
+  let data = out?.response ?? out?.choices?.[0]?.message?.content; if (typeof data === 'string') data = parseLoose(data);
+  if (!okShape(route, data)) throw err('badjson');
   return { data, model, in: u.prompt_tokens, out: u.completion_tokens };
 }
-async function gemini(env, route, parts) {
-  const chain = env.GEMINI_MODEL ? [[env.GEMINI_MODEL, null], ...CHAIN] : CHAIN;
-  const tries = []; const ctls = []; const T0 = Date.now();
-  let last = 'The recipe brain hiccuped. Tap Retry!';
-  const one = async ([model, thinking, wait]) => {
+// One OpenAI-compatible call (Groq, Cerebras, Mistral, OpenRouter), streamed when a tap is given.
+async function openAI(env, name, route, parts, signal, tap) {
+  const P = OAI[name]; const scan = route === 'scan'; const up = name.toUpperCase();
+  const model = (scan ? env[up + '_VISION_MODEL'] : env[up + '_MODEL']) || (scan ? P.vision : P.text);
+  const content = parts.map(p => p.inlineData ? { type: 'image_url', image_url: { url: `data:${p.inlineData.mimeType};base64,${p.inlineData.data}` } } : { type: 'text', text: p.text });
+  const body = { model, messages: [{ role: 'system', content: sysFor(route) }, { role: 'user', content: scan ? content : content.map(c => c.text).join('\n') }],
+    response_format: { type: 'json_object' }, temperature: 0.6, max_tokens: 6000, stream: !!tap };
+  if (/gpt-oss/.test(model)) body.reasoning_effort = 'low';
+  const r = await (env.__fetch || fetch)(P.url, { method: 'POST', signal, headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env[P.key], ...(name === 'openrouter' ? { 'HTTP-Referer': 'https://snapcravings.pages.dev', 'X-Title': 'SnapCravings' } : {}) }, body: JSON.stringify(body) });
+  if (!r.ok) { const msg = (await r.text()).slice(0, 300); throw err(r.status + ' ' + (/"message":\s*"([^"]{0,140})/.exec(msg)?.[1] || ''), msg); }
+  let text = '', u = {};
+  if (tap) await readSSE(r.body, j => { const d = j.choices?.[0]?.delta?.content; if (d) { text += d; tap(d); } if (j.usage) u = j.usage; if (j.error) throw err('stream ' + (j.error.code || '')); }, signal);
+  else { const j = await r.json(); text = j.choices?.[0]?.message?.content || ''; u = j.usage || {}; }
+  let data; try { data = parseLoose(text); } catch { throw err('badjson'); }
+  if (!okShape(route, data)) throw err('badjson');
+  return { data, model, in: u.prompt_tokens, out: u.completion_tokens };
+}
+async function geminiOne(env, model, thinking, route, parts, signal, tap) {
+  const gc = { responseMimeType: 'application/json', responseSchema: SCHEMAS[route], temperature: 0.6, maxOutputTokens: 8000 };
+  if (thinking) gc.thinkingConfig = thinking;
+  const r = await (env.__fetch || fetch)(`https://generativelanguage.googleapis.com/v1beta/models/${model}:${tap ? 'streamGenerateContent?alt=sse' : 'generateContent'}`, { method: 'POST', signal,
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: VOICE }] }, contents: [{ role: 'user', parts }], generationConfig: gc }) });
+  if (!r.ok) { const msg = (await r.text()).slice(0, 300); throw Object.assign(err(r.status + ' ' + (/"message":\s*"([^"]{0,140})/.exec(msg)?.[1] || ''), msg), { status: r.status }); }
+  let text = '', u = {}, fin;
+  const take = j => { const c = j.candidates?.[0]; const d = c?.content?.parts?.filter(p => !p.thought).map(p => p.text || '').join('') || ''; if (d) { text += d; tap?.(d); } if (j.usageMetadata) u = j.usageMetadata; if (c?.finishReason) fin = c.finishReason; };
+  if (tap) await readSSE(r.body, take, signal); else take(await r.json());
+  let data; try { data = JSON.parse(text); } catch { throw err('badjson', 'bad json ' + fin); }
+  if (!okShape(route, data)) throw err('badjson');
+  return { data, model, in: u.promptTokenCount, out: u.candidatesTokenCount };
+}
+// The hedged race. opts.onRecipe (recipes route only) streams recipes: the first attempt to finish a recipe becomes the
+// "owner" and the others are stopped; if the owner then fails, the race goes on and later recipes are de-duplicated by name.
+async function gemini(env, route, parts, opts = {}) {
+  const chain = chainFor(env, route);
+  const tries = []; const ctls = new Map(); const T0 = Date.now();
+  let last = 'The recipe brain hiccuped. Tap Retry!', owner = null, paused = false;
+  const sent = new Set(); const stream = route === 'recipes' && opts.onRecipe;
+  const emit = (id, r) => { if (!stream || !r?.name) return false; if (owner === null) { owner = id; paused = true; for (const [k, c] of ctls) if (k !== id) try { c.abort(); } catch {} }
+    if (owner !== id) return false; const k = String(r.name).toLowerCase(); if (sent.has(k)) return true; sent.add(k); opts.onRecipe(r); return true; };
+  const one = async ([prov, model, thinking, wait], id) => {
     if (wait) await new Promise(r => setTimeout(r, wait));
-    const ctl = new AbortController(); ctls.push(ctl); const timer = setTimeout(() => ctl.abort(), model === 'cf' ? 40000 : PER_MODEL); const t0 = Date.now();
-    const note = st => { tries.push([model === 'cf' ? (env.__cfModel || (route === 'scan' ? CF_MODEL.scan : CF_MODEL.text)) : model, st, Date.now() - t0]); };
-    if (model === 'cf') {
-      try { const v = await workersAI(env, route, parts, ctl.signal); note(200); console.log('ok cf', route, v.model, Date.now() - t0, 'ms');
-        return { data: v.data, usage: { model: v.model, provider: 'workers-ai', ms: Date.now() - t0, total: Date.now() - T0, in: v.in, out: v.out, tries } }; }
-      catch (e) { note(e.st || (e.name === 'AbortError' ? 'timeout' : 'err ' + String(e.message).slice(0, 120))); console.log('cf fail', e.message); return null; }
-      finally { clearTimeout(timer); }
-    }
-    if (env.__forceGeminiFail) { note('forced-fail'); clearTimeout(timer); return null; }
+    if (owner !== null && owner !== id) return null;
+    const ctl = new AbortController(); ctls.set(id, ctl); const timer = setTimeout(() => ctl.abort(), prov === 'cf' ? 40000 : PER_MODEL); const t0 = Date.now();
+    const label = prov === 'cf' ? (env.__cfModel || (route === 'scan' ? CF_MODEL.scan : CF_MODEL.text)) : prov === 'gemini' ? model : prov;
+    const note = st => tries.push([label, st, Date.now() - t0]);
+    const tap = stream && prov !== 'cf' ? recipeTap(r => emit(id, r)) : null;
     try {
-      const gc = { responseMimeType: 'application/json', responseSchema: SCHEMAS[route], temperature: 0.6, maxOutputTokens: 8000 };
-      if (thinking) gc.thinkingConfig = thinking;
-      const r = await (env.__fetch || fetch)(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: 'POST', signal: ctl.signal,
-        headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-        body: JSON.stringify({ systemInstruction: { parts: [{ text: VOICE }] }, contents: [{ role: 'user', parts }], generationConfig: gc }) });
-      if (!r.ok) { const msg = (await r.text()).slice(0, 300); note(r.status + ' ' + (/"message":\s*"([^"]{0,140})/.exec(msg)?.[1] || '')); console.log('gemini', model, r.status, msg); if (r.status === 429) last = 'Our kitchen is busy. Tap Retry in a moment!'; return null; }
-      const j = await r.json();
-      const text = j.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text || '').join('') || '';
-      let data; try { data = JSON.parse(text); } catch { note('badjson'); console.log('bad json', model, j.candidates?.[0]?.finishReason); return null; }
-      const u = j.usageMetadata || {}; note(200);
-      console.log('ok', route, model, Date.now() - t0, 'ms', u.promptTokenCount, u.candidatesTokenCount);
-      return { data, usage: { model, ms: Date.now() - t0, total: Date.now() - T0, in: u.promptTokenCount, out: u.candidatesTokenCount, tries } };
-    } catch (e) { note(e.name === 'AbortError' ? 'timeout' : 'err'); console.log('timeout/err', model, Date.now() - t0, e.name); last = 'That took too long. Tap Retry!'; return null; }
-    finally { clearTimeout(timer); }
+      if (prov !== 'cf' && env.__forceGeminiFail) throw err('forced-fail');
+      const v = prov === 'cf' ? await workersAI(env, route, parts, ctl.signal) : prov === 'gemini' ? await geminiOne(env, model, thinking, route, parts, ctl.signal, tap) : await openAI(env, prov, route, parts, ctl.signal, tap);
+      if (stream) { if (owner !== null && owner !== id && ctls.has(owner)) { note('lost'); return null; } owner = id; v.data.recipes.forEach(r => emit(id, r)); }
+      note(200); console.log('ok', route, v.model, Date.now() - t0, 'ms', v.in, v.out);
+      return { data: v.data, usage: { model: v.model, provider: prov === 'cf' ? 'workers-ai' : prov, ms: Date.now() - t0, total: Date.now() - T0, in: v.in, out: v.out, tries } };
+    } catch (e) {
+      const st = e.st || (e.name === 'AbortError' ? (owner !== null && owner !== id ? 'stopped' : 'timeout') : 'err ' + String(e.message).slice(0, 100)); note(st); console.log('fail', label, st);
+      if (/^429/.test(st)) last = 'Our kitchen is busy. Tap Retry in a moment!'; else if (st === 'timeout') last = 'That took too long. Tap Retry!';
+      if (owner === id) { owner = null; paused = false; }
+      return null;
+    } finally { clearTimeout(timer); ctls.delete(id); }
   };
   const res = await new Promise(resolve => {
     let i = 0, running = 0, done = false, kick;
     const finish = v => { if (done) return; done = true; clearTimeout(kick); clearTimeout(dl); resolve(v); };
     const dl = setTimeout(() => finish(null), DEADLINE);
     const next = () => {
-      clearTimeout(kick); if (done || i >= chain.length) { if (!running && !done) finish(null); return; }
-      running++; one(chain[i++]).then(v => { running--; if (v) finish(v); else next(); });
-      if (i < chain.length) kick = setTimeout(next, HEAD_START);
+      clearTimeout(kick); if (done || paused) return;
+      if (i >= chain.length) { if (!running) finish(null); return; }
+      const e = chain[i], id = i++; running++;
+      one(e, id).then(v => { running--; if (v) finish(v); else if (!(owner !== null && ctls.has(owner))) next(); });
+      if (i < chain.length) kick = setTimeout(next, e[4] || HEAD_START);
     };
     next();
   });
-  ctls.forEach(c => { try { c.abort(); } catch {} });
+  for (const c of ctls.values()) try { c.abort(); } catch {}
   if (res) return res;
   const e = new Error(last); e.tries = tries; throw e;
 }
@@ -174,7 +261,7 @@ export async function onRequest(ctx) {
   const e = ERR[j.error] || (/^Up to \d+ photos at a time\.$/.test(j.error) ? j.error.replace(/^Up to (\d+) photos at a time\./, 'Hasta $1 fotos a la vez.') : j.error);
   return json({ ...j, error: e }, res.status);
 }
-async function handle({ request, env, params }) { // env may be wrapped below for the fallback test hook
+async function handle({ request, env, params, waitUntil }) { // env may be wrapped below for the fallback test hook
   const route = (params.path || [])[0];
   if (route === 'health') return json({ ok: true, model: env.GEMINI_MODEL || MODEL, ai: !!env.GEMINI_API_KEY || env.MOCK_AI === '1' ? 'ready' : 'missing GEMINI_API_KEY' });
   if (route === 'dietcheck' && request.method === 'POST') { // no AI: which of these names break the user's diet (used to clean the grocery list)
@@ -194,7 +281,7 @@ async function handle({ request, env, params }) { // env may be wrapped below fo
   // Free plan: 3 scans (a scan = one Go, many photo batches share one scan id) per IP per week; Unlimited token skips it.
   if (!env.GEMINI_API_KEY && env.MOCK_AI !== '1') return json({ error: 'AI is not set up yet (missing GEMINI_API_KEY).' }, 503);
 
-  let parts; const lang = langOf(body, request); const LN = LANG_NOTE[lang];
+  let parts, rkey = null; const lang = langOf(body, request); const LN = LANG_NOTE[lang];
   if (route === 'scan') {
     const imgs = Array.isArray(body.images) ? body.images : [];
     if (!imgs.length) return json({ error: 'Add at least one photo!' }, 400);
@@ -217,10 +304,12 @@ async function handle({ request, env, params }) { // env may be wrapped below fo
     const section = body.section === 'more' ? 'more' : 'ready';
     const avoid = clean(body.avoid, 40);
     if (!ing.length) return json({ error: diet.hard ? "None of your ingredients fit your diet. Add a few that do, or edit My diet!" : 'Add some ingredients first!' }, 400);
+    // Trimmed prompt (2026-11-02): 4 recipes instead of 5 (the app shows 3 per section), about 40% fewer prompt words.
     const ask = section === 'ready'
-      ? 'Give exactly 5 recipes that use ONLY the ingredients on hand plus staples. missing must be an empty list and every ingredient have=true.' + (diet.hard ? ' Any diet substitution must also come from the on-hand items or staples; if it cannot, pick a different dish.' : '')
-      : 'Give exactly 5 recipes matching the craving that need 1 to 4 extra items. List those in missing with a rough US grocery price in USD (est_price) for the smallest common package, and mark them have=false in ingredients.';
-    parts = [{ text: `Ingredients on hand (items marked [spice] are spices/seasonings the user owns; use them to flavor the recipes): ${ing.join('; ')}.\nAlways available staples: ${staplesFor(diet)}.\nCraving: ${craving}.\n${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}${ask} Use a handful of the on-hand items per recipe, not all of them. Make the 5 a mix: 2 quick Easy dishes (level Easy, at most 8 ingredients, 5 short steps), 2 Medium dishes (level Medium, at most 10 ingredients, 7 steps), and 1 elaborate restaurant-style showstopper (if you can, a 2nd different one is welcome instead of a 2nd Easy) (level Chef mode: more technique, layered flavors, a pan sauce, glaze, marinade or crispy element, and a plating tip in the last step; up to 14 ingredients and 10 clear steps). Keep each step to one or two sentences. REQUIRED: at least 1 of the 5 MUST be level Chef mode, even when extra items are needed.${section === 'more' ? ' Build the Chef mode dish around a special ingredient from the missing list (e.g. a premium protein, seafood, or specialty item), not chicken.' : ' Build the Chef mode dish around an on-hand protein or vegetable.'}${avoid.length ? ' Each dish, especially the Chef mode one, must use a different main ingredient and technique than the already-shown recipes.' : ''} Order them Easy, Medium, Chef mode. All 5 must be clearly different dishes.${avoid.length ? ' Do NOT repeat or closely copy these already-shown recipes: ' + avoid.join('; ') + '. Give new, different dishes.' : ''} One food emoji per recipe. 2 servings unless the dish needs more.${LN}` }];
+      ? 'Use ONLY on-hand items plus staples: missing is empty and every ingredient has have=true.' + (diet.hard ? ' Diet swaps must also come from on-hand items or staples, else pick another dish.' : '')
+      : 'Each needs 1 to 4 extra items: list them in missing (est_price = rough US price in USD for the smallest package) and mark them have=false.';
+    parts = [{ text: `On hand ([spice] = spices the user owns, use them for flavor): ${ing.join('; ')}.\nStaples: ${staplesFor(diet)}.\nCraving: ${craving}.\n${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}Give exactly 4 clearly different recipes, 2 servings unless the dish needs more, in this order: 1 Easy (max 8 ingredients, 5 short steps), 1 Medium (max 10 ingredients, 7 steps), 1 Chef mode showstopper built around ${section === 'more' ? 'a special ingredient from missing (premium protein, seafood or specialty item, not chicken)' : 'an on-hand protein or vegetable'} (layered flavors, a pan sauce, glaze, marinade or crispy element, plating tip in the last step; max 14 ingredients, 10 steps), then 1 more Easy or Medium. ${ask} Use a handful of on-hand items per recipe. Steps are one or two sentences. One food emoji each.${avoid.length ? ' Do NOT repeat or closely copy these already-shown recipes; use different main ingredients and techniques: ' + avoid.join('; ') + '.' : ''}${LN}` }];
+    rkey = !avoid.length && await recipeKey({ ing, craving, section, lang, prefs: body.prefs });
   } else {
     const diet = dietOf(body.prefs); const craving = String(body.craving || '').slice(0, 80).trim(); const ing = clean(body.ingredients).filter(x => !bad(diet, x));
     if (!craving) return json({ error: 'Name a craving first!' }, 400);
@@ -229,23 +318,37 @@ async function handle({ request, env, params }) { // env may be wrapped below fo
 
   const dd = route === 'scan' ? null : dietOf(body.prefs); const sd = route === 'scan' ? dietOf(body.prefs) : null;
   if (env.MOCK_AI === '1') { const m = mock(route, body); return json({ ...(route === 'scan' ? flagScan(m, sd) : route === 'recipes' ? { recipes: m.recipes.filter(r => !recipeBad(dd, r)) } : m), mock: true }); }
+  const local = /\.snapcravings\.pages\.dev$/.test(host) || host === 'localhost' || host === '127.0.0.1';
+  if (rkey && body.nocache && local) rkey = null; // bench hook, previews only
+  const stream = route === 'recipes' && (body.stream === true || /ndjson/.test(request.headers.get('accept') || ''));
+  const hardDiet = route !== 'scan' && dd.hard;
+  // Recipes: 24 h cache by normalized ingredient set + craving + section + diet + language (not for "more ideas").
+  if (rkey) { const hit = await cacheGet(env, rkey); if (hit) { hit.usage = { ...(hit.usage || {}), cached: true }; return stream ? ndjson(async send => { hit.recipes.forEach(r => send({ recipe: r })); send({ done: true, ...hit }); }) : json(hit); } }
+  const save = out => { if (rkey && out.recipes?.length) { const p = cachePut(env, rkey, out); try { waitUntil ? waitUntil(p) : p.catch(() => {}); } catch {} } };
+  // Diet safety net: drop any recipe that still slips a forbidden ingredient through (names, missing items, steps).
+  // If too few survive, ask again (up to 2 more times) and tell the model exactly which terms broke the rules.
+  const recipes = async onKeep => {
+    const keep = [], banned = new Set(); let tried = 0;
+    const take = r => { tried++; const h = hardDiet ? recipeHits(dd, r) : []; if (h.length) { h.forEach(x => banned.add(x)); return; } if (keep.some(k => k.name?.toLowerCase() === String(r.name).toLowerCase())) return; keep.push(r); onKeep?.(r); };
+    const first = await gemini(env, route, parts, onKeep ? { onRecipe: take } : {});
+    if (!onKeep) first.data.recipes.forEach(take);
+    const t0 = Date.now();
+    for (let i = 0; hardDiet && i < 2 && keep.length < 3 && Date.now() - t0 < 40000; i++) {
+      const fb = banned.size ? [{ text: `IMPORTANT: your previous answer broke the user's rules by using: ${[...banned].slice(0, 12).join(', ')}. Never use these (or anything made with them), not as an ingredient, garnish or step. Give 4 NEW compliant dishes.${LN}` }] : [];
+      try { (await gemini(env, route, [...parts, ...fb])).data.recipes.forEach(take); } catch { break; }
+    }
+    if (hardDiet) console.log('diet', dd.tags.join('+'), 'kept', keep.length, 'of', tried);
+    if (!keep.length) throw Object.assign(new Error(hardDiet ? "We couldn't find recipes that fit your diet with these ingredients. Tap Retry or add a few more ingredients!" : 'The recipe brain hiccuped. Tap Retry!'), { why: [...banned].slice(0, 12), tries: first.usage?.tries });
+    return { recipes: keep.slice(0, 8), craving: body.craving, usage: first.usage };
+  };
+  if (stream) return ndjson(async send => {
+    try { const out = await recipes(r => send({ recipe: r })); send({ done: true, ...out }); save(out); }
+    catch (e) { const m = e.message || 'Something went sideways. Try again!'; send({ done: true, error: lang === 'es' ? (ERR[m] || m) : m, why: e.why, tries: e.tries }); }
+  });
   try {
+    if (route === 'recipes') { const out = await recipes(); save(out); return json(out); }
     let { data, usage } = await gemini(env, route, parts);
     if (route === 'scan') data = flagScan(data, sd);
-    // Safety net: drop any recipe that still slips a forbidden ingredient through (names, missing items, steps).
-    // If too few survive, ask again (up to 2 more times) and tell the model exactly which terms broke the rules.
-    if (route === 'recipes' && dd.hard) {
-      const t0 = Date.now(); let keep = [], tried = (data.recipes || []).length, banned = new Set(), attempt = data;
-      for (let i = 0; i < 3; i++) {
-        for (const r of attempt.recipes || []) { const h = recipeHits(dd, r); if (h.length) h.forEach(x => banned.add(x)); else if (!keep.some(k => k.name?.toLowerCase() === r.name?.toLowerCase())) keep.push(r); }
-        if (keep.length >= 4 || Date.now() - t0 > 40000 || i === 2) break;
-        const fb = banned.size ? [{ text: `IMPORTANT: your previous answer broke the user's rules by using: ${[...banned].slice(0, 12).join(', ')}. Never use these (or anything made with them), not as an ingredient, garnish or step. Give 5 NEW compliant dishes.${LN}` }] : [];
-        try { attempt = (await gemini(env, route, [...parts, ...fb])).data; tried += (attempt.recipes || []).length; } catch { break; }
-      }
-      console.log('diet', dd.tags.join('+'), 'kept', keep.length, 'of', tried);
-      if (!keep.length) return json({ error: "We couldn't find recipes that fit your diet with these ingredients. Tap Retry or add a few more ingredients!", why: [...banned].slice(0, 12) }, 502);
-      data = { recipes: keep.slice(0, 8) };
-    }
     if (route === 'crave' && dd.hard) {
       let h = recipeHits(dd, data.recipe);
       for (let i = 0; i < 2 && h.length; i++) {
@@ -255,7 +358,32 @@ async function handle({ request, env, params }) { // env may be wrapped below fo
       if (h.length) return json({ error: "Couldn't make that one fit your diet. Try a different craving!", why: h.slice(0, 12) }, 502);
     }
     return json({ ...data, craving: body.craving, usage });
-  } catch (e) { return json({ error: e.message || 'Something went sideways. Try again!', tries: e.tries }, 502); }
+  } catch (e) { return json({ error: e.message || 'Something went sideways. Try again!', tries: e.tries, ...(e.why?.length ? { why: e.why } : {}) }, e.why ? 502 : 502); }
+}
+
+// NDJSON stream: one JSON object per line ({recipe} ... then {done:true, recipes, craving, usage} or {done:true, error}).
+function ndjson(run) {
+  const { readable, writable } = new TransformStream(); const w = writable.getWriter(); const enc = new TextEncoder();
+  const send = o => w.write(enc.encode(JSON.stringify(o) + '\n')).catch(() => {});
+  (async () => { try { await run(send); } finally { try { await w.close(); } catch {} } })();
+  return new Response(readable, { headers: { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'x-content-type-options': 'nosniff' } });
+}
+// Cache key: sorted, de-duplicated, lower-cased ingredient names (quantities in parentheses dropped) + craving + section + diet + lang.
+const normIng = s => String(s).toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[^\p{L}\p{N}\[\] ]+/gu, ' ').replace(/\s+/g, ' ').trim();
+async function recipeKey({ ing, craving, section, lang, prefs }) {
+  const p = prefs || {}; const set = [...new Set(ing.map(normIng).filter(Boolean))].sort();
+  return 'rc2:' + await sha(JSON.stringify([set, String(craving).toLowerCase().trim(), section, lang, [...(Array.isArray(p.tags) ? p.tags : [])].map(String).sort(), String(p.other || '').toLowerCase().trim(), String(p.mood || '').toLowerCase().trim()]));
+}
+const CACHE_TTL = 86400;
+async function cacheGet(env, key) {
+  try { const kv = env.RECIPE_KV || env.RATE_KV; if (kv) { const v = await kv.get(key, 'json'); if (v?.recipes?.length) return v; } } catch {}
+  try { const c = typeof caches !== 'undefined' && caches.default; if (c) { const r = await c.match('https://sc-cache.internal/' + key); if (r) { const v = await r.json(); if (v?.recipes?.length) return v; } } } catch {}
+  return null;
+}
+async function cachePut(env, key, out) {
+  const v = JSON.stringify({ recipes: out.recipes, craving: out.craving, usage: { model: out.usage?.model, provider: out.usage?.provider } });
+  try { const kv = env.RECIPE_KV || env.RATE_KV; if (kv) await kv.put(key, v, { expirationTtl: CACHE_TTL }); } catch {}
+  try { const c = typeof caches !== 'undefined' && caches.default; if (c) await c.put('https://sc-cache.internal/' + key, new Response(v, { headers: { 'content-type': 'application/json', 'cache-control': 'max-age=' + CACHE_TTL } })); } catch {}
 }
 
 function mock(route, body) {

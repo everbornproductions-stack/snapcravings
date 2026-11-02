@@ -121,6 +121,43 @@ async function api(path, body, ms = 60000) {
   if (!r.ok) { const er = new Error(t(j.error || 'Something went sideways. Try again!')); er.paywall = !!j.paywall; throw er; }
   return j;
 }
+// Streamed recipes: the server sends one {recipe} line per finished recipe, then {done, recipes|error}. Old/plain JSON answers still work.
+async function apiStream(path, body, onRecipe, ms = 65000) {
+  const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), ms);
+  try {
+    let r;
+    try { r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/x-ndjson', 'x-sc-lang': I18N.lang, 'x-sc-token': sub.token || '', 'x-sc-scan': state.scanId || '', 'x-sc-dev': DEV }, body: JSON.stringify({ ...body, prefs: prefs(), lang: I18N.lang, stream: true }), signal: ctl.signal }); }
+    catch (e) { throw new Error(e.name === 'AbortError' ? t('That took too long. Check your signal and tap Retry!') : t('Lost the connection for a sec. Tap Retry!')); }
+    if (!r.ok || !/ndjson/.test(r.headers.get('content-type') || '') || !r.body) {
+      const j = await r.json().catch(() => ({ error: 'Something went sideways. Try again!' }));
+      if (!r.ok || j.error) { const er = new Error(t(j.error || 'Something went sideways. Try again!')); er.paywall = !!j.paywall; throw er; }
+      (j.recipes || []).forEach(x => onRecipe(x)); return j;
+    }
+    const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '', fin = null, n = 0;
+    try {
+      for (;;) { const { value, done } = await rd.read(); if (done) break; buf += dec.decode(value, { stream: true }); let k;
+        while ((k = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, k); buf = buf.slice(k + 1); if (!line.trim()) continue; let j; try { j = JSON.parse(line); } catch { continue; }
+          if (j.recipe) { n++; onRecipe(j.recipe); } if (j.done) fin = j; } }
+    } catch (e) { if (!n) throw new Error(e.name === 'AbortError' ? t('That took too long. Check your signal and tap Retry!') : t('Lost the connection for a sec. Tap Retry!')); }
+    if (fin && fin.error && !n) throw new Error(t(fin.error));
+    if (!fin && !n) throw new Error(t('Something went sideways. Try again!'));
+    return fin && !fin.error ? fin : { recipes: null };
+  } finally { clearTimeout(tm); }
+}
+// One recipe job per section. Started speculatively right after a scan (and when the craving changes), then reused by
+// "Let's get cooking" if nothing changed, so the recipes are often already there (or arriving) when the screen opens.
+const recipeJobs = {};
+const recipeIngs = () => state.ingredients.slice(0, 80).map(i => (i.cat === 'Spices & Seasonings' ? '[spice] ' : '') + i.name + (i.qty ? ' (' + i.qty + ')' : ''));
+function recipeJob(section) {
+  const ingredients = recipeIngs(), craving = state.craving, sig = JSON.stringify([ingredients, craving, section, prefs(), I18N.lang]);
+  let j = recipeJobs[section]; if (j && j.sig === sig && !j.failed && Date.now() - j.t < 15 * 60000) return j;
+  j = recipeJobs[section] = { sig, t: Date.now(), list: [], subs: new Set() };
+  const push = r => { if (!r?.name) return; j.list.push(r); j.subs.forEach(f => f()); };
+  j.p = (async () => { for (let a = 0; a < 2; a++) { try { const out = await apiStream('recipes', { ingredients, craving, section }, push); return out.recipes || j.list; } catch (e) { if (j.list.length) return j.list; if (a) { j.failed = true; throw e; } } } })();
+  j.p.catch(() => {});
+  return j;
+}
+function prefetchRecipes(delay = 0) { clearTimeout(prefetchRecipes.t); if (!state.ingredients.length) return; prefetchRecipes.t = setTimeout(() => { recipeJob('ready'); recipeJob('more'); }, delay); }
 // Resize on device: max 1024px JPEG, quality stepped down until <= ~350 KB. Handles EXIF rotation and big camera files.
 async function decode(file) {
   if (window.createImageBitmap) { try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch {} }
@@ -216,7 +253,7 @@ async function scan() {
     const wk = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5); wk.push(Date.now()); LS.set('scans', wk); renderLeft();
     state.low.forEach(l => addToList(l.name, 'low', 0, null, true));
     track('scan', 'scan', { photos: n, items: state.ingredients.length });
-    state.busy = false; renderScan();
+    state.busy = false; renderScan(); prefetchRecipes();
   } catch (e) {
     state.busy = false;
     if (e.paywall) { el('scanBody').innerHTML = `<div class="kick">${t('Hungry for more?')}</div><h2>${t('Free scans used up')}</h2><p class="sub">${esc(e.message)} ${t(n === 1 ? 'Your {n} photo is still here.' : 'Your {n} photos are still here.', { n })}</p><a class="btn primary" href="#pro">${subCfg.enabled ? t("Go Unlimited — let's get cooking!") : t('Go Unlimited (coming soon) · Have a code?')}</a>`; return; }
@@ -256,7 +293,7 @@ function renderScan() {
 
 /* RECIPES */
 async function moreIdeas() {
-  if (state.moreBusy || !state.recipes) return; state.moreBusy = true; renderRecipes(); track('more_ideas', 'recipes');
+  if (state.moreBusy || state.recipesLoading || !state.recipes) return; state.moreBusy = true; renderRecipes(); track('more_ideas', 'recipes');
   const R = state.recipes; const avoid = [...(R.ready || []), ...(R.more || [])].map(r => r.name).slice(-40);
   const ingredients = state.ingredients.slice(0, 80).map(i => (i.cat === 'Spices & Seasonings' ? '[spice] ' : '') + i.name + (i.qty ? ' (' + i.qty + ')' : ''));
   const seen = new Set(avoid.map(n => n.toLowerCase()));
@@ -271,13 +308,18 @@ async function moreIdeas() {
 }
 async function getRecipes() {
   location.hash = '#recipes'; el('recipesBody').innerHTML = loading('Cooking up ideas…');
-  const ingredients = state.ingredients.slice(0, 80).map(i => (i.cat === 'Spices & Seasonings' ? '[spice] ' : '') + i.name + (i.qty ? ' (' + i.qty + ')' : ''));
-  const call = async section => { for (let a = 0; a < 2; a++) { try { return (await api('recipes', { ingredients, craving: state.craving, section }, 65000)).recipes || []; } catch (e) { if (a) throw e; } } };
-  state.moreBusy = false;
-  try { const [ready0, more0] = await Promise.all([call('ready'), call('more')]); const ready = pick3(dedupe(ready0, []), ready0, []); const more = pick3(dedupe(more0, ready.map(r => r.name)), more0, ready.map(r => r.name)); state.recipes = { craving: state.craving, ready, more }; LS.set('recipes', state.recipes); }
-  catch (e) { el('recipesBody').innerHTML = `<div class="kick">${t('Oops, kitchen hiccup!')}</div><h2>${t("Recipes didn't come through")}</h2><p class="sub">${esc(e.message)} ${t('Your ingredients are saved.')}</p><button class="btn primary" id="goRecipes">${t('Retry 🔄')}</button>`; return; }
+  state.moreBusy = false; clearTimeout(prefetchRecipes.t);
+  const A = recipeJob('ready'), B = recipeJob('more'), craving = state.craving, L = ['Easy', 'Medium', 'Chef mode'];
+  // While recipes stream in, show at most one card per level in level order, so cards only get added, never swapped.
+  const one = l => L.map(x => l.find(r => r.level === x)).filter(Boolean);
+  const partial = () => { const ready = one(dedupe(A.list, [])), more = one(dedupe(B.list, ready.map(r => r.name))); if (!ready.length && !more.length) return; state.recipes = { craving, ready, more }; state.recipesLoading = true; if (location.hash === '#recipes') { const y = el('recipes').scrollTop; renderRecipes(); el('recipes').scrollTop = y; } };
+  A.subs.add(partial); B.subs.add(partial); partial();
+  try { const [ready0, more0] = await Promise.all([A.p, B.p]); const ready = pick3(dedupe(ready0, []), ready0, []); const more = pick3(dedupe(more0, ready.map(r => r.name)), more0, ready.map(r => r.name)); state.recipes = { craving, ready, more }; LS.set('recipes', state.recipes); }
+  catch (e) { state.recipesLoading = false; state.recipes = LS.get('recipes', null); el('recipesBody').innerHTML = `<div class="kick">${t('Oops, kitchen hiccup!')}</div><h2>${t("Recipes didn't come through")}</h2><p class="sub">${esc(e.message)} ${t('Your ingredients are saved.')}</p><button class="btn primary" id="goRecipes">${t('Retry 🔄')}</button>`; return; }
+  finally { A.subs.delete(partial); B.subs.delete(partial); }
+  state.recipesLoading = false;
   track('recipes_shown', 'recipes', { n: (state.recipes?.ready?.length || 0) + (state.recipes?.more?.length || 0) });
-  renderRecipes();
+  if (location.hash === '#recipes') { const y = el('recipes').scrollTop; renderRecipes(); el('recipes').scrollTop = y; }
 }
 const STOP = new Set(['and', 'with', 'the', 'a', 'of', 'in', 'on', 'style', 'quick', 'easy', 'simple', 'classic', 'homemade', 'savory', 'creamy', 'crispy', 'cheesy', 'spicy', 'garlic', 'butter', 'herb', 'herbed']);
 const words = n => new Set(n.toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w)).map(w => w.replace(/(ed|es|s|ing)$/, '').replace(/e$/, '')));
@@ -289,12 +331,12 @@ const THUMBS = ['#FFF1C9', '#E3F3E9', '#EDE6F7', '#FDE9E0'];
 function renderRecipes() {
   const R = state.recipes;
   if (!R) { el('recipesBody').innerHTML = `<div class="kick">${t('Craving unlocked!')}</div><h2>${t('No recipes yet')}</h2><p class="sub">${t("Snap your fridge first and we'll match recipes to what you have.")}</p><a class="btn primary" href="#scan">${t('📸 Snap it')}</a>`; return; }
-  const ready = (R.ready || []).map((r, i) => `<a class="card recipe" href="#recipe" data-rec="ready:${i}"><div class="thumb" style="background:${THUMBS[i % 4]}">${esc(r.emoji || '🍳')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${t('{n} min · {s} servings', { n: esc(r.minutes), s: esc(r.servings) })}</div><span class="pill g">${t('Pantry power! You have everything')}</span>${LEVEL_PILL(r.level)}</div>${heart('ready:' + i, r)}</a>`).join('') || `<p class="sub">${t('Nothing makes the cut with only what you have. Check the ideas below!')}</p>`;
+  const ready = (R.ready || []).map((r, i) => `<a class="card recipe" href="#recipe" data-rec="ready:${i}"><div class="thumb" style="background:${THUMBS[i % 4]}">${esc(r.emoji || '🍳')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${t('{n} min · {s} servings', { n: esc(r.minutes), s: esc(r.servings) })}</div><span class="pill g">${t('Pantry power! You have everything')}</span>${LEVEL_PILL(r.level)}</div>${heart('ready:' + i, r)}</a>`).join('') || (state.recipesLoading ? loading('Cooking up ideas…') : `<p class="sub">${t('Nothing makes the cut with only what you have. Check the ideas below!')}</p>`);
   const more = (R.more || []).map((r, i) => `<div class="card recipe"><a href="#recipe" data-rec="more:${i}" style="display:flex;gap:12px;align-items:center;flex:1;color:inherit;text-decoration:none"><div class="thumb" style="background:${THUMBS[(i + 1) % 4]}">${esc(r.emoji || '🍜')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${t('{n} min · {s} servings', { n: esc(r.minutes), s: esc(r.servings) })}</div><span class="pill c">${t('Missing {n}: {items}', { n: r.missing.length, items: esc(r.missing.map(m => m.item).join(', ')) })}</span>${LEVEL_PILL(r.level)}</div></a><span style="display:flex;flex-direction:column;align-items:center;gap:4px">${heart('more:' + i, r)}<a class="chip" href="#list" data-addmiss="more:${i}" style="white-space:nowrap">${t('🛒 + List')}</a></span></div>`).join('');
   el('recipesBody').innerHTML = `<div class="kick">${t('Craving unlocked!')}</div><h2>${t('Matched to “{c}”', { c: esc(t(R.craving || state.craving)) })}</h2>${dietOn() && dietLine() ? `<p class="fine" style="margin-top:2px">${t('🥗 Cooking for: {d} · ', { d: esc(dietLine()) })}<a href="#settings" style="color:var(--coral);font-weight:700">${t('Change')}</a></p>` : ''}
     <h3>${t("Ready now: let's get cooking!")}</h3><p class="sub">${t('You already have everything for these. Pantry power!')}</p><div style="height:8px"></div>${ready}
-    ${more ? `<h3>${t('Make it with a few more things')}</h3><p class="sub">${t('Just a few items away. Add them to your grocery list and restock time is done!')}</p><div style="height:8px"></div>${more}<a class="btn ghost" href="#list" data-addmiss="all">${t('🛒 Restock time! Build my grocery list')}</a>` : ''}
-    <button class="btn primary" id="moreIdeas" ${state.moreBusy ? 'disabled style="opacity:.7"' : ''}>${state.moreBusy ? '<span class="spin" style="border-top-color:#fff"></span> ' + t('Cooking up more…') : t('Hungry for more? Tap for more ideas!')}</button>`;
+    ${more || state.recipesLoading ? `<h3>${t('Make it with a few more things')}</h3><p class="sub">${t('Just a few items away. Add them to your grocery list and restock time is done!')}</p><div style="height:8px"></div>${more || loading('Cooking up ideas…')}${state.recipesLoading ? '' : `<a class="btn ghost" href="#list" data-addmiss="all">${t('🛒 Restock time! Build my grocery list')}</a>`}` : ''}
+    <button class="btn primary" id="moreIdeas" ${state.moreBusy || state.recipesLoading ? 'disabled style="opacity:.7"' : ''}>${state.moreBusy ? '<span class="spin" style="border-top-color:#fff"></span> ' + t('Cooking up more…') : t('Hungry for more? Tap for more ideas!')}</button>`;
 }
 const pick = key => { if (key === 'crave') return state.crave?.recipe; if (key === 'x') return state.ext; if (key.startsWith('fav:')) return favs[+key.slice(4)]; const [k, i] = key.split(':'); return state.recipes?.[k]?.[+i]; };
 
@@ -401,7 +443,7 @@ document.addEventListener('click', e => {
   if (t.closest('[data-rescan]')) { state.ingredients = []; state.low = []; state.step = 0; return renderScan(); }
   if (t.closest('#scanGo')) return scan();
   const ai = t.closest('[data-addi]'); if (ai) { const n = prompt(I18N.t('Add an ingredient')); if (n && n.trim()) { state.ingredients.push({ name: n.trim(), qty: '', cat: ai.dataset.addi }); LS.set('ingredients', state.ingredients); renderScan(); } return; }
-  const cr = t.closest('[data-cr]'); if (cr) { state.craving = cr.dataset.cr; return renderScan(); }
+  const cr = t.closest('[data-cr]'); if (cr) { state.craving = cr.dataset.cr; prefetchRecipes(900); return renderScan(); }
   if (t.closest('#goRecipes')) return getRecipes();
   if (t.closest('#moreIdeas')) return moreIdeas();
   const am = t.closest('[data-addmiss]'); if (am) { const k = am.dataset.addmiss; if (k === 'all') (state.recipes?.more || []).forEach(addMissing); else addMissing(k === 'cur' ? state.recipe : pick(k)); }
