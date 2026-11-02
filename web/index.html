@@ -183,6 +183,9 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
       <div style="font-size:22px">✨</div><div style="flex:1;font-size:13px"><b id="scanLeft">3 of 3 free scans left this week</b><br><span class="sub" style="font-size:12px">Go unlimited with Pro</span></div>
       <a class="chip" href="#pro" style="background:var(--dark);color:#fff;border:0">Pro</a>
     </div>
+    <a class="card" href="#prep" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)">
+      <div style="font-size:22px">🍱</div><div style="flex:1;font-size:13px"><b>Meal prep</b><br><span class="sub" style="font-size:12px">A week of meals, one grocery list and a prep-day guide.</span></div><span>›</span>
+    </a>
     <a class="card" href="#favs" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)">
       <div style="font-size:22px">❤️</div><div style="flex:1;font-size:13px"><b>Your favorites</b><br><span class="sub" style="font-size:12px" id="favCount">Tap ♡ on any recipe to save it</span></div><span>›</span>
     </a>
@@ -291,6 +294,12 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
     <div id="settingsBody"></div>
   </section>
 
+  <!-- MEAL PREP -->
+  <section class="screen" id="prep">
+    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Meal prep</span></div>
+    <div id="prepBody"></div>
+  </section>
+
   <!-- PRO -->
   <section class="screen" id="pro">
     <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Go Pro</span></div>
@@ -331,5 +340,6 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 <div id="toast" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
 <script src="i18n.js?v=ui27"></script>
 <script src="app.js?v=ui27"></script>
+<script src="prep.js?v=ui27"></script>
 </body>
 </html>
