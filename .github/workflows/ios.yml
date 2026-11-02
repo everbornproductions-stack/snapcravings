@@ -1,4 +1,5 @@
 name: iOS build
+# Manual only. Unsigned simulator build; signing comes later (see ios/README.md).
 on:
   workflow_dispatch:
 jobs:
