@@ -225,6 +225,7 @@ async function scan() {
 }
 function renderScan() {
   renderPhotos();
+  const rs = el('scanRestart'); if (rs) rs.innerHTML = '';
   if (!state.ingredients.length) {
     const n = state.photos.length, st = STEPS[state.step];
     const dots = STEPS.map((x, i) => `<span style="flex:1;height:6px;border-radius:3px;background:${i < state.step ? 'var(--green)' : i === state.step ? 'var(--coral)' : 'var(--line)'}"></span>`).join('');
@@ -239,16 +240,17 @@ function renderScan() {
     return;
   }
   const n = state.ingredients.length;
-  el('scanBody').innerHTML = `<div class="kick">${t('Fridge to fabulous!')}</div>
+  if (rs) rs.innerHTML = `<button class="chip" data-rescan aria-label="${t('🔄 Start over with new photos')}" title="${t('🔄 Start over with new photos')}" style="cursor:pointer;margin:0;white-space:nowrap">${t('🔄 Start over')}</button>`;
+  el('scanBody').innerHTML = `<h3 style="margin-top:6px">${t('What are you craving?')}</h3>
+    <div class="chips">${CRAVINGS.map(c => `<span class="chip" data-cr="${esc(c)}" style="cursor:pointer;${c === state.craving ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : ''}">${esc(t(c))}</span>`).join('')}</div>
+    <button class="btn primary" id="goRecipes" ${n ? '' : 'disabled style="opacity:.5"'}>${t("Let's get cooking! Show recipes →")}</button>
+    <div style="height:14px"></div>
+    <div class="kick">${t('Fridge to fabulous!')}</div>
     <h2>${t(n === 1 ? 'We found {n} ingredient' : 'We found {n} ingredients', { n })}</h2>
     <p class="sub">${t('Tap to remove anything we got wrong, or add what we missed.')}</p><div style="height:10px"></div>
     ${GROUPS.map(G => { const items = state.ingredients.map((g, i) => [g, i]).filter(([g]) => (GROUPS.includes(g.cat) ? g.cat : 'Pantry') === G); return `<h3 style="margin:14px 0 6px">${G === 'Spices & Seasonings' ? '🧂 ' : ''}${t(G)} <span style="color:var(--muted);font-weight:600">· ${items.length}</span></h3><div class="chips">${items.map(([g, i]) => `<span class="chip ${g.low ? 'miss' : 'have'}" data-rmi="${i}" style="cursor:pointer">${esc(g.name)}${g.qty ? ' · ' + esc(g.qty) : ''}${g.bad ? ' 🚫' : ''}<span class="x">×</span></span>`).join('')}<span class="chip" data-addi="${G}" style="cursor:pointer">${t('+ Add')}</span></div>`; }).join('')}
-    <button class="chip" data-rescan style="cursor:pointer;margin-top:10px">${t('🔄 Start over with new photos')}</button>
     ${state.ingredients.some(i => i.bad) ? `<p class="fine">${t("🚫 doesn't fit your diet, so we'll leave it out of recipes and your grocery list.")}</p>` : ''}
     ${state.low.length ? `<p class="fine">${t(state.low.length === 1 ? 'Coral = running low. We added it to your grocery list.' : 'Coral = running low. We added them to your grocery list.')}</p>` : ''}
-    <h3>${t('What are you craving?')}</h3>
-    <div class="chips">${CRAVINGS.map(c => `<span class="chip" data-cr="${esc(c)}" style="cursor:pointer;${c === state.craving ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : ''}">${esc(t(c))}</span>`).join('')}</div>
-    <button class="btn primary" id="goRecipes" ${n ? '' : 'disabled style="opacity:.5"'}>${t("Let's get cooking! Show recipes →")}</button>
     <a class="btn ghost" href="#list">${t('🛒 Restock time! Build my grocery list')}</a>`;
 }
 

@@ -206,7 +206,7 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 
   <!-- SCAN -->
   <section class="screen" id="scan">
-    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Scan result</span></div>
+    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Scan result</span><span style="flex:1"></span><span id="scanRestart"></span></div>
     <div class="photo" id="scanPhotos" style="display:flex;gap:6px;padding:6px;overflow-x:auto"></div>
     <div id="scanBody"></div>
   </section>
@@ -356,9 +356,9 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 <input type="file" id="snapCam" accept="image/*" capture="environment" multiple hidden>
 <input type="file" id="snapLib" accept="image/*" multiple hidden>
 <div id="toast" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
-<script src="i18n.js?v=ui28"></script>
-<script src="app.js?v=ui28"></script>
-<script src="prep.js?v=ui28"></script>
-<script src="more.js?v=ui28"></script>
+<script src="i18n.js?v=ui29"></script>
+<script src="app.js?v=ui29"></script>
+<script src="prep.js?v=ui29"></script>
+<script src="more.js?v=ui29"></script>
 </body>
 </html>
