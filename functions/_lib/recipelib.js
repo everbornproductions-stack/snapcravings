@@ -147,6 +147,7 @@ export async function libCount(env, { lib = 0, ai = 0, ids = [] }) {
 export async function libStats(env) {
   const s = await rpc(env, 'snap_lib_stats', {}, 2000);
   if (s.data && !s.missing) return { store: 'supabase', ...s.data };
+  if (s.missing && !kvOf(env)) return { store: 'supabase', ready: false, note: 'snap_lib_* RPCs missing: run supabase/migrations/20261102_snapcravings_recipe_library.sql' };
   const kv = kvOf(env); if (!kv) return { store: 'none' };
   const d = new Date(); const days = []; for (let i = 0; i < 7; i++) days.push(new Date(d - i * 864e5).toISOString().slice(0, 10));
   const rows = await Promise.all(days.map(x => kv.get('libm:' + x, 'json').catch(() => null)));
