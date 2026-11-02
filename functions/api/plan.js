@@ -2,6 +2,7 @@
 // Pro / owner token: full plan. Free: first 2 days (preview). Separate fair-use limit (Supabase snap_scan_gate with plan-only hashes), not the 3 free scans.
 // Every meal is diet post-checked; offending meals are re-asked (up to 2 rounds) with the exact terms that broke the rules, then dropped.
 import { verifyToken, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
+import { langCode } from '../_lib/lang.js';
 import { dietPrompt } from '../_lib/diet.js';
 const dietPromptOf = p => (dietPrompt(p.diet) ? dietPrompt(p.diet) + '\n' : '');
 import { PLAN_SCHEMA, MEALS_SCHEMA, planInput, planPrompt, swapPrompt, checkPlan, groceryList, planCost, cleanTexts, offDays, dayGoal } from '../_lib/plan.js';
@@ -72,7 +73,7 @@ async function handle({ request, env }) {
   if (hourly(ip, 40)) return json({ error: 'Whoa, hungry! You hit the hourly limit. Try again soon.' }, 429);
   if (!env.GEMINI_API_KEY && env.MOCK_AI !== '1') return json({ error: 'AI is not set up yet (missing GEMINI_API_KEY).' }, 503);
   const tok = await verifyToken(env, request.headers.get('x-sc-token')); const pro = !!tok; const owner = tok?.e === 'Code unlocked';
-  const p = planInput(b, { pro }); const lang = String(b.lang || request.headers.get('x-sc-lang') || '').toLowerCase().startsWith('es') ? 'es' : 'en';
+  const p = planInput(b, { pro }); const lang = langCode(b.lang || request.headers.get('x-sc-lang'));
   const ask = env.MOCK_AI === '1' ? mockAsk : gemini;
   try {
     if (b.swap) { // one-meal swap: hourly limit only

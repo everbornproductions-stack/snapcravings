@@ -3,6 +3,7 @@
 // GET /api/health. Set MOCK_AI=1 (local only) to return canned results without a key.
 import { libFind, libSave, libCount, libStats, pick as libPick, prefKey as libPrefKey } from '../_lib/recipelib.js';
 import { verifyToken, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
+import { INTL, langCode, intlNote, intlScanNote } from '../_lib/lang.js';
 import { dietOf, dietPrompt, bad, hits, recipeBad, recipeHits, flagScan, staplesFor as dietStaples } from '../_lib/diet.js';
 const FREE_SCANS_PER_WEEK = 3; const IP_SCANS_PER_WEEK = 30;
 
@@ -42,11 +43,11 @@ async function limited(env, ip, route) {
 const STAPLES = 'salt, pepper, cooking oil, water, sugar, flour, butter, common dried spices';
 const RECIPE = { type: 'object', properties: {
   name: { type: 'string' }, emoji: { type: 'string' }, minutes: { type: 'integer' }, servings: { type: 'integer' }, level: { type: 'string', enum: ['Easy', 'Medium', 'Chef mode'] },
-  ingredients: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, qty: { type: 'string' }, have: { type: 'boolean' } }, required: ['item', 'qty', 'have'] } },
-  missing: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, qty: { type: 'string' }, est_price: { type: 'number' } }, required: ['item', 'qty', 'est_price'] } },
+  ingredients: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, qty: { type: 'string' }, have: { type: 'boolean' }, en: { type: 'string' } }, required: ['item', 'qty', 'have'] } },
+  missing: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, qty: { type: 'string' }, est_price: { type: 'number' }, en: { type: 'string' } }, required: ['item', 'qty', 'est_price'] } },
   steps: { type: 'array', items: { type: 'string' } }, kcal: { type: 'integer' }, protein_g: { type: 'integer' }, carbs_g: { type: 'integer' }, fat_g: { type: 'integer' } }, required: ['name', 'emoji', 'minutes', 'servings', 'level', 'ingredients', 'missing', 'steps', 'kcal', 'protein_g', 'carbs_g', 'fat_g'] };
 const SCHEMAS = {
-  scan: { type: 'object', properties: { ingredients: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, qty: { type: 'string' }, category: { type: 'string', enum: ['Produce', 'Proteins', 'Dairy', 'Pantry', 'Spices & Seasonings'] }, low: { type: 'boolean' } }, required: ['name', 'qty', 'category', 'low'] } } }, required: ['ingredients'] },
+  scan: { type: 'object', properties: { ingredients: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, qty: { type: 'string' }, category: { type: 'string', enum: ['Produce', 'Proteins', 'Dairy', 'Pantry', 'Spices & Seasonings'] }, low: { type: 'boolean' }, en: { type: 'string' } }, required: ['name', 'qty', 'category', 'low'] } } }, required: ['ingredients'] },
   recipes: { type: 'object', properties: { recipes: { type: 'array', items: RECIPE } }, required: ['recipes'] },
   crave: { type: 'object', properties: { recipe: RECIPE, est_cook_cost: { type: 'number' } }, required: ['recipe', 'est_cook_cost'] }
 };
@@ -237,8 +238,10 @@ const staplesFor = d => dietStaples(d, STAPLES);
 // The craving itself may name a forbidden food ("shrimp scampi" with a shellfish allergy): say so, so the model adapts instead of repeating it.
 const cravingNote = (d, craving) => { const h = d.hard ? [...new Set(hits(d, craving).map(x => x.toLowerCase()))] : []; return h.length ? `NOTE: the craving mentions ${h.join(', ')}, which the user must NEVER eat. Do not use ${h.join(' or ')} anywhere. Make a fully compliant dish inspired by the craving (for example swap in a safe main ingredient) and say what you swapped in the recipe name.\n` : ''; };
 // Language: 'es' gets Spanish output (recipes, steps, ingredient names) and Spanish error messages. Enums stay English.
-const langOf = (b, request) => { const l = String(b?.lang || request?.headers.get('x-sc-lang') || '').toLowerCase(); return l.startsWith('es') ? 'es' : 'en'; };
+// More languages (pt, hi, id, fr, de, ar, ru, tr) come from _lib/lang.js: local names, metric units, plus an English `en` name per item for the diet checks.
+const langOf = (b, request) => langCode(b?.lang || request?.headers.get('x-sc-lang'));
 const LANG_NOTE = { es: '\nLANGUAGE: Write every user-facing text value in natural, friendly Latin American Spanish (Mexico-neutral): recipe names, ingredient item names, quantities (use metric or common Spanish units like taza, cucharada, cucharadita, pieza), missing items and every step. Use common Latin American food words (for example jitomate or tomate, frijoles, elote, camarón, cacahuate, aguacate). Keep the JSON keys and the enum values for level (Easy, Medium, Chef mode) and category exactly in English. Prices stay in USD. The diet and allergy rules above apply exactly the same in Spanish.', en: '' };
+for (const l of Object.keys(INTL)) LANG_NOTE[l] = intlNote(l);
 const ERR = {
   'Not found': 'No encontrado', 'Those photos are too big. Try fewer photos.': 'Esas fotos pesan mucho. Prueba con menos fotos.',
   'Whoa, hungry! You hit the hourly limit. Try again soon.': '¡Uy, qué hambre! Llegaste al límite por hora. Intenta de nuevo pronto.', 'Bad request': 'Solicitud inválida',
@@ -298,7 +301,7 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
       if (m[3].length * 0.75 > MAX_IMAGE_BYTES) return json({ error: 'One photo is too big (max 1.5 MB).' }, 413);
       parts.push({ inlineData: { mimeType: m[1], data: m[3] } });
     }
-    parts.push({ text: `These ${imgs.length} photos are all from ONE kitchen; each is labeled with its area (fridge, freezer, pantry, spices). Analyze ALL photos together and return ONE combined, de-duplicated inventory: if the same item appears in several photos, list it once. List every distinct food item you can see, explicitly including spices, dried herbs, seasonings and blends, salt and pepper, sauces, oils, vinegars and condiments (read jar and bottle labels). For each give a short common name (e.g. "smoked paprika", "soy sauce", "olive oil"), a rough quantity (e.g. "6 eggs", "half a jar", "about 1 lb"), a category (Produce, Proteins, Dairy, Pantry, Spices & Seasonings; sauces, oils and condiments go in Pantry; spices, dried herbs, salt, pepper and seasoning blends go in Spices & Seasonings), and low=true if it looks nearly empty or running low. Ignore non-food items. If no food is visible, return an empty list.${lang === 'es' ? ' LANGUAGE: write each name and qty in natural Latin American Spanish (for example "pimentón ahumado", "salsa de soya", "aceite de oliva", "6 huevos", "medio frasco"). Keep category values exactly in English as listed.' : ''}` });
+    parts.push({ text: `These ${imgs.length} photos are all from ONE kitchen; each is labeled with its area (fridge, freezer, pantry, spices). Analyze ALL photos together and return ONE combined, de-duplicated inventory: if the same item appears in several photos, list it once. List every distinct food item you can see, explicitly including spices, dried herbs, seasonings and blends, salt and pepper, sauces, oils, vinegars and condiments (read jar and bottle labels). For each give a short common name (e.g. "smoked paprika", "soy sauce", "olive oil"), a rough quantity (e.g. "6 eggs", "half a jar", "about 1 lb"), a category (Produce, Proteins, Dairy, Pantry, Spices & Seasonings; sauces, oils and condiments go in Pantry; spices, dried herbs, salt, pepper and seasoning blends go in Spices & Seasonings), and low=true if it looks nearly empty or running low. Ignore non-food items. If no food is visible, return an empty list.${lang === 'es' ? ' LANGUAGE: write each name and qty in natural Latin American Spanish (for example "pimentón ahumado", "salsa de soya", "aceite de oliva", "6 huevos", "medio frasco"). Keep category values exactly in English as listed.' : intlScanNote(lang)}` });
     const g = await scanGate(env, request, ip);
     if (!g.allowed) return json({ error: "You've used your 3 free scans this week.", paywall: true }, 402);
   } else if (route === 'recipes') {

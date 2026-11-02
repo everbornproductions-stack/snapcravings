@@ -6,6 +6,16 @@
 <meta name="robots" content="noindex">
 <meta name="description" content="Snap your fridge, get recipes with full steps, or compare cooking a craving with ordering it.">
 <title>SnapCravings</title>
+<script>
+// Language pick (EN/ES built in; others load web/i18n/<code>.js before the deferred app scripts). Arabic is right-to-left.
+window.SC_IV = 'ui32';
+window.SC_LANGS = [['en', 'English'], ['es', 'Español'], ['pt', 'Português (BR)'], ['hi', 'हिन्दी'], ['id', 'Bahasa Indonesia'], ['fr', 'Français'], ['de', 'Deutsch'], ['ar', 'العربية'], ['ru', 'Русский'], ['tr', 'Türkçe']];
+(function () { var ok = function (l) { return SC_LANGS.some(function (x) { return x[0] === l; }); }, l = null;
+  try { var s = localStorage.getItem('sc.lang'); if (s) { var v = JSON.parse(s); if (ok(v)) l = v; } } catch (e) {}
+  if (!l) { var n = String((navigator.languages || [])[0] || navigator.language || '').toLowerCase().replace(/^in\b/, 'id').split('-')[0]; l = ok(n) ? n : 'en'; }
+  window.SC_LANG = l; document.documentElement.lang = l; if (l === 'ar') document.documentElement.dir = 'rtl';
+  if (l !== 'en' && l !== 'es') document.write('<script src="i18n/' + l + '.js?v=' + SC_IV + '"><\/script>'); })();
+</script>
 <style>
 :root{
   --bg:#FBF6EF; --card:#FFFFFF; --ink:#1C1A17; --muted:#6F675E; --line:#ECE3D6;
@@ -145,6 +155,13 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 @media (max-width:500px){html,body{height:100%;background:var(--bg)!important}body{display:block;padding:0!important}.phone{position:fixed;inset:0;width:auto;height:auto;border-radius:0;box-shadow:none}.notch,.status .icons,.status span:first-child{visibility:hidden}.status{height:max(20px,env(safe-area-inset-top))}.screen{top:max(20px,env(safe-area-inset-top));bottom:calc(78px + env(safe-area-inset-bottom))}.tabbar{height:calc(78px + env(safe-area-inset-bottom));padding-bottom:calc(22px + env(safe-area-inset-bottom))}.proto{display:none}}
 :root{color-scheme:light only}html{background:#FBF6EF}
 @media (prefers-color-scheme:dark){:root{color-scheme:light only}}
+/* Arabic (right-to-left): mirror only what is pinned to a side; LTR languages are unchanged. Arabic letters must not be letter-spaced. */
+[dir=rtl] .big-choice .ic{right:auto;left:16px}
+[dir=rtl] #gear{margin-left:0!important;margin-right:auto}
+[dir=rtl] .chip .x{margin-left:0;margin-right:4px}
+[dir=rtl] .save{margin-left:0;margin-right:6px}
+[dir=rtl] .cmp td:first-child,[dir=rtl] .cmp th:first-child{text-align:right}
+[dir=rtl] *{letter-spacing:0!important}
 </style>
 <meta name="color-scheme" content="light only">
 <meta name="supported-color-schemes" content="light">
@@ -357,11 +374,11 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 <input type="file" id="snapCam" accept="image/*" capture="environment" multiple hidden>
 <input type="file" id="snapLib" accept="image/*" multiple hidden>
 <div id="toast" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
-<script defer src="config.js?v=ui31"></script>
-<script defer src="i18n.js?v=ui31"></script>
-<script defer src="app.js?v=ui31"></script>
-<script defer src="prep.js?v=ui31"></script>
-<script defer src="more.js?v=ui31"></script>
-<script defer src="grow.js?v=ui31"></script>
+<script defer src="config.js?v=ui32"></script>
+<script defer src="i18n.js?v=ui32"></script>
+<script defer src="app.js?v=ui32"></script>
+<script defer src="prep.js?v=ui32"></script>
+<script defer src="more.js?v=ui32"></script>
+<script defer src="grow.js?v=ui32"></script>
 </body>
 </html>

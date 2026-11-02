@@ -1,0 +1,41 @@
+SnapCravings - Google Play store listing, French (France) (Play locale fr-FR)
+Drafted 2026-11-02 from the English listing (marketing/launch/LISTING_ASO.md, Play Console en-US). Not uploaded. Prices omitted on purpose: Play shows local prices.
+
+== App name (29/30) ==
+SnapCravings: Recettes par IA
+
+== Short description (76/80) ==
+Prenez votre frigo en photo et obtenez des recettes adaptées à votre régime.
+
+== Full description (2191/4000) ==
+Vous ne savez pas quoi cuisiner ? Prenez une photo de votre frigo ou de vos placards et SnapCravings utilise l'IA pour identifier vos ingrédients et vous proposer des recettes réalisables immédiatement. C'est la solution la plus rapide pour trouver une idée repas, utiliser vos restes et éviter de commander à manger.
+
+SCANNEZ VOTRE FRIGO ET CUISINEZ
+Prenez en photo le contenu de votre réfrigérateur ou de vos étagères. SnapCravings reconnaît vos ingrédients, sauces et épices, puis suggère des recettes basées sur ce que vous avez déjà, avec des instructions claires étape par étape.
+
+RECETTES ADAPTÉES À VOTRE RÉGIME
+Configurez vos préférences alimentaires et chaque recette sera adaptée : végétarien, vegan, keto, sans gluten, sans lactose, sans fruits à coque, riche en protéines et plus encore. Les ingrédients incompatibles avec vos allergies ou votre régime sont signalés pour garantir des repas sûrs pour toute la famille.
+
+CUISINER OU COMMANDER ?
+Envie d'un plat spécifique ? Indiquez-le et SnapCravings compare le coût de la préparation maison par rapport à une livraison, en incluant les frais. Bien souvent, cuisiner revient moins cher.
+
+LISTE DE COURSES EN UN CLIC
+Il vous manque un ingrédient ? Ajoutez-le à votre liste de courses en un seul geste.
+
+ENREGISTREZ VOS RECETTES FAVORITES
+Ajoutez vos plats préférés à vos favoris pour les retrouver facilement.
+
+MOINS DE GASPILLAGE, PLUS DE SIMPLICITÉ
+Arrêtez de vous demander quoi préparer pour le dîner. Utilisez ce qui se trouve dans votre frigo avant que les aliments ne périment, faites des économies et obtenez des idées de repas en moins d'une minute.
+
+ESSAI GRATUIT
+Profitez de 3 scans de frigo gratuits chaque semaine. Passez à SnapCravings Pro pour des scans illimités. Annulez à tout moment.
+
+IDÉAL POUR
+- Trouver des idées de dîners rapides en semaine
+- Utiliser les restes et réduire le gaspillage alimentaire
+- Cuisiner selon vos régimes et allergies
+- Les étudiants et parents occupés avec un budget serré
+- Tous ceux qui ouvrent le frigo en pensant qu'il n'y a rien à manger
+
+Des questions ou des idées ? Nous lisons chaque avis et nous vous répondons. Téléchargez SnapCravings et transformez votre frigo en dîner.

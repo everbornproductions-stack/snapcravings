@@ -1,0 +1,41 @@
+SnapCravings - Google Play store listing, Turkish (Play locale tr-TR)
+Drafted 2026-11-02 from the English listing (marketing/launch/LISTING_ASO.md, Play Console en-US). Not uploaded. Prices omitted on purpose: Play shows local prices.
+
+== App name (30/30) ==
+SnapCravings: Yapay Zeka Yemek
+
+== Short description (77/80) ==
+Buzdolabını çek, yapay zeka ile yemek tarifleri bul. Evde pişir, tasarruf et.
+
+== Full description (2151/4000) ==
+Ne pişirsem diye düşünmeyin. Buzdolabınızın veya kilerinizin fotoğrafını çekin, SnapCravings yapay zeka ile malzemelerinizi tanısın ve size uygun tariflere dönüştürsün. Fotoğraftan tarif almanın, artan malzemeleri değerlendirmenin ve dışarıdan yemek sipariş etme masrafından kurtulmanın en hızlı yolu.
+
+BUZDOLABINI ÇEK, TARİFLERİ GÖR
+Buzdolabınızın, kilerinizin veya baharatlığınızın fotoğrafını çekin. SnapCravings malzemelerinizi, soslarınızı ve baharatlarınızı tanır, elinizdeki malzemelerle yapabileceğiniz tarifleri adım adım talimatlarla sunar.
+
+BESLENME VE ALERJİLERİNİZE UYGUN TARİFLER
+Beslenme tercihlerinizi bir kez ayarlayın; vejetaryen, vegan, keto, düşük karbonhidrat, glütensiz, süt ürünü içermeyen, kuruyemiş içermeyen veya yüksek proteinli seçenekler arasından size uygun tarifleri görün. Alerjilerinize veya diyetinize uymayan malzemeler işaretlenir, böylece yemekleriniz hem güvenli hem lezzetli olur.
+
+EVDE PİŞİR VEYA SİPARİŞ ET
+Canınız lahmacun veya hamburger mi çekti? İstediğiniz yemeği yazın, SnapCravings evde yapmanın mı yoksa dışarıdan sipariş etmenin mi daha ekonomik olduğunu hesaplasın. Çoğu zaman evde pişirmek kazandırır.
+
+TEK DOKUNUŞLA ALIŞVERİŞ LİSTESİ
+Eksik malzemeniz mi var? Tek dokunuşla alışveriş listenize ekleyin.
+
+FAVORİ TARİFLERİNİZİ KAYDEDİN
+Sevdiğiniz yemekleri kaydedin ve dilediğiniz zaman tekrar yapın.
+
+DAHA AZ GIDA İSRAFI, DAHA AZ KARARSIZLIK
+Akşam yemeğinde ne yapsam sorusuna son verin. Buzdolabınızdaki malzemeleri bozulmadan değerlendirin, tasarruf edin ve bir dakikadan kısa sürede pratik yemek fikirleri bulun.
+
+ÜCRETSİZ DENEYİN
+Her hafta 3 ücretsiz buzdolabı taraması hakkınız var. Sınırsız tarama için SnapCravings Pro sürümüne geçin. İstediğiniz zaman iptal edebilirsiniz.
+
+KULLANIM ALANLARI
+- Hızlı akşam yemeği fikirleri
+- Artan yemekleri değerlendirme ve gıda israfını önleme
+- Diyet ve alerji dostu yemek pişirme
+- Öğrenciler ve bütçesini düşünen yoğun ebeveynler
+- Buzdolabını açıp yiyecek bir şey bulamayan herkes
+
+Sorularınız veya önerileriniz mi var? Tüm yorumları okuyor ve yanıtlıyoruz. SnapCravings uygulamasını indirin ve buzdolabınızdaki malzemeleri lezzetli yemeklere dönüştürün.

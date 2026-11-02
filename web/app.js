@@ -209,8 +209,8 @@ function renderSettings() {
     ${first ? `<button class="btn primary" id="dietSnap">${t('Save &amp; snap it 📸')}</button><button class="btn ghost" id="dietSkip">${t('Skip for now')}</button>`
       : `<button class="btn primary" id="dietDone">${t("Done. Let's get cooking!")}</button>`}
     ${first ? '' : planCard()}
-    <h3>${t('Language')} <span style="color:var(--muted);font-weight:600">· ${I18N.lang === 'es' ? 'Language' : 'Idioma'}</span></h3>
-    <div class="chips">${[['en', 'EN · English'], ['es', 'ES · Español']].map(([k, n]) => { const on = I18N.lang === k; return `<button class="chip" data-lang="${k}" aria-pressed="${on}" style="cursor:pointer;font-family:var(--font);${on ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : ''}">${on ? '✓ ' : ''}${n}</button>`; }).join('')}</div>`;
+    <h3>${t('Language')} <span style="color:var(--muted);font-weight:600">· ${I18N.lang === 'en' ? 'Idioma · Langue · Sprache · भाषा' : 'Language'}</span></h3>
+    <div class="chips">${I18N.LANGS.map(([k, n]) => { const on = I18N.lang === k; return `<button class="chip" data-lang="${k}" aria-pressed="${on}" style="cursor:pointer;font-family:var(--font);${on ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : ''}">${on ? '✓ ' : ''}${n}</button>`; }).join('')}</div>`;
   el('settings').scrollTop = y;
 }
 function cancelSub() { if (sub.play) return void window.open('https://play.google.com/store/account/subscriptions?sku=' + (typeof sub.play === 'string' ? sub.play : PLAY_SKU) + '&package=app.snapcravings.twa', '_blank'); if (!subCfg.portal) return; window.open(subCfg.portal, '_blank', 'noopener'); }
@@ -486,7 +486,8 @@ function route() {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.for.split(' ').includes(id)));
 }
 window.addEventListener('hashchange', () => { route(); const a = document.querySelector('.screen.active'); a.classList.remove('anim'); void a.offsetWidth; a.classList.add('anim'); });
-function setLang(l) { if (l === I18N.lang) return; I18N.set(l); I18N.applyStatic(document.querySelector('.phone')); renderLeft(); renderPro(); renderFavCount(); renderDietCount(); route(); toast(l === 'es' ? 'Listo: la app está en español.' : 'Done: the app is in English.', 1800); }
+function setLang(l) { if (l === I18N.lang) return; I18N.load(l, () => setLang2(l)); }
+function setLang2(l) { I18N.set(l); I18N.applyStatic(document.querySelector('.phone')); renderLeft(); renderPro(); renderFavCount(); renderDietCount(); route(); toast(I18N.t('Done: the app is in English.'), 1800); }
 I18N.applyStatic(document.querySelector('.phone')); renderLeft();
 route(); setTimeout(cleanGlist, 2500);
 /* INSTALL */

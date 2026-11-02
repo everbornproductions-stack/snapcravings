@@ -96,13 +96,13 @@ const NAMEOK = /\b(scampi|paella|gumbo|jambalaya|cioppino|ceviche|chowder|tom yu
 export function recipeHits(d, r) {
   if (!d.hard || !r) return [];
   const out = [];
-  for (const t of [...(r.ingredients || []).map(i => i?.item), ...(r.missing || []).map(i => i?.item)]) if (t) out.push(...hits(d, String(t)));
+  for (const t of [...(r.ingredients || []), ...(r.missing || [])].flatMap(i => [i?.item, i?.en])) if (t) out.push(...hits(d, String(t)));
   // A bare word in a step ("until the cheese melts") that names a SAFE ingredient on the list ("dairy-free vegan cheddar") is that ingredient.
   // Baked goods made from a safe flour on the list ("gluten-free flour blend" -> "cookies", "dough") are fine in the name and steps.
   const MADE = /^(cookies?|dough|cakes?|cupcakes?|muffins?|brownies?|pies?|crusts?|batter|pancakes?|waffles?|breads?|biscuits?|tortillas?|galletas?|masa|pastel(es)?|panqueques?|hot ?cakes)$/i;
   const safeFlour = [...(r.ingredients || []), ...(r.missing || [])].some(i => /flour|harina|baking mix|blend|masa/i.test(deacc(i?.item)) && !hits(d, String(i?.item)).length);
   const keepHit = h => !(safeFlour && MADE.test(deacc(h).trim()));
-  const safeItems = [...(r.ingredients || []), ...(r.missing || [])].map(i => deacc(i?.item).toLowerCase()).filter(x => x && !hits(d, x).length);
+  const safeItems = [...(r.ingredients || []), ...(r.missing || [])].flatMap(i => [i?.item, i?.en]).map(x => deacc(x).toLowerCase()).filter(x => x && !hits(d, x).length);
   out.push(...hits(d, String(r.name ?? '').replace(NAMEOK, ' ')).filter(keepHit));
   for (const s of r.steps || []) for (const sent of String(s).split(/(?<=[.!?])\s+/)) for (const p of phrases(sent)) {
     if (NEG.test(p)) continue; // "swap the butter for olive oil" / "skip the cheese"
@@ -128,4 +128,4 @@ export function dietPrompt(d) {
 }
 export const staplesFor = (d, STAPLES) => STAPLES.split(', ').filter(s => !(s === 'flour' && d.tags.some(t => ['Gluten-free', 'Keto/low-carb'].includes(t))) && !(s === 'butter' && d.tags.some(t => ['Dairy-free', 'Vegan'].includes(t))) && !(s === 'sugar' && d.tags.includes('Keto/low-carb'))).join(', ');
 // Scan results: mark items that break the user's rules (client skips them in recipes and the restock list).
-export const flagScan = (d, diet) => diet.hard ? { ...d, ingredients: (d.ingredients || []).map(i => bad(diet, i.name || '') ? { ...i, conflict: true } : i) } : d;
+export const flagScan = (d, diet) => diet.hard ? { ...d, ingredients: (d.ingredients || []).map(i => bad(diet, i.name || '') || bad(diet, i.en || '') ? { ...i, conflict: true } : i) } : d;

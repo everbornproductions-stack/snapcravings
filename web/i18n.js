@@ -120,6 +120,7 @@
     'Open the Chrome ⋮ menu, then tap Install app (or Add to Home screen)': 'Abre el menú ⋮ de Chrome y toca Instalar app (o Agregar a la pantalla principal)', 'In Safari: File menu, then Add to Dock': 'En Safari: menú Archivo y luego Agregar al Dock',
     'Firefox can’t install apps. Open this page in Chrome or Edge to install': 'Firefox no puede instalar apps. Abre esta página en Chrome o Edge para instalarla',
     'Click the install icon (⊕) at the right end of the address bar, or ⋮ menu, then Install SnapCravings': 'Haz clic en el ícono de instalar (⊕) al final de la barra de direcciones, o en el menú ⋮, y luego Instalar SnapCravings',
+    'Done: the app is in English.': 'Listo: la app está en español.',
     // server errors (fallback if the server answered in English)
     "You've used your 3 free scans this week.": 'Ya usaste tus 3 escaneos gratis de esta semana.', 'Our kitchen is busy. Tap Retry in a moment!': 'Nuestra cocina está llena. ¡Toca Reintentar en un momento!',
     'That took too long. Tap Retry!': 'Tardó demasiado. ¡Toca Reintentar!', 'The recipe brain hiccuped. Tap Retry!': 'El cerebro de recetas tuvo un hipo. ¡Toca Reintentar!',
@@ -127,24 +128,30 @@
     '$39.99/yr, save 33% vs $4.99/mo list price': '$39.99/año, ahorra 33% vs. $4.99/mes de lista', '$39.99 billed once a year. Secure checkout by Stripe. We use your email only to find your plan.': '$39.99 cobrado una vez al año. Pago seguro con Stripe. Usamos tu correo solo para encontrar tu plan.',
     'Add some ingredients first!': '¡Primero agrega algunos ingredientes!', 'Invalid code': 'Código inválido'
   };
-  const pick = () => { const s = localStorage.getItem('sc.lang'); if (s) { try { const v = JSON.parse(s); if (v === 'es' || v === 'en') return v; } catch {} } return /^es\b/i.test(navigator.language || '') || (navigator.languages || []).slice(0, 1).some(l => /^es\b/i.test(l)) ? 'es' : 'en'; };
-  let lang = pick();
-  const t = (s, v) => { let o = lang === 'es' && Object.prototype.hasOwnProperty.call(ES, s) ? ES[s] : s; if (v) for (const k in v) o = o.split('{' + k + '}').join(v[k]); return o; };
+  // More languages (2026-11-02): dictionaries live in web/i18n/<code>.js and register on window.SC_I18N; the head script in
+  // index.html picks the language and loads only that file before the deferred scripts run. English text stays the key.
+  const D = Object.assign(window.SC_I18N || (window.SC_I18N = {}), { es: ES });
+  const LANGS = window.SC_LANGS || [['en', 'English'], ['es', 'Español']]; const ok = l => LANGS.some(x => x[0] === l);
+  const pick = () => { if (window.SC_LANG && ok(window.SC_LANG)) return window.SC_LANG; const s = localStorage.getItem('sc.lang'); if (s) { try { const v = JSON.parse(s); if (ok(v)) return v; } catch {} } const n = String((navigator.languages || [])[0] || navigator.language || '').toLowerCase().replace(/^in\b/, 'id'); const m = LANGS.find(x => n.split('-')[0] === x[0]); return m ? m[0] : 'en'; };
+  let lang = pick(); const dict = () => (lang === 'en' ? null : D[lang]);
+  const t = (s, v) => { const d = dict(); let o = d && Object.prototype.hasOwnProperty.call(d, s) ? d[s] : s; if (v) for (const k in v) o = o.split('{' + k + '}').join(v[k]); return o; };
   const orig = new WeakMap(), origAttr = new WeakMap();
   function applyStatic(root) {
-    document.documentElement.lang = lang;
+    document.documentElement.lang = lang; document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'; const d = dict();
     const w = document.createTreeWalker(root || document.body, NodeFilter.SHOW_TEXT);
     for (let n; (n = w.nextNode());) {
       if (n.parentNode && /^(SCRIPT|STYLE)$/.test(n.parentNode.nodeName)) continue;
       if (!orig.has(n)) { if (!n.nodeValue.trim()) continue; orig.set(n, n.nodeValue); }
-      const o = orig.get(n), k = o.trim(); if (!Object.prototype.hasOwnProperty.call(ES, k)) continue;
-      n.nodeValue = lang === 'es' ? o.replace(k, ES[k]) : o;
+      const o = orig.get(n), k = o.trim();
+      n.nodeValue = d && Object.prototype.hasOwnProperty.call(d, k) ? o.replace(k, d[k]) : o;
     }
     for (const e of (root || document.body).querySelectorAll('[placeholder],[aria-label]')) {
       const a = origAttr.get(e) || { placeholder: e.getAttribute('placeholder'), 'aria-label': e.getAttribute('aria-label') }; origAttr.set(e, a);
       for (const k of ['placeholder', 'aria-label']) if (a[k] != null) e.setAttribute(k, t(a[k]));
     }
   }
-  window.I18N = { t, ES, applyStatic, get lang() { return lang; }, set(l) { lang = l === 'es' ? 'es' : 'en'; localStorage.setItem('sc.lang', JSON.stringify(lang)); } };
+  // load(l): fetch a language file on the fly (Settings picker), then call back.
+  const load = (l, cb) => { if (l === 'en' || D[l]) return cb(); const sc = document.createElement('script'); sc.src = 'i18n/' + l + '.js?v=' + (window.SC_IV || ''); sc.onload = sc.onerror = () => cb(); document.head.appendChild(sc); };
+  window.I18N = { t, ES, D, LANGS, load, applyStatic, get lang() { return lang; }, get rtl() { return lang === 'ar'; }, set(l) { lang = ok(l) && (l === 'en' || D[l]) ? l : 'en'; localStorage.setItem('sc.lang', JSON.stringify(lang)); } };
   window.t = t;
 })();

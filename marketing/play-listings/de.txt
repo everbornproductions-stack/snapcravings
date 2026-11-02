@@ -1,0 +1,41 @@
+SnapCravings - Google Play store listing, German (Play locale de-DE)
+Drafted 2026-11-02 from the English listing (marketing/launch/LISTING_ASO.md, Play Console en-US). Not uploaded. Prices omitted on purpose: Play shows local prices.
+
+== App name (24/30) ==
+SnapCravings: KI-Rezepte
+
+== Short description (75/80) ==
+Kühlschrank fotografieren, KI-Rezepte erhalten. Günstiger als Lieferdienst.
+
+== Full description (2172/4000) ==
+Du weißt nicht, was du kochen sollst? Fotografiere einfach deinen Kühlschrank oder Vorratsschrank und SnapCravings nutzt KI, um deine Zutaten zu erkennen und daraus Rezepte für heute Abend zu erstellen. Der schnellste Weg, um aus einem Foto ein Rezept zu erhalten, Reste zu verwerten und dir die teure Bestellung beim Lieferdienst zu sparen.
+
+FOTOGRAFIERE DEINEN KÜHLSCHRANK, ERHALTE REZEPTE
+Mach Fotos von deinem Kühlschrank, Vorratsschrank und Gewürzregal. SnapCravings erkennt deine Zutaten, Soßen und Gewürze und schlägt Rezepte mit den vorhandenen Lebensmitteln vor, inklusive klarer Schritt-für-Schritt-Anleitungen.
+
+REZEPTE FÜR DEINE ERNÄHRUNG UND ALLERGIEN
+Lege deine Ernährungsweise fest und jedes Rezept passt: vegetarisch, vegan, keto, low-carb, glutenfrei, laktosefrei, nussfrei, proteinreich und mehr. Zutaten, die nicht zu deinem Plan passen oder Allergien auslösen könnten, werden markiert, damit die Ideen für dich und deine Familie sicher sind.
+
+KOCHEN ODER BESTELLEN?
+Du hast Lust auf ein Curry oder einen Burger? Gib es ein und SnapCravings zeigt dir, ob Kochen zu Hause oder Bestellen die günstigere Wahl ist, inklusive Liefergebühren. Meistens gewinnt das Kochen.
+
+EINKAUFSLISTE MIT EINEM TIPP
+Fehlt eine Zutat oder ist sie fast aufgebraucht? Füge sie mit einem Tipp deiner Einkaufsliste hinzu.
+
+SPEICHERE DEINE LIEBLINGSREZEPTE
+Markiere deine Lieblingsgerichte und finde sie jederzeit wieder.
+
+WENIGER LEBENSMITTELVERSCHWENDUNG
+Hör auf zu fragen, was du kochen sollst. Nutze, was im Kühlschrank ist, bevor es schlecht wird, spare Geld und erhalte schnelle Rezeptideen in unter einer Minute.
+
+KOSTENLOS TESTEN
+Jede Woche drei kostenlose Kühlschrank-Scans. Upgrade auf SnapCravings Pro für unbegrenzte Scans. Jederzeit kündbar.
+
+IDEAL FÜR
+- Schnelle Ideen für das Abendessen unter der Woche
+- Resteverwertung und weniger Lebensmittelverschwendung
+- Kochen bei spezieller Ernährung und Allergien
+- Studierende und vielbeschäftigte Eltern mit kleinem Budget
+- Jeden, der in den Kühlschrank schaut und nichts zu essen sieht
+
+Fragen oder Ideen? Wir lesen jede Bewertung und antworten. Lade SnapCravings herunter und mache deinen Kühlschrank zum Abendessen.

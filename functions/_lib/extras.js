@@ -2,8 +2,8 @@
 import { recipeHits } from './diet.js';
 export const RECIPE = { type: 'object', properties: {
   name: { type: 'string' }, emoji: { type: 'string' }, minutes: { type: 'integer' }, servings: { type: 'integer' }, level: { type: 'string', enum: ['Easy', 'Medium', 'Chef mode'] },
-  ingredients: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, qty: { type: 'string' }, have: { type: 'boolean' } }, required: ['item', 'qty', 'have'] } },
-  missing: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, qty: { type: 'string' }, est_price: { type: 'number' } }, required: ['item', 'qty', 'est_price'] } },
+  ingredients: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, qty: { type: 'string' }, have: { type: 'boolean' }, en: { type: 'string' } }, required: ['item', 'qty', 'have'] } },
+  missing: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, qty: { type: 'string' }, est_price: { type: 'number' }, en: { type: 'string' } }, required: ['item', 'qty', 'est_price'] } },
   steps: { type: 'array', items: { type: 'string' } }, kcal: { type: 'integer' }, protein_g: { type: 'integer' }, carbs_g: { type: 'integer' }, fat_g: { type: 'integer' } },
   required: ['name', 'emoji', 'minutes', 'servings', 'level', 'ingredients', 'missing', 'steps', 'kcal', 'protein_g', 'carbs_g', 'fat_g'] };
 export const RECIPES_SCHEMA = { type: 'object', properties: { recipes: { type: 'array', items: RECIPE } }, required: ['recipes'] };
@@ -14,8 +14,8 @@ const s = (v, k) => String(v ?? '').slice(0, k);
 export function cleanRecipe(r) {
   if (!r || typeof r !== 'object' || !s(r.name, 120).trim()) return null;
   return { name: s(r.name, 120).trim(), emoji: /[A-Za-z0-9]/.test(s(r.emoji, 8)) || !r.emoji ? '🍳' : s(r.emoji, 8), minutes: n(r.minutes, 1, 600, 20), servings: n(r.servings, 1, 20, 2), level: ['Easy', 'Medium', 'Chef mode'].includes(r.level) ? r.level : 'Easy',
-    ingredients: (Array.isArray(r.ingredients) ? r.ingredients : []).slice(0, 30).map(i => ({ item: s(i?.item, 80), qty: s(i?.qty, 40), have: !!i?.have })).filter(i => i.item),
-    missing: (Array.isArray(r.missing) ? r.missing : []).slice(0, 15).map(i => ({ item: s(i?.item, 80), qty: s(i?.qty, 40), est_price: Math.max(0, Math.min(200, Number(i?.est_price) || 0)) })).filter(i => i.item),
+    ingredients: (Array.isArray(r.ingredients) ? r.ingredients : []).slice(0, 30).map(i => ({ item: s(i?.item, 80), qty: s(i?.qty, 40), have: !!i?.have, ...(i?.en ? { en: s(i.en, 80) } : {}) })).filter(i => i.item),
+    missing: (Array.isArray(r.missing) ? r.missing : []).slice(0, 15).map(i => ({ item: s(i?.item, 80), qty: s(i?.qty, 40), est_price: Math.max(0, Math.min(200, Number(i?.est_price) || 0)), ...(i?.en ? { en: s(i.en, 80) } : {}) })).filter(i => i.item),
     steps: (Array.isArray(r.steps) ? r.steps : []).slice(0, 16).map(x => s(x, 400)).filter(Boolean),
     kcal: n(r.kcal, 0, 3000, 0), protein_g: n(r.protein_g, 0, 300, 0), carbs_g: n(r.carbs_g, 0, 400, 0), fat_g: n(r.fat_g, 0, 300, 0) };
 }

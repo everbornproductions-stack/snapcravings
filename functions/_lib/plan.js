@@ -1,4 +1,5 @@
 // Weekly meal-prep planner: pure helpers (prompt, schema, diet post-check, combined grocery list). Used by functions/api/plan.js and tests.
+import { INTL, intlNote } from './lang.js';
 import { dietOf, dietPrompt, bad, hits, recipeHits, staplesFor as dietStaples } from './diet.js';
 export const AISLES = ['Produce', 'Meat & Seafood', 'Dairy & Eggs', 'Bakery & Grains', 'Pantry', 'Canned & Jarred', 'Frozen', 'Spices', 'Other'];
 export const SLOTS = { dinner: ['Dinner'], lunch_dinner: ['Lunch', 'Dinner'], all: ['Breakfast', 'Lunch', 'Dinner'] };
@@ -32,6 +33,7 @@ export function planInput(b, { pro = false } = {}) {
   return { fit, days, genDays: pro ? days : Math.min(days, FREE_PREVIEW_DAYS), preview: !pro, meals, slots: SLOTS[meals], servings, budget, diet, fridge };
 }
 const LANG = { es: '\nLANGUAGE: Write every user-facing text value with correct Spanish accents and ñ (meal names, ingredient items and quantities, steps, prep titles and details, storage tips) in natural, friendly Latin American Spanish (Mexico-neutral, metric or taza/cucharada units). Keep JSON keys and the enum values for slot and aisle exactly in English. Prices stay in USD. The diet and allergy rules apply exactly the same in Spanish.', en: '' };
+for (const l of Object.keys(INTL)) LANG[l] = intlNote(l, ', prep titles and details, storage tips').replace(/ For EVERY ingredient[^.]*\. /, ' ');
 const GOAL_TXT = { high_protein: 'high protein (lean proteins, beans, Greek yogurt or other options that fit the rules, in every meal)', cut: 'cutting / losing weight (calorie deficit, high protein, lots of vegetables, filling and low in added fat and sugar)', bulk: 'bulking / gaining muscle (calorie surplus, high protein, generous carbs)', maintain: 'maintaining weight (balanced meals)', low_carb: 'low carb (mostly protein, vegetables and healthy fats; few grains, sugar or starchy sides)' };
 // Fitness goals are optional; the default is easy, budget-friendly food for regular people.
 export function fitNote(p) {

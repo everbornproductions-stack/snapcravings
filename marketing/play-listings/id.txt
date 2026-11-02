@@ -1,0 +1,41 @@
+SnapCravings - Google Play store listing, Indonesian (Play locale id)
+Drafted 2026-11-02 from the English listing (marketing/launch/LISTING_ASO.md, Play Console en-US). Not uploaded. Prices omitted on purpose: Play shows local prices.
+
+== App name (30/30) ==
+SnapCravings: Resep Masakan AI
+
+== Short description (77/80) ==
+Foto isi kulkas, dapatkan resep AI sesuai diet dan alergi. Hemat biaya makan.
+
+== Full description (2149/4000) ==
+Bingung mau masak apa? Foto isi kulkas atau dapur Anda dan SnapCravings menggunakan AI untuk mengenali bahan makanan lalu mengubahnya menjadi resep masakan yang bisa Anda buat hari ini. Ini adalah cara tercepat untuk mendapatkan resep dari foto, memanfaatkan sisa bahan makanan, dan menghindari biaya pesan antar yang mahal.
+
+FOTO KULKAS, DAPATKAN RESEP
+Ambil foto isi kulkas, rak dapur, dan bumbu Anda. SnapCravings mengenali bahan makanan, saus, dan bumbu Anda, lalu menyarankan resep dari bahan yang sudah tersedia dengan instruksi langkah demi langkah yang jelas.
+
+RESEP SESUAI DIET DAN ALERGI
+Atur preferensi diet Anda sekali dan setiap resep akan disesuaikan: vegetarian, vegan, keto, rendah karbohidrat, bebas gluten, bebas susu, bebas kacang, tinggi protein, dan banyak lagi. Bahan yang tidak sesuai diet atau memicu alergi akan ditandai, sehingga ide makan malam tetap aman untuk Anda dan keluarga.
+
+MASAK SENDIRI ATAU PESAN ANTAR?
+Ingin makan nasi goreng atau ayam goreng? Sebutkan menunya dan SnapCravings akan menunjukkan apakah memasak di rumah atau memesan makanan lebih hemat, termasuk biaya layanan dan tip. Biasanya, memasak sendiri jauh lebih murah.
+
+DAFTAR BELANJA SEKALI KETUK
+Ada bahan yang habis atau kurang? Tambahkan ke daftar belanja Anda hanya dengan satu ketukan.
+
+SIMPAN RESEP FAVORIT
+Simpan makanan yang Anda sukai dan akses kembali kapan saja.
+
+KURANGI LIMBAH MAKANAN DAN KERAGUAN
+Berhenti bertanya mau masak apa untuk makan malam. Gunakan bahan di kulkas sebelum kedaluwarsa, hemat uang, dan dapatkan ide masakan cepat dalam waktu kurang dari satu menit.
+
+GRATIS UNTUK DICOBA
+Nikmati 3 pemindaian kulkas gratis setiap minggu. Tingkatkan ke SnapCravings Pro untuk pemindaian tak terbatas. Batalkan kapan saja.
+
+COCOK UNTUK
+- Ide makan malam praktis di hari kerja
+- Resep memanfaatkan sisa bahan makanan dan mengurangi limbah
+- Memasak sesuai diet dan alergi
+- Pelajar dan orang tua sibuk yang ingin berhemat
+- Siapa saja yang sering merasa tidak ada makanan saat membuka kulkas
+
+Punya pertanyaan atau saran? Kami membaca setiap ulasan dan membalasnya. Unduh SnapCravings dan ubah isi kulkas Anda menjadi hidangan lezat.

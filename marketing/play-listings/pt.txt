@@ -1,0 +1,41 @@
+SnapCravings - Google Play store listing, Brazilian Portuguese (Play locale pt-BR)
+Drafted 2026-11-02 from the English listing (marketing/launch/LISTING_ASO.md, Play Console en-US). Not uploaded. Prices omitted on purpose: Play shows local prices.
+
+== App name (29/30) ==
+SnapCravings: Receitas com IA
+
+== Short description (74/80) ==
+Tire foto da geladeira e receba receitas com IA. Mais barato que delivery.
+
+== Full description (2081/4000) ==
+Nao sabe o que cozinhar? Tire uma foto da sua geladeira ou despensa e o SnapCravings usa IA para identificar os ingredientes e transformá-los em receitas para o seu jantar. E a maneira mais rapida de encontrar o que cozinhar, aproveitar sobras e evitar gastos desnecessarios com delivery.
+
+TIRE FOTO DA GELADEIRA E RECEBA RECEITAS
+Tire fotos da sua geladeira, despensa e armarios. O SnapCravings reconhece seus ingredientes, molhos e temperos, sugerindo receitas com o que voce ja tem, com instrucoes passo a passo claras.
+
+RECEITAS PARA SUA DIETA E ALERGIAS
+Defina sua dieta e todas as receitas serao adequadas: vegetariana, vegana, cetogenica, low-carb, sem gluten, sem lactose, sem nozes, rica em proteinas e muito mais. Ingredientes que nao se encaixam na sua dieta ou que causam alergias sao sinalizados, garantindo seguranca para voce e sua familia.
+
+VALE A PENA COZINHAR OU PEDIR?
+Com vontade de um yakisoba ou um hamburguer? Digite o prato e o SnapCravings mostra se vale mais a pena cozinhar em casa ou pedir delivery, considerando taxas e gorjetas. Na maioria das vezes, cozinhar e a melhor opcao.
+
+LISTA DE COMPRAS COM UM TOQUE
+Faltou algum ingrediente? Adicione a sua lista de compras com um toque.
+
+SALVE SUAS RECEITAS FAVORITAS
+Marque as refeicoes que voce mais gosta e acesse quando quiser.
+
+MENOS DESPERDICIO, MAIS PRATICIDADE
+Pare de se perguntar o que fazer para o jantar. Use o que tem na geladeira antes que estrague, economize dinheiro e receba ideias de refeicoes em menos de um minuto.
+
+GRATUITO PARA TESTAR
+3 scans de geladeira gratuitos por semana. Assine o SnapCravings Pro para scans ilimitados. Cancele quando quiser.
+
+IDEAL PARA
+- Ideias rapidas para o jantar durante a semana
+- Receitas com sobras e reducao de desperdicio de alimentos
+- Culinaria adaptada a dietas e alergias
+- Estudantes e pais ocupados que buscam economizar
+- Qualquer pessoa que abre a geladeira e acha que nao tem nada para comer
+
+Duvidas ou sugestoes? Lemos todas as avaliacoes e respondemos. Baixe o SnapCravings e transforme o que voce tem na geladeira em um jantar delicioso.
