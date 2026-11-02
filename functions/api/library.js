@@ -23,7 +23,7 @@ export async function onRequestPost({ request }) {
   }
   if (b.action === 'list') {
     const raw = await rpc('snap_library', { p_lang: lang, p_q: '', p_limit: 300 }); if (!Array.isArray(raw)) return E('Ratings are taking a break. Try again soon!', 502);
-    const diet = dietOf(b.prefs); const list = filterLibrary(raw, diet, b);
+    const diet = dietOf(b.prefs); const seen = new Set(); const list = filterLibrary(raw, diet, b).filter(x => { const k = String(x.recipe.name).toLowerCase().trim(); if (seen.has(k)) return false; seen.add(k); return true; });
     return json({ total: raw.length, hidden: raw.length - filterLibrary(raw, diet, {}).length, recipes: list.slice(0, 60).map(x => ({ ...x.recipe, up: x.up, down: x.down })) });
   }
   return E('Bad request', 400);
