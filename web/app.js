@@ -19,7 +19,7 @@ function track(event, screen, meta) {
   } catch {}
 }
 async function redeem() { const c = (el('proCode')?.value || '').trim(); if (!c) return toast('Pop in your code first!'); try { const j = await subCall('redeem', { code: c }); sub = { email: j.email, token: j.token, active: true, checked: Date.now(), code: true }; LS.set('sub', sub); renderLeft(); renderPro(); toast("Code unlocked! You're Unlimited! 🎉"); } catch (e) { toast(e.message); } }
-let subCfg = { enabled: false, price: 4.99 };
+let subCfg = { enabled: false, price: 3.99 };
 const unlimited = () => !!sub.token && sub.active;
 async function subCall(path, body) { const r = await fetch('/api/sub/' + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "Hmm, that didn't work. Try again!"); return j; }
 async function checkSub(email, quiet) {
@@ -33,7 +33,7 @@ function renderPro() {
   if (sub.email && !el('proEmail').value) el('proEmail').value = sub.email;
   if (!subCfg.enabled) { el('proGo').textContent = 'Unlimited · coming soon!'; el('proGo').style.opacity = '.6'; el('proEmail').parentNode.style.display = 'none'; el('proRestore').style.display = 'none'; }
   else { if (!el('proGo').querySelector('.spin')) el('proGo').textContent = "Go Unlimited — let's get cooking!"; el('proGo').style.opacity = ''; el('proEmail').parentNode.style.display = ''; el('proRestore').style.display = ''; }
-  el('proFine').textContent = subCfg.enabled ? `$${Number(subCfg.price).toFixed(2)}/month. Secure checkout by Stripe. We use your email only to find your plan.` : 'Unlimited is coming soon. Free scans and codes still work!';
+  el('proFine').textContent = subCfg.enabled ? `$${Number(subCfg.price).toFixed(2)}/mo founders price, first 100 members, locked in. Secure checkout by Stripe. We use your email only to find your plan.` : 'Unlimited is coming soon. Free scans and codes still work!';
 }
 async function goUnlimited() {
   if (!subCfg.enabled || !subCfg.link) return toast('Unlimited is coming soon!');

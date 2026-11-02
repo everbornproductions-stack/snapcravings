@@ -3,11 +3,12 @@
 export const TOLERANCE_SECONDS = 300;
 export const APP = "snapcravings";
 export const PRICE_CENTS = 499;
+export const PRICES_CENTS = [499, 399]; // $4.99 list + $3.99 founders
 // Hardcoded Stripe ids (live, account "Everborn marketing"): the dashboard could not put app=snapcravings on subscriptions,
 // so these are the primary match for invoices and subscriptions. Ids are not secrets.
-export const PRICE_IDS = ["price_1UV1Nv6wphxe2c5DdlBKSCId"];
+export const PRICE_IDS = ["price_1UV1Nv6wphxe2c5DdlBKSCId", "price_1UXAtZ6wphxe2c5DohC4knko"];
 export const PRODUCT_IDS = ["prod_VW3Um2yJoNikOC"];
-export const PAYMENT_LINK_IDS = ["plink_1UV1Pz6wphxe2c5DKeNKdWOL"];
+export const PAYMENT_LINK_IDS = ["plink_1UV1Pz6wphxe2c5DKeNKdWOL", "plink_1UXAxN6wphxe2c5DkkcPaShj"];
 
 const hex = (bytes) => [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 export async function computeStripeSignature({ secret, timestamp, rawBody }) {
@@ -53,7 +54,7 @@ export function mapSubscriptionStatus(status) {
   }
 }
 
-// Is this object ours? metadata app=snapcravings, or the configured Payment Link id, or a $4.99 monthly price.
+// Is this object ours? metadata app=snapcravings, or the configured Payment Link id, or a $4.99 / $3.99 founders monthly price.
 export function isSnap(obj, { paymentLinkId = "" } = {}) {
   const metas = [obj?.metadata, obj?.subscription_details?.metadata, obj?.parent?.subscription_details?.metadata,
     obj?.lines?.data?.[0]?.metadata, obj?.items?.data?.[0]?.metadata, obj?.items?.data?.[0]?.price?.metadata];
@@ -70,10 +71,10 @@ export function isSnap(obj, { paymentLinkId = "" } = {}) {
   }
   const price = obj?.items?.data?.[0]?.price ?? obj?.lines?.data?.[0]?.price ?? obj?.lines?.data?.[0]?.pricing?.price_details;
   const plan = obj?.plan ?? obj?.items?.data?.[0]?.plan ?? obj?.lines?.data?.[0]?.plan;
-  const amt = price?.unit_amount ?? plan?.amount ?? (obj?.object === "invoice" && Number(obj?.lines?.data?.[0]?.pricing?.unit_amount_decimal) === PRICE_CENTS ? PRICE_CENTS : undefined), iv = price?.recurring?.interval ?? plan?.interval ?? (obj?.object === "invoice" ? "month" : undefined);
-  if (Number.isInteger(amt) && amt === PRICE_CENTS && iv === "month") return true;
+  const amt = price?.unit_amount ?? plan?.amount ?? (obj?.object === "invoice" && Number(obj?.lines?.data?.[0]?.pricing?.unit_amount_decimal) === PRICE_CENTS || Number(obj?.lines?.data?.[0]?.pricing?.unit_amount_decimal) === 399 ? Number(obj?.lines?.data?.[0]?.pricing?.unit_amount_decimal) : undefined), iv = price?.recurring?.interval ?? plan?.interval ?? (obj?.object === "invoice" ? "month" : undefined);
+  if (Number.isInteger(amt) && PRICES_CENTS.includes(amt) && iv === "month") return true;
   // Checkout session: a $4.99 subscription session (list price, before any promo code).
-  if (obj?.object === "checkout.session" && obj.mode === "subscription" && obj.amount_subtotal === PRICE_CENTS && String(obj.currency).toLowerCase() === "usd") return true;
+  if (obj?.object === "checkout.session" && obj.mode === "subscription" && PRICES_CENTS.includes(obj.amount_subtotal) && String(obj.currency).toLowerCase() === "usd") return true;
   return false;
 }
 

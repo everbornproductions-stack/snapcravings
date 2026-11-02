@@ -1,9 +1,9 @@
 // Shared subscription helpers: signed unlock tokens (HMAC-SHA256 with env.SUB_SECRET) + Stripe/Supabase constants.
 // Payments run on Stripe (Payment Link + Supabase Edge Function webhook). No Stripe secret key lives here.
 // Fill these two once the Stripe objects exist; while PAYMENT_LINK_URL is empty the app shows "Unlimited is coming soon".
-export const PAYMENT_LINK_URL = 'https://buy.stripe.com/7sYaEQ33N0SR26raCfgQE08';   // SnapCravings Unlimited, $4.99/mo
+export const PAYMENT_LINK_URL = 'https://buy.stripe.com/cNi00cawf7hfcL5h0DgQE09';   // SnapCravings Unlimited founders $3.99/mo (plink_1UXAxN6wphxe2c5DkkcPaShj, capped at 100; old $4.99 link plink_1UV1Pz... still live)
 export const PORTAL_URL = 'https://billing.stripe.com/p/login/00wbIUdIrcBz8uP9ybgQE00';
-export const PRICE_CENTS = 499;       // display only; the real price lives on the Stripe Payment Link
+export const PRICE_CENTS = 399;       // display only; the real price lives on the Stripe Payment Link
 // Public Supabase project (everborn-command). The publishable key is designed to be public: it can only call
 // the snap_check_sub RPC (RLS blocks every table). Not a secret.
 export const SUPABASE_URL = 'https://ezbpstloczzdlcxwliwu.supabase.co';
