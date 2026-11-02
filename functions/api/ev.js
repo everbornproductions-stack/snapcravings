@@ -3,7 +3,7 @@
 // first 32 hex chars) so the database only ever sees the hash. Always answers 204 and never throws: tracking must never
 // affect the app, and it is a quiet no-op while the RPC does not exist yet (PGRST202).
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
-const EVENTS = new Set(['page_view', 'scan', 'recipes_shown', 'more_ideas', 'favorite', 'upgrade_click', 'checkout_return', 'diet_saved', 'install']);
+const EVENTS = new Set(['page_view', 'scan', 'recipes_shown', 'more_ideas', 'favorite', 'upgrade_click', 'checkout_return', 'diet_saved', 'install', 'review_card', 'review_go', 'share_recipe', 'play_banner', 'play_go']);
 const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 async function send(b) { // resolves to a short result string (returned in the x-ev header for debugging; never any user data)
   const dev = String(b.dev || '');
