@@ -1,0 +1,31 @@
+name: iOS build
+on:
+  workflow_dispatch:
+jobs:
+  simulator:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ios/package-lock.json
+      - run: npm ci
+      - run: npx cap sync ios
+      - name: Build unsigned simulator app
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App \
+            -configuration Debug -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build | tail -40
+          test -d build/Build/Products/Debug-iphonesimulator/App.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SnapCravings-simulator
+          path: ios/build/Build/Products/Debug-iphonesimulator/App.app
+          retention-days: 7

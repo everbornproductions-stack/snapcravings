@@ -8,3 +8,13 @@ functions/_lib/stats_key.js
 android/
 marketing/contacts/
 functions/_lib/play_key.js
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
+*.env
+keystore-passwords.env
+play-sa.json
+*-sa.json
+service-account*.json

@@ -1,0 +1,12 @@
+{
+  "appId": "app.snapcravings.ios",
+  "appName": "SnapCravings",
+  "webDir": "www",
+  "server": {
+    "url": "https://snapcravings.pages.dev",
+    "errorPath": "offline.html",
+    "allowNavigation": ["snapcravings.pages.dev"]
+  },
+  "ios": { "contentInset": "never", "limitsNavigationsToAppBoundDomains": false },
+  "plugins": { "SplashScreen": { "launchShowDuration": 1200, "backgroundColor": "#ffffff", "showSpinner": false } }
+}
