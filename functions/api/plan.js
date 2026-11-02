@@ -2,7 +2,9 @@
 // Pro / owner token: full plan. Free: first 2 days (preview). Separate fair-use limit (Supabase snap_scan_gate with plan-only hashes), not the 3 free scans.
 // Every meal is diet post-checked; offending meals are re-asked (up to 2 rounds) with the exact terms that broke the rules, then dropped.
 import { verifyToken, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
-import { PLAN_SCHEMA, MEALS_SCHEMA, planInput, planPrompt, swapPrompt, checkPlan, groceryList, planCost } from '../_lib/plan.js';
+import { dietPrompt } from '../_lib/diet.js';
+const dietPromptOf = p => (dietPrompt(p.diet) ? dietPrompt(p.diet) + '\n' : '');
+import { PLAN_SCHEMA, MEALS_SCHEMA, planInput, planPrompt, swapPrompt, checkPlan, groceryList, planCost, cleanTexts, offDays, dayGoal } from '../_lib/plan.js';
 const VOICE = 'You write for SnapCravings, a fun, upbeat cooking app. Plain, friendly words. No em-dashes. Steps are specific (times, temperatures, amounts) and safe (cook meat through, cool food fast before the fridge).';
 const CHAIN = [['gemini-3.8-flash', 50000, { thinkingBudget: 0 }], ['gemini-3.5-flash-lite', 45000, null], ['gemini-2.5-flash-lite', 40000, { thinkingBudget: 0 }]];
 const FAIR = { free: 3, pro: 25 }, IP_FAIR = 40; // plans per rolling 7 days
@@ -91,13 +93,23 @@ async function handle({ request, env }) {
     const r = await repair(env, p, first.meals || [], lang, ask);
     console.log('plan', p.genDays, 'x', p.slots.length, 'ok', r.meals.length, 'rounds', r.rounds, 'banned', r.banned.join('|'));
     if (!r.meals.length) return json({ error: "We couldn't build a plan that fits your diet. Tap Retry!", why: r.banned }, 502);
+    // Fitness targets: if days miss the calorie goal by >10%, ask once to resize portions (same dishes), then re-check the diet rules.
+    const off = offDays(p, r.meals);
+    if (off.length) {
+      try {
+        const txt = `These meal-prep meals miss the user's daily target of about ${dayGoal(p)} kcal per day (one serving of each meal${p.fit.p ? `, about ${Math.round(p.fit.p * dayGoal(p) / p.fit.kcal)} g protein` : ''}). Off days: ${off.map(o => `day ${o.day} = ${o.kcal} kcal`).join('; ')}. Return ALL the meals again with the same day, slot, name and dishes, but adjust ingredient quantities (and add a simple side if needed) so each day lands within 10% of the target, and update kcal, protein_g, carbs_g, fat_g, est_cook_cost honestly. Keep every diet and allergy rule. Meals: ${JSON.stringify(r.meals.map(m => ({ day: m.day, slot: m.slot, name: m.name, emoji: m.emoji, minutes: m.minutes, servings: m.servings, ingredients: m.ingredients, steps: m.steps, keeps_days: m.keeps_days, kcal: m.kcal, protein_g: m.protein_g, carbs_g: m.carbs_g, fat_g: m.fat_g, est_cook_cost: m.est_cook_cost })))}\n${dietPromptOf(p)}${lang === 'es' ? 'Keep all text in Spanish.' : ''}`;
+        const fixed = await ask(env, MEALS_SCHEMA, [{ text: txt }], 16000); const c = checkPlan(p, fixed.meals || []);
+        if (c.good.length === r.meals.length && offDays(p, c.good).length < off.length) r.meals = c.good;
+        console.log('fit resize', off.length, '->', offDays(p, c.good).length, 'bad', c.bad.length);
+      } catch {}
+    }
     const meals = r.meals.sort((x, y) => x.day - y.day || ['Breakfast', 'Lunch', 'Dinner'].indexOf(x.slot) - ['Breakfast', 'Lunch', 'Dinner'].indexOf(y.slot));
-    return json({ days: p.days, genDays: p.genDays, preview: p.preview, slots: p.slots, servings: p.servings, budget: p.budget, meals, open: r.missing,
-      grocery: groceryList(meals, p.fridge, p.diet), prep: (first.prep || []).slice(0, 10), storage: (first.storage || []).slice(0, 8).map(String), total: planCost(meals), lang, ...(env.MOCK_AI === '1' ? { mock: true } : {}) });
+    return json({ fit: p.fit, days: p.days, genDays: p.genDays, preview: p.preview, slots: p.slots, servings: p.servings, budget: p.budget, meals, open: r.missing,
+      grocery: groceryList(meals, p.fridge, p.diet), prep: cleanTexts(p.diet, (first.prep || []).slice(0, 10), x => (x?.title || '') + '. ' + (x?.detail || '')), storage: cleanTexts(p.diet, (first.storage || []).slice(0, 8).map(String)), total: planCost(meals), lang, ...(env.MOCK_AI === '1' ? { mock: true } : {}) });
   } catch (e) { return json({ error: e.message || 'The recipe brain hiccuped. Tap Retry!' }, 502); }
 }
 async function mockAsk(env, schema, parts) {
   const txt = parts[0].text; const days = +(/(\d+)-day/.exec(txt) || [])[1] || 1; const slots = /Breakfast/.test(txt.split('\n')[0]) ? ['Breakfast', 'Lunch', 'Dinner'] : /Lunch/.test(txt.split('\n')[0]) ? ['Lunch', 'Dinner'] : ['Dinner'];
-  const meals = []; for (let d = 1; d <= days; d++) for (const s of slots) meals.push({ day: d, slot: s, name: `Mock bowl ${d}${s[0]}`, emoji: '🍱', minutes: 15, servings: 2, ingredients: [{ item: 'Rice', qty: '1 cup', aisle: 'Bakery & Grains', have: false }, { item: 'Chicken thighs', qty: '1 lb', aisle: 'Meat & Seafood', have: false }], steps: ['Reheat.', 'Serve.'], est_cook_cost: 6.4, keeps_days: 4 });
+  const meals = []; for (let d = 1; d <= days; d++) for (const s of slots) meals.push({ day: d, slot: s, name: `Mock bowl ${d}${s[0]}`, emoji: '🍱', minutes: 15, servings: 2, ingredients: [{ item: 'Rice', qty: '1 cup', aisle: 'Bakery & Grains', have: false }, { item: 'Chicken thighs', qty: '1 lb', aisle: 'Meat & Seafood', have: false }], steps: ['Reheat.', 'Serve.'], est_cook_cost: 6.4, keeps_days: 4, kcal: 520, protein_g: 38, carbs_g: 55, fat_g: 14 });
   return { meals, prep: [{ title: 'Cook rice', detail: 'Cook 3 cups rice, cool on a tray.', minutes: 25 }], storage: ['Rice keeps 4 days.'] };
 }

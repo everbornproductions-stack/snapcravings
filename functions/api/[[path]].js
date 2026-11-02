@@ -43,13 +43,13 @@ const RECIPE = { type: 'object', properties: {
   name: { type: 'string' }, emoji: { type: 'string' }, minutes: { type: 'integer' }, servings: { type: 'integer' }, level: { type: 'string', enum: ['Easy', 'Medium', 'Chef mode'] },
   ingredients: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, qty: { type: 'string' }, have: { type: 'boolean' } }, required: ['item', 'qty', 'have'] } },
   missing: { type: 'array', items: { type: 'object', properties: { item: { type: 'string' }, qty: { type: 'string' }, est_price: { type: 'number' } }, required: ['item', 'qty', 'est_price'] } },
-  steps: { type: 'array', items: { type: 'string' } } }, required: ['name', 'emoji', 'minutes', 'servings', 'level', 'ingredients', 'missing', 'steps'] };
+  steps: { type: 'array', items: { type: 'string' } }, kcal: { type: 'integer' }, protein_g: { type: 'integer' }, carbs_g: { type: 'integer' }, fat_g: { type: 'integer' } }, required: ['name', 'emoji', 'minutes', 'servings', 'level', 'ingredients', 'missing', 'steps', 'kcal', 'protein_g', 'carbs_g', 'fat_g'] };
 const SCHEMAS = {
   scan: { type: 'object', properties: { ingredients: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, qty: { type: 'string' }, category: { type: 'string', enum: ['Produce', 'Proteins', 'Dairy', 'Pantry', 'Spices & Seasonings'] }, low: { type: 'boolean' } }, required: ['name', 'qty', 'category', 'low'] } } }, required: ['ingredients'] },
   recipes: { type: 'object', properties: { recipes: { type: 'array', items: RECIPE } }, required: ['recipes'] },
   crave: { type: 'object', properties: { recipe: RECIPE, est_cook_cost: { type: 'number' } }, required: ['recipe', 'est_cook_cost'] }
 };
-const VOICE = 'You write for SnapCravings, a fun, upbeat cooking app. Plain, friendly words. No em-dashes. Recipe steps are complete, specific (times, temperatures, amounts) and safe (cook meat through).';
+const VOICE = 'You write for SnapCravings, a fun, upbeat cooking app. Plain, friendly words. No em-dashes. Recipe steps are complete, specific (times, temperatures, amounts) and safe (cook meat through). For every recipe fill kcal, protein_g, carbs_g and fat_g as realistic PER SERVING estimates for the listed quantities.';
 
 // Model chain: Google's 3.8 Flash is often overloaded (429/503 "high demand") and slow; fall back fast.
 const CHAIN = [['gemini-3.8-flash', 22000, { thinkingBudget: 0 }], ['gemini-3.5-flash-lite', 18000, null], ['gemini-2.5-flash-lite', 15000, { thinkingBudget: 0 }]];

@@ -40,3 +40,23 @@ test('grocery list: merged, grouped by aisle, minus fridge and staples', () => {
   assert.ok(inFridge('baby spinach', ['spinach'])); assert.ok(!inFridge('peanut butter', ['butter lettuce']));
 });
 test('emoji text code points are fixed', () => { assert.equal(emojiOf('1f35d'), '🍝'); assert.equal(emojiOf('U+1F35D'), '🍝'); assert.equal(emojiOf('pasta'), '🍱'); assert.equal(emojiOf('🌮'), '🌮'); });
+test('fitness goals: optional, targets in prompt, macros kept per meal', async () => {
+  const { fitNote } = await import('../functions/_lib/plan.js');
+  const reg = planInput({}); assert.equal(reg.fit, null); assert.match(planPrompt(reg), /regular people/);
+  const p = planInput({ meals: 'all', fit: { goal: 'cut', kcal: 1800, p: 150, c: 150, f: 60 }, prefs: { tags: ['Shellfish allergy'] } }, { pro: true });
+  assert.match(fitNote(p), /1800 kcal.*150 g protein/); assert.match(planPrompt(p), /shellfish/i);
+  assert.equal(planInput({ fit: { goal: 'nope' } }).fit, null);
+  const m = checkPlan(p, [{ ...M(1, 'Dinner', 'Chicken bowl', [['chicken']]), kcal: 600, protein_g: 45, carbs_g: 50, fat_g: 18 }]).good[0];
+  assert.deepEqual([m.kcal, m.protein_g, m.carbs_g, m.fat_g], [600, 45, 50, 18]);
+});
+test('prep and storage text that mentions an allergen is dropped', async () => {
+  const { cleanTexts } = await import('../functions/_lib/plan.js'); const d = planInput({ prefs: { tags: ['Shellfish allergy'] } }).diet;
+  assert.deepEqual(cleanTexts(d, ['Rice keeps 4 days.', 'Cook shrimp fresh on day 2.', 'El camarón dura 1 día.']), ['Rice keeps 4 days.']);
+  assert.equal(cleanTexts(d, [{ title: 'Marinate', detail: 'Toss shrimp in lime.' }], x => x.title + '. ' + x.detail).length, 0);
+});
+test('days off the calorie target by >10% are flagged', async () => {
+  const { offDays, dayGoal } = await import('../functions/_lib/plan.js');
+  const p = planInput({ meals: 'lunch_dinner', fit: { goal: 'bulk', kcal: 3000 } }, { pro: true }); assert.equal(dayGoal(p), 2250);
+  const ms = [{ day: 1, kcal: 1100 }, { day: 1, kcal: 1100 }, { day: 2, kcal: 800 }, { day: 2, kcal: 900 }];
+  assert.deepEqual(offDays(p, ms).map(o => o.day), [2]); assert.deepEqual(offDays(planInput({}), ms), []);
+});

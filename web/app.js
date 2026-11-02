@@ -271,6 +271,7 @@ function renderRecipe() {
   const miss = r.missing || []; const cost = r2(miss.reduce((s, m) => s + (+m.est_price || 0), 0));
   el('recipeBody').innerHTML = `<div class="hero">${esc(r.emoji || '🍳')}</div><div class="kick">${t('Craving unlocked!')}</div><h2>${esc(r.name)}</h2>
     <div class="stats"><div class="stat"><b>${esc(r.minutes)} min</b><span>${t('Total')}</span></div><div class="stat"><b>${esc(r.servings)}</b><span>${t('Servings')}</span></div><div class="stat"><b>${esc(t(r.level || 'Easy'))}</b><span>${t('Level')}</span></div></div>
+    ${r.kcal ? `<p class="fine" style="margin-top:6px">${t('{k} kcal · {p}g protein · {c}g carbs · {f}g fat per serving (estimate)', { k: esc(r.kcal), p: esc(r.protein_g), c: esc(r.carbs_g), f: esc(r.fat_g) })}</p>` : ''}
     <h3>${t('Ingredients')}</h3><div class="chips">${(r.ingredients || []).map(g => `<span class="chip ${g.have ? 'have' : 'miss'}">${g.have ? '✓' : '✕'} ${esc(g.item)}${g.qty ? ', ' + esc(g.qty) : ''}</span>`).join('')}</div>
     ${miss.length ? `<div class="card" style="margin-top:12px;background:var(--coral-soft);border-color:#F6C6B3">
       <div class="row" style="padding-top:0"><b>${t(miss.length === 1 ? 'Missing {n} item' : 'Missing {n} items', { n: miss.length })}</b><b>~${$(cost)}</b></div>
