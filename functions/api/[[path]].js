@@ -373,7 +373,7 @@ function ndjson(run) {
 const normIng = s => String(s).toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[^\p{L}\p{N}\[\] ]+/gu, ' ').replace(/\s+/g, ' ').trim();
 async function recipeKey({ ing, craving, section, lang, prefs }) {
   const p = prefs || {}; const set = [...new Set(ing.map(normIng).filter(Boolean))].sort();
-  return 'rc2:' + await sha(JSON.stringify([set, String(craving).toLowerCase().trim(), section, lang, [...(Array.isArray(p.tags) ? p.tags : [])].map(String).sort(), String(p.other || '').toLowerCase().trim(), String(p.mood || '').toLowerCase().trim()]));
+  return 'rc3:' + await sha(JSON.stringify([set, String(craving).toLowerCase().trim(), section, lang, [...(Array.isArray(p.tags) ? p.tags : [])].map(String).sort(), String(p.other || '').toLowerCase().trim(), String(p.mood || '').toLowerCase().trim()]));
 }
 const CACHE_TTL = 86400;
 async function cacheGet(env, key) {
