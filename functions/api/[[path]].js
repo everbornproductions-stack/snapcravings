@@ -55,7 +55,7 @@ const VOICE = 'You write for SnapCravings, a fun, upbeat cooking app. Plain, fri
 // secret exists (GROQ_API_KEY, CEREBRAS_API_KEY, MISTRAL_API_KEY, OPENROUTER_API_KEY); Gemini (GEMINI_API_KEY) and the
 // Workers AI binding (env.AI) are always in. The next entry starts when the previous one fails OR after its head start, and
 // the first good answer wins. Gemini free quotas are per model, so several Gemini models are separate buckets.
-// Measured 2026-11-02 (4-5 recipes, minimal thinking): 3.1-flash-lite ~3 s, 3.5-flash-lite ~5 s, 3-flash-preview ~5 s,
+// Measured 2026-11-02 (5 recipes streamed, minimal thinking): 3.5-flash-lite first recipe ~1.5 s, all ~6 s, steady; 3.1-flash-lite similar but stalls >4 s about 1 in 5; 3-flash-preview ~5 s,
 // 3.6-flash often 503, 3.7/3.8-flash 429 (no free quota on this key), 2.5-flash* 404 (closed to new users), Gemma 4 ~60 s.
 // Workers AI: Scout reads photos in ~5 s; Qwen3 30B (thinking off, plain JSON mode) ~15 s for recipes.
 // Streaming: with a sink, each finished recipe is handed over as soon as its closing brace arrives (Gemini SSE and
@@ -78,14 +78,14 @@ function chainFor(env, route) {
   if (has('cerebras')) L.push(['cerebras', null, null, 0, 3500]);
   if (has('groq')) L.push(['groq', null, null, 0, 3500]);
   if (route === 'scan') L.push(['gemini', 'gemini-3.5-flash-lite', MIN, 0, 5000], ['gemini', 'gemini-3.1-flash-lite', MIN, 0, 6000]);
-  else L.push(['gemini', 'gemini-3.1-flash-lite', MIN, 0, 3000], ['gemini', 'gemini-3.5-flash-lite', MIN, 0, 5000]);
+  else L.push(['gemini', 'gemini-3.5-flash-lite', MIN, 0, 3500], ['gemini', 'gemini-3.1-flash-lite', MIN, 0, 5000]);
   L.push(['gemini', 'gemini-3-flash-preview', MIN, 0, 7000]);
   if (has('mistral')) L.push(['mistral', null, null, 0, 7000]);
   if (has('openrouter')) L.push(['openrouter', null, null, 0, 8000]);
   L.push(['cf'], ['gemini', 'gemini-3.5-flash-lite', MIN, 3000], ['gemini', 'gemini-3.1-flash-lite', MIN, 5000], ['gemini', 'gemini-3.5-flash-lite', null]);
   return L;
 }
-const HEAD_START = 9000, PER_MODEL = 30000, DEADLINE = 45000;
+const HEAD_START = 9000, PER_MODEL = 30000, DEADLINE = 45000, STALL = 7000; // STALL: max gap between streamed recipes
 // Daily neuron guard for Workers AI (approximate: per-isolate memory + per-colo Cache API counter), priced with Scout's
 // rates (24.5k / 77.3k neurons per M in/out tokens, the dearer of the two models), so the count errs high.
 const CF_PRICE = { in: 24545 / 1e6, out: 77273 / 1e6 }; let cfMem = { day: '', n: 0 };
@@ -125,7 +125,7 @@ function recipeTap(onObj) {
 // Reads an SSE body and calls onData(parsedJson) per event.
 async function readSSE(body, onData, signal) {
   const rd = body.getReader(); const dec = new TextDecoder(); let buf = '';
-  const stop = () => { try { rd.cancel(); } catch {} }; signal?.addEventListener('abort', stop);
+  const stop = () => { try { rd.cancel().catch(() => {}); } catch {} }; signal?.addEventListener('abort', stop);
   try {
     for (;;) { const { value, done } = await rd.read(); if (done) break; buf += dec.decode(value, { stream: true }); let k;
       while ((k = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, k).trim(); buf = buf.slice(k + 1);
@@ -186,10 +186,11 @@ async function geminiOne(env, model, thinking, route, parts, signal, tap) {
 async function gemini(env, route, parts, opts = {}) {
   const chain = chainFor(env, route);
   const tries = []; const ctls = new Map(); const T0 = Date.now();
-  let last = 'The recipe brain hiccuped. Tap Retry!', owner = null, paused = false;
+  let last = 'The recipe brain hiccuped. Tap Retry!', owner = null, paused = false; let stall;
   const sent = new Set(); const stream = route === 'recipes' && opts.onRecipe;
   const emit = (id, r) => { if (!stream || !r?.name) return false; if (owner === null) { owner = id; paused = true; for (const [k, c] of ctls) if (k !== id) try { c.abort(); } catch {} }
-    if (owner !== id) return false; const k = String(r.name).toLowerCase(); if (sent.has(k)) return true; sent.add(k); opts.onRecipe(r); return true; };
+    if (owner !== id) return false; clearTimeout(stall); stall = setTimeout(() => { try { ctls.get(id)?.abort(); } catch {} }, STALL); // owner went quiet mid-answer: drop it, the race goes on
+    const k = String(r.name).toLowerCase(); if (sent.has(k)) return true; sent.add(k); opts.onRecipe(r); return true; };
   const one = async ([prov, model, thinking, wait], id) => {
     if (wait) await new Promise(r => setTimeout(r, wait));
     if (owner !== null && owner !== id) return null;
@@ -223,7 +224,7 @@ async function gemini(env, route, parts, opts = {}) {
     };
     next();
   });
-  for (const c of ctls.values()) try { c.abort(); } catch {}
+  clearTimeout(stall); for (const c of ctls.values()) try { c.abort(); } catch {}
   if (res) return res;
   const e = new Error(last); e.tries = tries; throw e;
 }
@@ -304,11 +305,11 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
     const section = body.section === 'more' ? 'more' : 'ready';
     const avoid = clean(body.avoid, 40);
     if (!ing.length) return json({ error: diet.hard ? "None of your ingredients fit your diet. Add a few that do, or edit My diet!" : 'Add some ingredients first!' }, 400);
-    // Trimmed prompt (2026-11-02): 4 recipes instead of 5 (the app shows 3 per section), about 40% fewer prompt words.
+    // Trimmed prompt (2026-11-02): about 40% fewer prompt words. Still 5 recipes: with 4, de-duplication left 5 cards instead of 6.
     const ask = section === 'ready'
       ? 'Use ONLY on-hand items plus staples: missing is empty and every ingredient has have=true.' + (diet.hard ? ' Diet swaps must also come from on-hand items or staples, else pick another dish.' : '')
       : 'Each needs 1 to 4 extra items: list them in missing (est_price = rough US price in USD for the smallest package) and mark them have=false.';
-    parts = [{ text: `On hand ([spice] = spices the user owns, use them for flavor): ${ing.join('; ')}.\nStaples: ${staplesFor(diet)}.\nCraving: ${craving}.\n${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}Give exactly 4 clearly different recipes, 2 servings unless the dish needs more, in this order: 1 Easy (max 8 ingredients, 5 short steps), 1 Medium (max 10 ingredients, 7 steps), 1 Chef mode showstopper built around ${section === 'more' ? 'a special ingredient from missing (premium protein, seafood or specialty item, not chicken)' : 'an on-hand protein or vegetable'} (layered flavors, a pan sauce, glaze, marinade or crispy element, plating tip in the last step; max 14 ingredients, 10 steps), then 1 more Easy or Medium. ${ask} Use a handful of on-hand items per recipe. Steps are one or two sentences. One food emoji each.${avoid.length ? ' Do NOT repeat or closely copy these already-shown recipes; use different main ingredients and techniques: ' + avoid.join('; ') + '.' : ''}${LN}` }];
+    parts = [{ text: `On hand ([spice] = spices the user owns, use them for flavor): ${ing.join('; ')}.\nStaples: ${staplesFor(diet)}.\nCraving: ${craving}.\n${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}Give exactly 5 clearly different recipes, 2 servings unless the dish needs more, in this order: 1 Easy (max 8 ingredients, 5 short steps), 1 Medium (max 10 ingredients, 7 steps), 1 Chef mode showstopper built around ${section === 'more' ? 'a special ingredient from missing (premium protein, seafood or specialty item, not chicken)' : 'an on-hand protein or vegetable'} (layered flavors, a pan sauce, glaze, marinade or crispy element, plating tip in the last step; max 14 ingredients, 10 steps), then 2 more (Easy, Medium or a 2nd Chef mode). ${ask} Use a handful of on-hand items per recipe. Steps are one or two sentences. One food emoji each.${avoid.length ? ' Do NOT repeat or closely copy these already-shown recipes; use different main ingredients and techniques: ' + avoid.join('; ') + '.' : ''}${LN}` }];
     rkey = !avoid.length && await recipeKey({ ing, craving, section, lang, prefs: body.prefs });
   } else {
     const diet = dietOf(body.prefs); const craving = String(body.craving || '').slice(0, 80).trim(); const ing = clean(body.ingredients).filter(x => !bad(diet, x));
@@ -334,7 +335,7 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
     if (!onKeep) first.data.recipes.forEach(take);
     const t0 = Date.now();
     for (let i = 0; hardDiet && i < 2 && keep.length < 3 && Date.now() - t0 < 40000; i++) {
-      const fb = banned.size ? [{ text: `IMPORTANT: your previous answer broke the user's rules by using: ${[...banned].slice(0, 12).join(', ')}. Never use these (or anything made with them), not as an ingredient, garnish or step. Give 4 NEW compliant dishes.${LN}` }] : [];
+      const fb = banned.size ? [{ text: `IMPORTANT: your previous answer broke the user's rules by using: ${[...banned].slice(0, 12).join(', ')}. Never use these (or anything made with them), not as an ingredient, garnish or step. Give 5 NEW compliant dishes.${LN}` }] : [];
       try { (await gemini(env, route, [...parts, ...fb])).data.recipes.forEach(take); } catch { break; }
     }
     if (hardDiet) console.log('diet', dd.tags.join('+'), 'kept', keep.length, 'of', tried);
