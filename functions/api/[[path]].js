@@ -1,9 +1,28 @@
 // SnapCravings API (Cloudflare Pages Function). The AI key stays server-side in env.GEMINI_API_KEY.
 // Routes: POST /api/scan {images:[dataURL]} | POST /api/recipes {ingredients, craving} | POST /api/crave {craving, ingredients}
 // GET /api/health. Set MOCK_AI=1 (local only) to return canned results without a key.
-import { verifyToken } from '../_lib/sub.js';
+import { verifyToken, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
 import { dietOf, dietPrompt, bad, hits, recipeBad, recipeHits, flagScan, staplesFor as dietStaples } from '../_lib/diet.js';
 const FREE_SCANS_PER_WEEK = 3; const IP_SCANS_PER_WEEK = 30;
+
+// Free-scan limit, kept in Supabase (snap_scan_gate RPC): 3 scans per device per rolling 7 days, 30 per IP.
+// On by default (ENFORCE_FREE='0' turns it off). Paid/owner tokens skip it. Any RPC failure lets the scan through (fail open).
+const sha = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+async function scanGate(env, request, ip) {
+  if (env.ENFORCE_FREE === '0') return { allowed: true, why: 'off' };
+  if (await verifyToken(env, request.headers.get('x-sc-token'))) return { allowed: true, why: 'pro' };
+  const dev = String(request.headers.get('x-sc-dev') || '').replace(/[^\w-]/g, '').slice(0, 64);
+  const scan = String(request.headers.get('x-sc-scan') || '').replace(/[^\w-]/g, '').slice(0, 64) || crypto.randomUUID();
+  const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 4000);
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/snap_scan_gate`, { method: 'POST', signal: ac.signal,
+      headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_device: await sha('snapcravings-scan-d:' + (dev || 'ip-' + ip)), p_ip: await sha('snapcravings-scan-ip:' + ip), p_scan: scan.padEnd(4, '0'), p_limit: FREE_SCANS_PER_WEEK, p_ip_limit: IP_SCANS_PER_WEEK }) });
+    if (!r.ok) return { allowed: true, why: 'rpc-' + r.status };
+    const j = await r.json();
+    return { allowed: j?.allowed !== false, why: j?.allowed === false ? 'limit' : 'ok', used: j?.used };
+  } catch { return { allowed: true, why: 'error' }; } finally { clearTimeout(t); }
+}
 const MODEL = 'gemini-3.8-flash'; // gemini-2.5-flash is closed to new API users (404); see CHAIN for fallbacks
 const MAX_IMAGES = 10, MAX_IMAGE_BYTES = 1_500_000, MAX_BODY = 9_000_000;
 const LIMIT = { scan: 60, recipes: 30, crave: 30 }, WINDOW_S = 3600; // per IP per hour
@@ -81,18 +100,6 @@ export async function onRequest({ request, env, params }) {
   if (await limited(env, ip, route)) return json({ error: 'Whoa, hungry! You hit the hourly limit. Try again soon.' }, 429);
   let body; try { body = await request.json(); } catch { return json({ error: 'Bad request' }, 400); }
   // Free plan: 3 scans (a scan = one Go, many photo batches share one scan id) per IP per week; Unlimited token skips it.
-  if (route === 'scan' && env.ENFORCE_FREE === '1' && env.RATE_KV && !(await verifyToken(env, request.headers.get('x-sc-token')))) {
-    // Count per device (random id in localStorage) so strangers behind one carrier NAT don't share a limit; a generous per-IP cap stops storage-clearing abuse.
-    const wk = Math.floor(Date.now() / (7 * 864e5)); const dev = String(request.headers.get('x-sc-dev') || '').replace(/[^\w-]/g, '').slice(0, 40);
-    const kd = `free:d:${dev || 'ip-' + ip}:${wk}`, ki = `free:ip:${ip}:${wk}`;
-    const [ids, ipIds] = await Promise.all([kd, ki].map(async k => JSON.parse(await env.RATE_KV.get(k) || '[]')));
-    const sid = String(request.headers.get('x-sc-scan') || '').slice(0, 40) || crypto.randomUUID();
-    if (!ids.includes(sid)) {
-      if (ids.length >= FREE_SCANS_PER_WEEK || ipIds.length >= IP_SCANS_PER_WEEK) return json({ error: "You've used your 3 free scans this week.", paywall: true }, 402);
-      ids.push(sid); ipIds.push(sid);
-      await Promise.all([env.RATE_KV.put(kd, JSON.stringify(ids), { expirationTtl: 8 * 86400 }), env.RATE_KV.put(ki, JSON.stringify(ipIds.slice(-60)), { expirationTtl: 8 * 86400 })]);
-    }
-  }
   if (!env.GEMINI_API_KEY && env.MOCK_AI !== '1') return json({ error: 'AI is not set up yet (missing GEMINI_API_KEY).' }, 503);
 
   let parts;
@@ -111,6 +118,8 @@ export async function onRequest({ request, env, params }) {
       parts.push({ inlineData: { mimeType: m[1], data: m[3] } });
     }
     parts.push({ text: `These ${imgs.length} photos are all from ONE kitchen; each is labeled with its area (fridge, freezer, pantry, spices). Analyze ALL photos together and return ONE combined, de-duplicated inventory: if the same item appears in several photos, list it once. List every distinct food item you can see, explicitly including spices, dried herbs, seasonings and blends, salt and pepper, sauces, oils, vinegars and condiments (read jar and bottle labels). For each give a short common name (e.g. "smoked paprika", "soy sauce", "olive oil"), a rough quantity (e.g. "6 eggs", "half a jar", "about 1 lb"), a category (Produce, Proteins, Dairy, Pantry, Spices & Seasonings; sauces, oils and condiments go in Pantry; spices, dried herbs, salt, pepper and seasoning blends go in Spices & Seasonings), and low=true if it looks nearly empty or running low. Ignore non-food items. If no food is visible, return an empty list.` });
+    const g = await scanGate(env, request, ip);
+    if (!g.allowed) return json({ error: "You've used your 3 free scans this week.", paywall: true }, 402);
   } else if (route === 'recipes') {
     const diet = dietOf(body.prefs); const ing = clean(body.ingredients, 80).filter(x => !bad(diet, x)); const craving = String(body.craving || 'Anything').slice(0, 60);
     const section = body.section === 'more' ? 'more' : 'ready';
