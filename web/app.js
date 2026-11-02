@@ -33,12 +33,46 @@ function renderPro() {
   if (sub.email && !el('proEmail').value) el('proEmail').value = sub.email;
   if (!subCfg.enabled) { el('proGo').textContent = t('Unlimited · coming soon!'); el('proGo').style.opacity = '.6'; el('proEmail').parentNode.style.display = 'none'; el('proRestore').style.display = 'none'; }
   else { if (!el('proGo').querySelector('.spin')) el('proGo').textContent = t("Go Unlimited — let's get cooking!"); el('proGo').style.opacity = ''; el('proEmail').parentNode.style.display = ''; el('proRestore').style.display = ''; }
+  if (inPlay()) { el('proEmail').parentNode.style.display = 'none'; el('proRestore').style.display = ''; el('proGo').style.opacity = ''; if (!el('proGo').querySelector('.spin')) el('proGo').textContent = t("Go Unlimited — let's get cooking!"); if (!el('proYearly')) { const y = document.createElement('button'); y.className = 'btn ghost'; y.id = 'proYearly'; el('proGo').after(y); } if (!el('proYearly').querySelector('.spin')) el('proYearly').textContent = t('Or go yearly: $39.99/year'); el('proFine').textContent = t('${price}/mo or $39.99/year. Secure checkout by Google Play. Cancel anytime in Google Play.', { price: Number(subCfg.price).toFixed(2) }); return; }
   if (el('proYrSub')) el('proYrSub').textContent = subCfg.linkYearly ? t('$39.99/yr, save 33% vs $4.99/mo list price') : t('Coming soon · about $3.33/mo');
   if (yearlyPicked()) { el('proFine').textContent = t('$39.99 billed once a year. Secure checkout by Stripe. We use your email only to find your plan.'); return; }
   el('proFine').textContent = subCfg.enabled ? t('${price}/mo founders price, first 100 members, locked in. Secure checkout by Stripe. We use your email only to find your plan.', { price: Number(subCfg.price).toFixed(2) }) : t('Unlimited is coming soon. Free scans and codes still work!');
 }
+// Google Play Billing (Android TWA only): Digital Goods API + PaymentRequest. The website keeps Stripe.
+const PLAY_SKU = 'snapcravings_pro_monthly', PLAY_YEARLY = 'snapcravings_pro_yearly', PLAY_SKUS = [PLAY_SKU, PLAY_YEARLY], PLAY_METHOD = 'https://play.google.com/billing';
+let playDG = null; const inPlay = () => !!playDG;
+async function playInit() {
+  if (!('getDigitalGoodsService' in window)) return;
+  try { playDG = await window.getDigitalGoodsService(PLAY_METHOD); } catch { playDG = null; return; }
+  renderPro(); if (!sub.code) playRestore(true);
+}
+async function playVerify(purchaseToken, quiet, productId = PLAY_SKU) {
+  const j = await subCall('../play/verify', { purchaseToken, productId });
+  if (j.active) { sub = { email: j.email || 'Google Play', token: j.token, active: true, play: productId, checked: Date.now() }; LS.set('sub', sub); renderLeft(); renderPro(); if (!quiet) toast(t("You're Unlimited! Let's get cooking! 🎉")); }
+  return !!j.active;
+}
+async function playRestore(quiet) {
+  try { const list = await playDG.listPurchases(); const p = (list || []).find(x => PLAY_SKUS.includes(x.itemId));
+    if (p) return await playVerify(p.purchaseToken, quiet, p.itemId);
+    if (sub.play) { sub = { active: false, checked: Date.now() }; LS.set('sub', sub); renderLeft(); renderPro(); }
+    if (!quiet) toast(t('No active plan for that email yet.')); }
+  catch (e) { if (!quiet) toast(e.message); }
+  return false;
+}
+async function playBuy(sku = PLAY_SKU) {
+  const btn = el(sku === PLAY_YEARLY ? 'proYearly' : 'proGo'); const old = btn.textContent; btn.innerHTML = '<span class="spin" style="border-top-color:#fff"></span> ' + t('Heading to checkout…');
+  track('upgrade_click', 'play');
+  try {
+    const req = new PaymentRequest([{ supportedMethods: PLAY_METHOD, data: { sku } }], { total: { label: 'Total', amount: { currency: 'USD', value: '0' } } });
+    const res = await req.show(); const tok = res.details && res.details.purchaseToken;
+    let ok = false; try { ok = await playVerify(tok, false, sku); } finally { await res.complete(ok ? 'success' : 'fail'); }
+  } catch (e) { if (e && e.name !== 'AbortError') toast(e.message || t("Hmm, that didn't work. Try again!")); }
+  btn.textContent = old; renderPro();
+}
+playInit();
 const yearlyPicked = () => !(typeof inPlay === 'function' && inPlay()) && !!subCfg.linkYearly && !!document.querySelector('.plan.on[data-plan="yr"]');
 async function goUnlimited() {
+  if (inPlay()) return playBuy();
   if (!subCfg.enabled || !subCfg.link) return toast(t('Unlimited is coming soon!'));
   const email = el('proEmail').value.trim(); if (!email) return toast(t('Pop in your email first!'));
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast(t('Pop in a real email so we can find your plan later!'));
@@ -50,7 +84,7 @@ async function goUnlimited() {
   location.href = link + (link.includes('?') ? '&' : '?') + 'prefilled_email=' + encodeURIComponent(email) + '&client_reference_id=' + cid;
 }
 fetch('/api/sub/config').then(r => r.json()).then(c => { subCfg = c; renderPro();
-  if (!c.enabled || sub.code) return;
+  if (!c.enabled || sub.code || sub.play) return;
   const sid = (/[?&]sid=(cs_[A-Za-z0-9_]+)/.exec(location.search) || [])[1];
   if (/[?&]paid=1/.test(location.search) && (sid || sub.email)) { history.replaceState(null, '', '/#pro'); track('checkout_return', 'pro'); if (sid) { sub = { ...sub, sid }; LS.set('sub', sub); } let n = 0; const poll = async () => { if (await checkSub(sub.email || '', n < 10) || ++n > 11) return; setTimeout(poll, 3000); }; toast(t('Thanks! Checking your plan…')); poll(); }
   else if (!sub.email) return;
@@ -116,7 +150,7 @@ function saveDiet() { // changing the diet makes old recipes stale (they may not
   if (state.recipes || state.crave) { state.recipes = null; state.crave = null; LS.set('recipes', null); LS.set('crave', null); state.dietReset = true; }
 }
 const canCancel = () => unlimited() && !sub.code;
-const planInner = () => `<div class="card"><b>${t("You're Unlimited! 🎉")}</b><div class="fine" style="margin-top:2px">${esc(sub.email)} · $${Number(subCfg.price).toFixed(2)}${t('/month')}</div>${subCfg.portal ? `<button class="btn ghost" id="subCancel" style="padding:12px">${t('Cancel subscription')}</button><div class="fine">${t("Opens Stripe's secure page. Use the email you paid with. You keep Unlimited until the end of the period you've already paid for.")}</div>` : `<div class="fine">${t("To cancel, use the link in your Stripe receipt email. You keep Unlimited until the end of the period you've already paid for.")}</div>`}</div>`;
+const planInner = () => `<div class="card"><b>${t("You're Unlimited! 🎉")}</b><div class="fine" style="margin-top:2px">${esc(sub.email)} · $${Number(subCfg.price).toFixed(2)}${t('/month')}</div>${sub.play ? `<button class="btn ghost" id="subCancel" style="padding:12px">${t('Cancel subscription')}</button><div class="fine">${t("Opens Google Play subscriptions. You keep Unlimited until the end of the period you've already paid for.")}</div>` : subCfg.portal ? `<button class="btn ghost" id="subCancel" style="padding:12px">${t('Cancel subscription')}</button><div class="fine">${t("Opens Stripe's secure page. Use the email you paid with. You keep Unlimited until the end of the period you've already paid for.")}</div>` : `<div class="fine">${t("To cancel, use the link in your Stripe receipt email. You keep Unlimited until the end of the period you've already paid for.")}</div>`}</div>`;
 const planCard = () => canCancel() ? `<h3>${t('Your plan')}</h3><div id="planBox">${planInner()}</div>` : '';
 function renderSettings() {
   const first = !!state.dietFirst, y = el('settings').scrollTop;
@@ -142,7 +176,7 @@ function renderSettings() {
     <div class="chips">${[['en', 'EN · English'], ['es', 'ES · Español']].map(([k, n]) => { const on = I18N.lang === k; return `<button class="chip" data-lang="${k}" aria-pressed="${on}" style="cursor:pointer;font-family:var(--font);${on ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : ''}">${on ? '✓ ' : ''}${n}</button>`; }).join('')}</div>`;
   el('settings').scrollTop = y;
 }
-function cancelSub() { if (!subCfg.portal) return; window.open(subCfg.portal, '_blank', 'noopener'); }
+function cancelSub() { if (sub.play) return void window.open('https://play.google.com/store/account/subscriptions?sku=' + (typeof sub.play === 'string' ? sub.play : PLAY_SKU) + '&package=app.snapcravings.twa', '_blank'); if (!subCfg.portal) return; window.open(subCfg.portal, '_blank', 'noopener'); }
 
 /* SNAP */
 function openSnap(lib) { el(lib ? 'snapLib' : 'snapCam').click(); }
@@ -384,6 +418,8 @@ document.addEventListener('click', e => {
   if (t.closest('#proGo')) return goUnlimited();
   if (t.closest('#proCodeGo')) return redeem();
   if (t.closest('#proCodeShow')) { el('proCodeBox').style.display = 'block'; el('proCode').focus(); return; }
+  if (t.closest('#proRestore') && inPlay()) return playRestore();
+  if (t.closest('#proYearly') && inPlay()) return playBuy(PLAY_YEARLY);
   if (t.closest('#proRestore')) { const em = el('proEmail').value.trim() || sub.email; if (!em) return toast(I18N.t('Pop in the email you used at checkout!')); return checkSub(em.toLowerCase()); }
 });
 document.addEventListener('input', e => { if (e.target.id === 'dietOther') { diet.other = e.target.value; saveDiet(); } else if (e.target.id === 'dietMood') { diet.mood = e.target.value; saveDiet(); } });
