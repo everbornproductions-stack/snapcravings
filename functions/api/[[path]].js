@@ -1,6 +1,7 @@
 // SnapCravings API (Cloudflare Pages Function). The AI key stays server-side in env.GEMINI_API_KEY.
 // Routes: POST /api/scan {images:[dataURL]} | POST /api/recipes {ingredients, craving} | POST /api/crave {craving, ingredients}
 // GET /api/health. Set MOCK_AI=1 (local only) to return canned results without a key.
+import { libFind, libSave, libCount, libStats, pick as libPick, prefKey as libPrefKey } from '../_lib/recipelib.js';
 import { verifyToken, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
 import { dietOf, dietPrompt, bad, hits, recipeBad, recipeHits, flagScan, staplesFor as dietStaples } from '../_lib/diet.js';
 const FREE_SCANS_PER_WEEK = 3; const IP_SCANS_PER_WEEK = 30;
@@ -264,7 +265,7 @@ export async function onRequest(ctx) {
 }
 async function handle({ request, env, params, waitUntil }) { // env may be wrapped below for the fallback test hook
   const route = (params.path || [])[0];
-  if (route === 'health') return json({ ok: true, model: env.GEMINI_MODEL || MODEL, ai: !!env.GEMINI_API_KEY || env.MOCK_AI === '1' ? 'ready' : 'missing GEMINI_API_KEY' });
+  if (route === 'health') return json({ ok: true, library: await Promise.race([libStats(env).catch(() => null), new Promise(r => setTimeout(() => r({ timeout: true }), 2500))]), model: env.GEMINI_MODEL || MODEL, ai: !!env.GEMINI_API_KEY || env.MOCK_AI === '1' ? 'ready' : 'missing GEMINI_API_KEY' });
   if (route === 'dietcheck' && request.method === 'POST') { // no AI: which of these names break the user's diet (used to clean the grocery list)
     let b = {}; try { b = await request.json(); } catch {}
     const d = dietOf(b.prefs); const items = clean(b.items, 200);
@@ -282,7 +283,7 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
   // Free plan: 3 scans (a scan = one Go, many photo batches share one scan id) per IP per week; Unlimited token skips it.
   if (!env.GEMINI_API_KEY && env.MOCK_AI !== '1') return json({ error: 'AI is not set up yet (missing GEMINI_API_KEY).' }, 503);
 
-  let parts, rkey = null; const lang = langOf(body, request); const LN = LANG_NOTE[lang];
+  let parts, rkey = null, lib = null; const lang = langOf(body, request); const LN = LANG_NOTE[lang];
   if (route === 'scan') {
     const imgs = Array.isArray(body.images) ? body.images : [];
     if (!imgs.length) return json({ error: 'Add at least one photo!' }, 400);
@@ -311,6 +312,7 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
       : 'Each needs 1 to 4 extra items: list them in missing (est_price = rough US price in USD for the smallest package) and mark them have=false.';
     parts = [{ text: `On hand ([spice] = spices the user owns, use them for flavor): ${ing.join('; ')}.\nStaples: ${staplesFor(diet)}.\nCraving: ${craving}.\n${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}Give exactly 5 clearly different recipes, 2 servings unless the dish needs more, in this order: 1 Easy (max 8 ingredients, 5 short steps), 1 Medium (max 10 ingredients, 7 steps), 1 Chef mode showstopper built around ${section === 'more' ? 'a special ingredient from missing (premium protein, seafood or specialty item, not chicken)' : 'an on-hand protein or vegetable'} (layered flavors, a pan sauce, glaze, marinade or crispy element, plating tip in the last step; max 14 ingredients, 10 steps), then 2 more (Easy, Medium or a 2nd Chef mode). ${ask} Use a handful of on-hand items per recipe. Steps are one or two sentences. One food emoji each.${avoid.length ? ' Do NOT repeat or closely copy these already-shown recipes; use different main ingredients and techniques: ' + avoid.join('; ') + '.' : ''}${LN}` }];
     rkey = !avoid.length && await recipeKey({ ing, craving, section, lang, prefs: body.prefs });
+    lib = { ing, craving, section, lang, avoid, diet };
   } else {
     const diet = dietOf(body.prefs); const craving = String(body.craving || '').slice(0, 80).trim(); const ing = clean(body.ingredients).filter(x => !bad(diet, x));
     if (!craving) return json({ error: 'Name a craving first!' }, 400);
@@ -325,29 +327,49 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
   const hardDiet = route !== 'scan' && dd.hard;
   // Recipes: 24 h cache by normalized ingredient set + craving + section + diet + language (not for "more ideas").
   if (rkey) { const hit = await cacheGet(env, rkey); if (hit) { hit.usage = { ...(hit.usage || {}), cached: true }; return stream ? ndjson(async send => { hit.recipes.forEach(r => send({ recipe: r })); send({ done: true, ...hit }); }) : json(hit); } }
+  // Shared recipe library (functions/_lib/recipelib.js): fill up to LIB_WANT cards from saved AI recipes that this user's
+  // ingredients cover; the AI only makes the rest. "More ideas" (avoid list) always goes to the AI. Every valid AI recipe is saved.
+  const T0 = Date.now(); let libHits = [], libMs = 0, libStore = 'off';
+  if (lib && !(env.__libStore || env.RATE_KV || env.RECIPE_KV)) lib = null; // tests/local without storage: library off
+  if (lib && env.LIB_OFF !== '1' && !(body.nolib && local)) {
+    if (!lib.avoid.length) { const f = await Promise.race([libFind(env, lib).catch(() => null), new Promise(r => setTimeout(() => r(null), 1500))]);
+      if (f) { libStore = f.store; libHits = libPick(f.cands, { ing: lib.ing, section: lib.section, diet: lib.diet, pkey: await libPrefKey(lib.diet), want: LIB_WANT }); } }
+    libMs = Date.now() - T0;
+  }
+  const bg = p => { try { waitUntil ? waitUntil(p) : p.catch(() => {}); } catch {} };
+  const libDone = out => { if (!lib || env.LIB_OFF === '1') return; const ai = out.recipes.filter(r => !r.__lib); out.recipes.forEach(r => delete r.__lib);
+    out.usage = { ...(out.usage || {}), library: { served: out.recipes.length - ai.length, ai: ai.length, ms: libMs, store: libStore } };
+    bg(Promise.all([ai.length ? libSave(env, ai, lib) : null, libCount(env, { lib: out.recipes.length - ai.length, ai: ai.length, ids: libHits.map(h => h.id) })]).catch(() => {})); };
+  if (libHits.length >= LIB_WANT) {
+    const out = { recipes: libHits.map(h => ({ ...h.recipe, __lib: 1 })), craving: body.craving, usage: { model: 'library', provider: 'library', ms: Date.now() - T0 } };
+    if (stream) return ndjson(async send => { out.recipes.forEach(r => { const { __lib, ...x } = r; send({ recipe: x }); }); libDone(out); send({ done: true, ...out }); });
+    libDone(out); return json(out);
+  }
+  if (libHits.length) parts = [...parts, { text: `The app already has these ${libHits.length} recipes for this user: ${libHits.map(h => h.recipe.name).join('; ')}. Do not repeat or closely copy them. Only ${Math.max(2, LIB_WANT - libHits.length)} new recipes are needed: return exactly that many (keep the level mix).${LN || ''}` }];
   const save = out => { if (rkey && out.recipes?.length) { const p = cachePut(env, rkey, out); try { waitUntil ? waitUntil(p) : p.catch(() => {}); } catch {} } };
   // Diet safety net: drop any recipe that still slips a forbidden ingredient through (names, missing items, steps).
   // If too few survive, ask again (up to 2 more times) and tell the model exactly which terms broke the rules.
   const recipes = async onKeep => {
-    const keep = [], banned = new Set(); let tried = 0;
+    const keep = libHits.map(h => ({ ...h.recipe, __lib: 1 })), banned = new Set(); let tried = 0; keep.forEach(r => { const { __lib, ...x } = r; onKeep?.(x); });
     const take = r => { tried++; const h = hardDiet ? recipeHits(dd, r) : []; if (h.length) { h.forEach(x => banned.add(x)); return; } if (keep.some(k => k.name?.toLowerCase() === String(r.name).toLowerCase())) return; keep.push(r); onKeep?.(r); };
-    const first = await gemini(env, route, parts, onKeep ? { onRecipe: take } : {});
-    if (!onKeep) first.data.recipes.forEach(take);
+    const aiCount = () => keep.filter(r => !r.__lib).length;
+    const first = await gemini(env, route, parts, onKeep ? { onRecipe: take } : {}).catch(e => { if (libHits.length) { console.log('ai failed, library only', libHits.length); return null; } throw e; });
+    if (first && !onKeep) first.data.recipes.forEach(take);
     const t0 = Date.now();
-    for (let i = 0; hardDiet && i < 2 && keep.length < 3 && Date.now() - t0 < 40000; i++) {
+    for (let i = 0; hardDiet && i < 2 && aiCount() < 3 && keep.length < LIB_WANT && Date.now() - t0 < 40000; i++) {
       const fb = banned.size ? [{ text: `IMPORTANT: your previous answer broke the user's rules by using: ${[...banned].slice(0, 12).join(', ')}. Never use these (or anything made with them), not as an ingredient, garnish or step. Give 5 NEW compliant dishes.${LN}` }] : [];
       try { (await gemini(env, route, [...parts, ...fb])).data.recipes.forEach(take); } catch { break; }
     }
     if (hardDiet) console.log('diet', dd.tags.join('+'), 'kept', keep.length, 'of', tried);
-    if (!keep.length) throw Object.assign(new Error(hardDiet ? "We couldn't find recipes that fit your diet with these ingredients. Tap Retry or add a few more ingredients!" : 'The recipe brain hiccuped. Tap Retry!'), { why: [...banned].slice(0, 12), tries: first.usage?.tries });
-    return { recipes: keep.slice(0, 8), craving: body.craving, usage: first.usage };
+    if (!keep.length) throw Object.assign(new Error(hardDiet ? "We couldn't find recipes that fit your diet with these ingredients. Tap Retry or add a few more ingredients!" : 'The recipe brain hiccuped. Tap Retry!'), { why: [...banned].slice(0, 12), tries: first?.usage?.tries });
+    return { recipes: keep.slice(0, 8), craving: body.craving, usage: first ? first.usage : { model: 'library', provider: 'library' } };
   };
   if (stream) return ndjson(async send => {
-    try { const out = await recipes(r => send({ recipe: r })); send({ done: true, ...out }); save(out); }
+    try { const out = await recipes(r => send({ recipe: r })); libDone(out); send({ done: true, ...out }); save(out); }
     catch (e) { const m = e.message || 'Something went sideways. Try again!'; send({ done: true, error: lang === 'es' ? (ERR[m] || m) : m, why: e.why, tries: e.tries }); }
   });
   try {
-    if (route === 'recipes') { const out = await recipes(); save(out); return json(out); }
+    if (route === 'recipes') { const out = await recipes(); libDone(out); save(out); return json(out); }
     let { data, usage } = await gemini(env, route, parts);
     if (route === 'scan') data = flagScan(data, sd);
     if (route === 'crave' && dd.hard) {
@@ -376,6 +398,7 @@ async function recipeKey({ ing, craving, section, lang, prefs }) {
   return 'rc3:' + await sha(JSON.stringify([set, String(craving).toLowerCase().trim(), section, lang, [...(Array.isArray(p.tags) ? p.tags : [])].map(String).sort(), String(p.other || '').toLowerCase().trim(), String(p.mood || '').toLowerCase().trim()]));
 }
 const CACHE_TTL = 86400;
+const LIB_WANT = 5; // same count the AI is asked for
 async function cacheGet(env, key) {
   try { const kv = env.RECIPE_KV || env.RATE_KV; if (kv) { const v = await kv.get(key, 'json'); if (v?.recipes?.length) return v; } } catch {}
   try { const c = typeof caches !== 'undefined' && caches.default; if (c) { const r = await c.match('https://sc-cache.internal/' + key); if (r) { const v = await r.json(); if (v?.recipes?.length) return v; } } } catch {}
