@@ -66,3 +66,7 @@ test('P2: 404 page, frame-ancestors, privacy coral + description', () => {
   assert.match(h, /frame-ancestors 'none'/); assert.match(h, /X-Frame-Options: DENY/); assert.match(h, /X-Robots-Tag: noindex/);
   const pv = rd('web/privacy.html'); assert.match(pv, /--coral:#CC4018/); assert.match(pv, /name="description"/);
 });
+test('#11 IPv6 rotation inside one /48 shares one redeem counter', async () => {
+  const { ipKey } = await import('../functions/api/sub/[[path]].js');
+  assert.equal(ipKey('2a09:bac5:64fc:2828::400:f'), ipKey('2a09:bac5:64fc:1678::23d:42')); assert.equal(ipKey('1.2.3.4'), '1.2.3.4');
+});

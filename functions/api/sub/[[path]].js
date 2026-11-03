@@ -6,6 +6,8 @@ import { signToken, verifyToken, PAYWALL_ON, PAYMENT_LINK_URL, YEARLY_LINK_URL, 
 export { PRICE_CENTS };
 export const PLAN_NAME = 'SnapCravings Unlimited';
 import { hourly } from '../../_lib/limit.js';
+// IPv6 users get a fresh address per request (seen live from WARP), so count the /48 network, not the single address.
+export const ipKey = ip => ip.includes(':') ? ip.split(':').slice(0, 3).join(':') + '::/48' : ip;
 export const REDEEM_HOURLY = 8, REDEEM_WEEKLY = 20;
 const sha = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map(b => b.toString(16).padStart(2, '0')).join('');
 // true = allowed. Fails open on a Supabase error (the per-instance cap still applies).
@@ -33,7 +35,7 @@ export async function onRequest({ request, env, params }) {
   const on = PAYWALL_ON(env);
   if (route === 'config') return json({ enabled: on, price: PRICE_CENTS / 100, plan: PLAN_NAME, freePerWeek: 3, link: on ? PAYMENT_LINK_URL : '', linkYearly: on ? YEARLY_LINK_URL : '', yearly: YEARLY_CENTS / 100, list: 4.99, portal: on ? PORTAL_URL : '' });
   if (route === 'redeem' && request.method === 'POST') {
-    const ip = request.headers.get('cf-connecting-ip') || 'local';
+    const ip = ipKey(request.headers.get('cf-connecting-ip') || 'local');
     // Code guessing guard: 8 tries per IP per hour in this instance (shared via RATE_KV when bound), plus a Supabase-backed
     // 20 tries per IP per rolling week that holds across every isolate and colo (reuses the hashed snap_scan_gate counter
     // with its own salt and an 'rdm-' id, so it never touches real scan counts).
