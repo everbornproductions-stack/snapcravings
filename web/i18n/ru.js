@@ -479,4 +479,8 @@
 "One photo is too big (max 1.5 MB).":"Одно фото слишком большое (макс. 1.5 МБ).",
 "None of your ingredients fit your diet. Add a few that do, or edit My diet!":"Ингредиенты не подходят под твою диету. Добавь подходящие или измени Мою диету!",
 "We couldn't find recipes that fit your diet with these ingredients. Tap Retry or add a few more ingredients!":"Мы не нашли рецепты под твою диету из этих продуктов. Нажми Повторить или добавь еще ингредиентов!",
-"Couldn't make that one fit your diet. Try a different craving!":"Не удалось адаптировать это под твою диету. Попробуй что-то другое!"};
+"Couldn't make that one fit your diet. Try a different craving!":"Не удалось адаптировать это под твою диету. Попробуй что-то другое!",
+"Back":"Назад",
+"Less":"Меньше",
+"More":"Больше",
+"Feature":"Функция"};

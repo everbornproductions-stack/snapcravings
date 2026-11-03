@@ -479,4 +479,8 @@
 "One photo is too big (max 1.5 MB).":"Satu foto terlalu besar (maks. 1.5 MB).",
 "None of your ingredients fit your diet. Add a few that do, or edit My diet!":"Tidak ada bahan yang sesuai dengan dietmu. Tambahkan beberapa bahan yang cocok, atau edit Diet saya!",
 "We couldn't find recipes that fit your diet with these ingredients. Tap Retry or add a few more ingredients!":"Kami tidak menemukan resep yang cocok dengan dietmu dari bahan-bahan ini. Ketuk Coba lagi atau tambahkan beberapa bahan lagi!",
-"Couldn't make that one fit your diet. Try a different craving!":"Tidak bisa menyesuaikan itu dengan dietmu. Coba keinginan lain!"};
+"Couldn't make that one fit your diet. Try a different craving!":"Tidak bisa menyesuaikan itu dengan dietmu. Coba keinginan lain!",
+"Back":"Kembali",
+"Less":"Kurangi",
+"More":"Tambah",
+"Feature":"Fitur"};

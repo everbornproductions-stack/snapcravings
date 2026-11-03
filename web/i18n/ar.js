@@ -481,4 +481,8 @@
 "We couldn't find recipes that fit your diet with these ingredients. Tap Retry or add a few more ingredients!":"لم نجد وصفات تناسب نظامك الغذائي بهذه المكونات. اضغط على إعادة المحاولة أو أضف المزيد من المكونات!",
 "Couldn't make that one fit your diet. Try a different craving!":"لم نتمكن من مواءمة هذا الطبق مع نظامك الغذائي. جرب شيئاً آخر!",
 "‹":"›",
-"›":"‹"};
+"›":"‹",
+"Back":"رجوع",
+"Less":"أقل",
+"More":"أكثر",
+"Feature":"الميزة"};

@@ -5,7 +5,7 @@
   "start_url": "/#home",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#FBF6EF",
   "theme_color": "#FBF6EF",
   "icons": [
@@ -24,7 +24,80 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-monochrome-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "monochrome"
     }
   ],
-  "id": "/"
+  "id": "/",
+  "shortcuts": [
+    {
+      "name": "Scan my fridge",
+      "short_name": "Scan fridge",
+      "description": "Snap your fridge for recipes",
+      "url": "/?src=shortcut#scan",
+      "icons": [
+        {
+          "src": "icons/sc-fridge-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Scan my plate",
+      "short_name": "Scan plate",
+      "description": "Snap a plated meal for calories and macros",
+      "url": "/?src=shortcut#dish",
+      "icons": [
+        {
+          "src": "icons/sc-plate-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Crave it",
+      "short_name": "Crave it",
+      "description": "Make it or take it? Compare cooking vs ordering",
+      "url": "/?src=shortcut#crave",
+      "icons": [
+        {
+          "src": "icons/sc-crave-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Meal prep",
+      "short_name": "Meal prep",
+      "description": "Plan a week of meal prep",
+      "url": "/?src=shortcut#prep",
+      "icons": [
+        {
+          "src": "icons/sc-prep-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Holiday planner",
+      "short_name": "Holiday plan",
+      "description": "Plan a holiday feast",
+      "url": "/?src=shortcut#hplan",
+      "icons": [
+        {
+          "src": "icons/sc-holiday-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
 }

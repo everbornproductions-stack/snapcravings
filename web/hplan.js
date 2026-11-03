@@ -12,7 +12,7 @@
   function form(h) {
     const n = fridge().length;
     return `<div class="kick">${h.emoji} ${esc(h.name)}</div><h2>${T('Plan the whole {h} meal', { h: esc(h.name) })}</h2><p class="sub">${T('Menu, shopping list and cooking timeline for your guests.')}</p>
-    <h3>${T('Guests')}</h3><div class="card"><div class="row" style="padding:0"><b>${T('Guests')}</b><span class="qty"><button data-hpg="-1">−</button>${opts.guests}<button data-hpg="1">+</button></span></div></div>
+    <h3>${T('Guests')}</h3><div class="card"><div class="row" style="padding:0"><b>${T('Guests')}</b><span class="qty"><button data-hpg="-1" aria-label="${T('Less')}">−</button>${opts.guests}<button data-hpg="1" aria-label="${T('More')}">+</button></span></div></div>
     <h3>${T('Meal time')}</h3><div class="seg">${TIMES.map(([v, l]) => `<button data-hpt="${v}" class="${opts.time === v ? 'on' : ''}">${esc(T(l))}</button>`).join('')}</div>
     <div class="card">${n ? `<div class="toggle">${T('Use my fridge scan ({n} items)', { n })}<button class="sw ${opts.fridge ? 'on' : ''}" id="hpFridge" aria-label="${esc(T('Use my fridge scan ({n} items)', { n }))}"></button></div>` : `<div class="fine" style="margin:0">${T('No fridge scan yet. Snap it first to use what you have.')}</div>`}
     ${typeof dietOn === 'function' && dietOn() && dietLine() ? `<div class="fine">${t('🥗 Cooking for: {d} · ', { d: esc(dietLine()) })}<a href="#settings" style="color:var(--coral);font-weight:700">${t('Edit')}</a></div>` : ''}</div>

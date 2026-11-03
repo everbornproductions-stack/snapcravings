@@ -479,4 +479,8 @@
 "One photo is too big (max 1.5 MB).":"Une photo est trop lourde (max 1,5 Mo).",
 "None of your ingredients fit your diet. Add a few that do, or edit My diet!":"Aucun de tes ingrédients ne correspond à ton régime. Ajoute-en quelques-uns ou modifie Mon régime !",
 "We couldn't find recipes that fit your diet with these ingredients. Tap Retry or add a few more ingredients!":"Nous n'avons pas trouvé de recettes adaptées à ton régime avec ces ingrédients. Appuie sur Réessayer ou ajoute d'autres ingrédients !",
-"Couldn't make that one fit your diet. Try a different craving!":"Impossible d'adapter cette recette à ton régime. Essaie une autre envie !"};
+"Couldn't make that one fit your diet. Try a different craving!":"Impossible d'adapter cette recette à ton régime. Essaie une autre envie !",
+"Back":"Retour",
+"Less":"Moins",
+"More":"Plus",
+"Feature":"Fonction"};

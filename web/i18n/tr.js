@@ -479,4 +479,8 @@
 "One photo is too big (max 1.5 MB).":"Bir fotoğraf çok büyük (maks. 1.5 MB).",
 "None of your ingredients fit your diet. Add a few that do, or edit My diet!":"Malzemelerin diyetine uygun değil. Uygun olanları ekle veya Diyetim kısmını düzenle!",
 "We couldn't find recipes that fit your diet with these ingredients. Tap Retry or add a few more ingredients!":"Bu malzemelerle diyetine uygun tarif bulamadık. Tekrar Dene'ye bas veya birkaç malzeme daha ekle!",
-"Couldn't make that one fit your diet. Try a different craving!":"Bunu diyetine uygun hale getiremedik. Başka bir şey dene!"};
+"Couldn't make that one fit your diet. Try a different craving!":"Bunu diyetine uygun hale getiremedik. Başka bir şey dene!",
+"Back":"Geri",
+"Less":"Azalt",
+"More":"Artır",
+"Feature":"Özellik"};

@@ -10,7 +10,7 @@
 <title>SnapCravings</title>
 <script>
 // Language pick (EN/ES built in; others load web/i18n/<code>.js before the deferred app scripts). Arabic is right-to-left.
-window.SC_IV = 'ui44';
+window.SC_IV = 'ui45';
 window.SC_LANGS = [['en', 'English'], ['es', 'Español'], ['pt', 'Português (BR)'], ['hi', 'हिन्दी'], ['id', 'Bahasa Indonesia'], ['fr', 'Français'], ['de', 'Deutsch'], ['ar', 'العربية'], ['ru', 'Русский'], ['tr', 'Türkçe']];
 (function () { var ok = function (l) { return SC_LANGS.some(function (x) { return x[0] === l; }); }, l = null;
   try { var s = localStorage.getItem('sc.lang'); if (s) { var v = JSON.parse(s); if (ok(v)) l = v; } } catch (e) {}
@@ -21,8 +21,8 @@ window.SC_LANGS = [['en', 'English'], ['es', 'Español'], ['pt', 'Português (BR
 <style>
 :root{
   --bg:#FBF6EF; --card:#FFFFFF; --ink:#1C1A17; --muted:#6F675E; --line:#ECE3D6;
-  --coral:#E8613A; --coral-soft:#FDE9E0; --green:#2F8F5B; --green-soft:#E3F3E9;
-  --gold:#B8862F; --dark:#1E1B18;
+  --coral:#CC4018; --coral-soft:#FDE9E0; --green:#2A8052; --green-soft:#E3F3E9;
+  --gold:#926A25; --dark:#1E1B18;
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -81,7 +81,7 @@ h3{font-size:15px;margin:18px 0 8px}
 .btn.primary{background:var(--coral);color:#fff}
 .btn.dark{background:var(--dark);color:#fff}
 .btn.ghost{background:var(--card);border:1px solid var(--line);color:var(--ink)}
-.btn.insta{background:#0AAD0A;color:#fff}
+.btn.insta{background:#088A08;color:#fff}
 .recipe{display:flex;gap:12px;align-items:center;text-decoration:none;color:var(--ink)}
 .thumb{width:68px;height:68px;border-radius:14px;flex-shrink:0;display:grid;place-items:center;font-size:30px}
 .recipe .meta{font-size:12px;color:var(--muted);margin-top:3px}
@@ -101,6 +101,9 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 .row .m{color:var(--muted)}
 .input{display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--ink);border-radius:16px;padding:14px;font-size:16px;margin:12px 0}
 .input input{border:0;outline:0;font:600 16px var(--font);flex:1;background:transparent;color:var(--ink)}
+/* large text (200%) + keyboard: nothing overflows, focus is visible */
+h1,h2,h3{overflow-wrap:break-word}.input input,.plan .p{min-width:0}.card[style*="display:flex"]{flex-wrap:wrap}.card>div[style*="flex:1"]{min-width:0;overflow-wrap:anywhere}
+.input:focus-within{box-shadow:0 0 0 3px var(--coral-soft)}:focus-visible{outline:3px solid var(--coral);outline-offset:2px}
 .seg{display:flex;background:#EFE7DB;border-radius:12px;padding:3px;margin:10px 0}
 .seg button{flex:1;border:0;background:transparent;font:700 13px var(--font);padding:9px;border-radius:9px;color:var(--muted);cursor:pointer}
 .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
@@ -142,12 +145,14 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 .plan .p{flex:1}
 .plan .p b{display:block;font-size:15px}
 .plan .p span{font-size:12px;color:var(--muted)}
+.plan .p .save{color:#fff;font-size:10px}
 .plan .pr{font-weight:800;font-size:17px}
 .save{background:var(--gold);color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px;margin-left:6px;vertical-align:2px}
 .cmp{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
 .cmp td,.cmp th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:center}
 .cmp td:first-child,.cmp th:first-child{text-align:left}
 .cmp th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .kick{display:block;font-size:13px;font-weight:800;color:var(--coral);letter-spacing:-.1px;margin:6px 0 0}
 .kick.dk{color:#F3B562}
 .proto{position:fixed;left:8px;bottom:6px;font-size:10px;color:rgba(255,255,255,.35)}
@@ -155,6 +160,10 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 @keyframes sp{to{transform:rotate(360deg)}}
 .photo img{height:100%;border-radius:12px;object-fit:cover;flex-shrink:0}
 @media (max-width:500px){html,body{height:100%;background:var(--bg)!important}body{display:block;padding:0!important}.phone{position:fixed;inset:0;width:auto;height:auto;border-radius:0;box-shadow:none}.notch,.status .icons,.status span:first-child{visibility:hidden}.status{height:max(20px,env(safe-area-inset-top))}.screen{top:max(20px,env(safe-area-inset-top));bottom:calc(78px + env(safe-area-inset-bottom))}.tabbar{height:calc(78px + env(safe-area-inset-bottom));padding-bottom:calc(22px + env(safe-area-inset-bottom))}.proto{display:none}}
+/* tablets, foldables, installed app: full-screen like phones, content centered in a 600px column */
+@media (min-width:501px) and (pointer:coarse),(min-width:501px) and (display-mode:standalone){html,body{height:100%;background:var(--bg)!important}body{display:block;padding:0!important}.phone{position:fixed;inset:0;width:auto;height:auto;border-radius:0;box-shadow:none}.notch,.status .icons,.status span:first-child{visibility:hidden}.status{height:max(20px,env(safe-area-inset-top))}.screen{top:max(20px,env(safe-area-inset-top));bottom:calc(78px + env(safe-area-inset-bottom))}.tabbar{height:calc(78px + env(safe-area-inset-bottom));padding-bottom:calc(22px + env(safe-area-inset-bottom))}.proto{display:none}.screen{padding-left:max(20px,calc(50% - 300px));padding-right:max(20px,calc(50% - 300px))}.tabbar{padding-left:max(6px,calc(50% - 300px));padding-right:max(6px,calc(50% - 300px))}}
+/* short desktop windows: shrink the phone frame to fit */
+@media (min-width:501px) and (max-height:900px) and (not (pointer:coarse)){.phone{height:calc(100vh - 40px)}}
 :root{color-scheme:light only}html{background:#FBF6EF}
 @media (prefers-color-scheme:dark){:root{color-scheme:light only}}
 /* Arabic (right-to-left): mirror only what is pinned to a side; LTR languages are unchanged. Arabic letters must not be letter-spaced. */
@@ -216,11 +225,11 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
 </head>
 <body>
 <div class="phone">
-  <div class="notch"></div>
-  <div class="status"><span>9:41</span><span class="icons"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg><span class="bat"></span></span></div>
+  <div class="notch" aria-hidden="true"></div>
+  <div class="status" aria-hidden="true"><span>9:41</span><span class="icons"><svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg><span class="bat"></span></span></div>
 
   <!-- HOME -->
-  <section class="screen" id="home">
+  <section class="screen" role="main" id="home">
     <div class="brand"><div class="logo">SC</div><div><b>SnapCravings</b><div class="by">an Everborn product</div></div><a class="back" href="#settings" id="gear" aria-label="My diet and settings" style="margin-left:auto">⚙️</a></div>
     <div class="kick">Snap. Cook. Yum!</div>
     <h1 style="margin-top:8px">Craving something?<br><em>Make it</em> or <em>buy it</em>, the smart way.</h1>
@@ -236,7 +245,7 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
       <div class="d">Name it. We compare cooking it with ordering it, fees and all.</div>
       <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 3v18M5 8c0-3 3-5 7-5s7 2 7 5-3 4-7 4-7 1-7 4 3 5 7 5 7-2 7-5"/></svg></div>
     </a>
-    <h3>Popular cravings <span style="color:var(--coral)">· crave smarter, not harder</span></h3>
+    <h3 aria-level="2">Popular cravings <span style="color:var(--coral)">· crave smarter, not harder</span></h3>
     <div class="chips" id="popChips"><a class="chip" href="#crave" data-crave="Pad thai">🍜 Pad thai</a><a class="chip" href="#crave" data-crave="Pizza">🍕 Pizza</a><a class="chip" href="#crave" data-crave="Tacos">🌮 Tacos</a><a class="chip" href="#crave" data-crave="Burger">🍔 Burger</a><a class="chip" href="#crave" data-crave="Sushi">🍣 Sushi</a></div>
     <div class="card" style="margin-top:14px;display:flex;align-items:center;gap:10px">
       <div style="font-size:22px">✨</div><div style="flex:1;font-size:13px"><b id="scanLeft">3 of 3 free scans left this week</b><br><span class="sub" style="font-size:12px">Go unlimited with Pro</span></div>
@@ -264,15 +273,15 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
   </section>
 
   <!-- SCAN -->
-  <section class="screen" id="scan">
-    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Scan result</span><span style="flex:1"></span><span id="scanRestart"></span></div>
+  <section class="screen" role="main" id="scan">
+    <div class="topbar"><a class="back" href="#home" aria-label="Back">‹</a><span class="t">Scan result</span><span style="flex:1"></span><span id="scanRestart"></span></div>
     <div class="photo" id="scanPhotos" style="display:flex;gap:6px;padding:6px;overflow-x:auto"></div>
     <div id="scanBody"></div>
   </section>
 
   <!-- RECIPES -->
-  <section class="screen" id="recipes">
-    <div class="topbar"><a class="back" href="#scan">‹</a><span class="t">Recipe ideas</span></div>
+  <section class="screen" role="main" id="recipes">
+    <div class="topbar"><a class="back" href="#scan" aria-label="Back">‹</a><span class="t">Recipe ideas</span></div>
     <div id="recipesBody"></div>
     <div class="card" style="background:var(--dark);color:#fff;border:0;margin-top:14px">
       <div class="kick dk" style="margin:0 0 2px">Make it or take it?</div><b>Still want it from a restaurant?</b>
@@ -282,23 +291,23 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
   </section>
 
   <!-- RECIPE DETAIL -->
-  <section class="screen" id="recipe">
-    <div class="topbar"><a class="back" href="#recipes" id="recipeBack">‹</a><span class="t">Recipe</span><span style="flex:1"></span><button id="recipeFav" aria-label="Save to favorites" style="font-size:22px;background:none;border:0;cursor:pointer;color:var(--coral)">♡</button></div>
+  <section class="screen" role="main" id="recipe">
+    <div class="topbar"><a class="back" href="#recipes" id="recipeBack" aria-label="Back">‹</a><span class="t">Recipe</span><span style="flex:1"></span><button id="recipeFav" aria-label="Save to favorites" style="font-size:22px;background:none;border:0;cursor:pointer;color:var(--coral)">♡</button></div>
     <div id="recipeBody"></div>
   </section>
 
   <!-- CRAVE -->
-  <section class="screen" id="crave">
-    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Crave it</span></div>
+  <section class="screen" role="main" id="crave">
+    <div class="topbar"><a class="back" href="#home" aria-label="Back">‹</a><span class="t">Crave it</span></div>
     <div class="kick">Crave smarter, not harder.</div>
     <h1 style="margin-top:6px">What are you<br><em>craving?</em></h1>
     <div class="input"><span>🔍</span><input id="craveInput" placeholder="Chicken pad thai" aria-label="Craving"></div>
-    <h3>Your memberships <span style="color:var(--muted);font-weight:600;font-size:12px">· for the ordering comparison, coming soon</span></h3>
+    <h3 aria-level="2">Your memberships <span style="color:var(--muted);font-weight:600;font-size:12px">· for the ordering comparison, coming soon</span></h3>
     <div class="card">
       <div class="toggle">DashPass (DoorDash)<button class="sw" data-mem="dashpass" aria-label="DashPass"></button></div>
       <div class="toggle" style="margin-top:8px">Uber One (Uber Eats)<button class="sw" data-mem="uberone" aria-label="Uber One"></button></div>
     </div>
-    <h3>Tip for delivery</h3>
+    <h3 aria-level="2">Tip for delivery</h3>
     <div class="seg" id="tipSeg"><button data-tip="2">$2</button><button data-tip="3" class="on">$3</button><button data-tip="5">$5</button></div>
     <button class="btn primary" id="craveGo">Make it or take it? Compare →</button>
     <div class="card" style="margin-top:12px;background:#F4EEE5;border-style:dashed">
@@ -308,14 +317,14 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
   </section>
 
   <!-- COMPARE -->
-  <section class="screen" id="compare">
-    <div class="topbar"><a class="back" href="#crave">‹</a><span class="t">Make vs. buy</span></div>
+  <section class="screen" role="main" id="compare">
+    <div class="topbar"><a class="back" href="#crave" aria-label="Back">‹</a><span class="t">Make vs. buy</span></div>
     <div id="compareBody"></div>
   </section>
 
   <!-- CART -->
-  <section class="screen" id="cart">
-    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Your cart</span></div>
+  <section class="screen" role="main" id="cart">
+    <div class="topbar"><a class="back" href="#home" aria-label="Back">‹</a><span class="t">Your cart</span></div>
     <div class="kick">Restock time!</div>
     <h2>Your cart is your grocery list</h2>
     <p class="sub">Everything you add lives on your grocery list, ready to send to Instacart.</p>
@@ -323,14 +332,14 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
   </section>
 
   <!-- GROCERY LIST -->
-  <section class="screen" id="list">
-    <div class="topbar"><a class="back" href="#recipes">‹</a><span class="t">Grocery list</span></div>
+  <section class="screen" role="main" id="list">
+    <div class="topbar"><a class="back" href="#recipes" aria-label="Back">‹</a><span class="t">Grocery list</span></div>
     <div class="kick">Restock time!</div>
     <h2>Your grocery list</h2>
     <p class="sub">What your recipes are missing, plus what's running low in your fridge photos. Tap to check off.</p>
-    <h3>Missing for your recipes</h3>
+    <h3 aria-level="2">Missing for your recipes</h3>
     <div class="card" id="listMissing"></div>
-    <h3>Running low <span style="color:var(--coral)">· spotted in your snap</span></h3>
+    <h3 aria-level="2">Running low <span style="color:var(--coral)">· spotted in your snap</span></h3>
     <div class="card" id="listLow"></div>
     <div class="input"><span>＋</span><input id="listAdd" placeholder="Add an item, like milk" aria-label="Add an item"><button class="chip" id="listAddBtn" style="cursor:pointer">Add</button></div>
     <div class="card" style="background:var(--coral-soft);border-color:#F6C6B3">
@@ -344,8 +353,8 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
   </section>
 
   <!-- FAVORITES -->
-  <section class="screen" id="favs">
-    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Favorites</span></div>
+  <section class="screen" role="main" id="favs">
+    <div class="topbar"><a class="back" href="#home" aria-label="Back">‹</a><span class="t">Favorites</span></div>
     <div class="kick">Saved for later!</div>
     <h2>Your favorite recipes</h2>
     <p class="sub">Tap a recipe to cook it again. Tap ♥ to unsave.</p>
@@ -354,42 +363,42 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
   </section>
 
   <!-- SETTINGS / MY DIET -->
-  <section class="screen" id="settings">
-    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Settings</span></div>
+  <section class="screen" role="main" id="settings">
+    <div class="topbar"><a class="back" href="#home" aria-label="Back">‹</a><span class="t">Settings</span></div>
     <div id="settingsBody"></div>
   </section>
 
   <!-- MEAL PREP -->
-  <section class="screen" id="dish">
-    <div class="topbar"><a class="back" href="#scan">‹</a><span class="t">Scan my plate</span></div>
+  <section class="screen" role="main" id="dish">
+    <div class="topbar"><a class="back" href="#scan" aria-label="Back">‹</a><span class="t">Scan my plate</span></div>
     <div id="dishBody"></div>
   </section>
 
-  <section class="screen" id="hplan">
-    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Holiday planner</span></div>
+  <section class="screen" role="main" id="hplan">
+    <div class="topbar"><a class="back" href="#home" aria-label="Back">‹</a><span class="t">Holiday planner</span></div>
     <div id="hplanBody"></div>
   </section>
 
-  <section class="screen" id="prep">
-    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Meal prep</span></div>
+  <section class="screen" role="main" id="prep">
+    <div class="topbar"><a class="back" href="#home" aria-label="Back">‹</a><span class="t">Meal prep</span></div>
     <div id="prepBody"></div>
   </section>
 
   <!-- LIBRARY -->
-  <section class="screen" id="lib">
-    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">SnapCravings Library</span></div>
+  <section class="screen" role="main" id="lib">
+    <div class="topbar"><a class="back" href="#home" aria-label="Back">‹</a><span class="t">SnapCravings Library</span></div>
     <div id="libBody"></div>
   </section>
 
   <!-- FAMILY RECIPES -->
-  <section class="screen" id="family">
-    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">My family recipes</span></div>
+  <section class="screen" role="main" id="family">
+    <div class="topbar"><a class="back" href="#home" aria-label="Back">‹</a><span class="t">My family recipes</span></div>
     <div id="familyBody"></div>
   </section>
 
   <!-- PRO -->
-  <section class="screen" id="pro">
-    <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Go Pro</span></div>
+  <section class="screen" role="main" id="pro">
+    <div class="topbar"><a class="back" href="#home" aria-label="Back">‹</a><span class="t">Go Pro</span></div>
     <div class="pro-hero">
       <div class="crown">★</div>
       <h2>SnapCravings Pro</h2>
@@ -398,7 +407,7 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
     <div class="feat"><span class="ck">✓</span><span><b>Unlimited photo scans</b><br><span class="sub" style="font-size:12.5px">Free plan: a few scans a week</span></span></div>
     <div class="feat"><span class="ck">✓</span><span><b>Meal prep</b><br><span class="sub" style="font-size:12.5px">A week of meals, one grocery list and a prep-day guide.</span></span></div>
     <div class="feat"><span class="ck">✓</span><span><b>Dish scans for macros</b><br><span class="sub" style="font-size:12.5px">Unlimited dish scans with estimated calories and macros</span></span></div>
-    <table class="cmp"><tr><th></th><th>Free</th><th>Pro</th></tr><tr><td>Photo scans</td><td>Limited</td><td>Unlimited</td></tr><tr><td>Recipes</td><td>Limited</td><td>Unlimited</td></tr><tr><td>Meal prep</td><td>Limited</td><td>✓</td></tr><tr><td>Dish scans</td><td>1/week</td><td>Unlimited</td></tr><tr><td>Make vs. buy</td><td>✓</td><td>✓</td></tr><tr><td>Saved favorites</td><td>✓</td><td>✓</td></tr></table>
+    <table class="cmp"><tr><th><span class="sr">Feature</span></th><th>Free</th><th>Pro</th></tr><tr><td>Photo scans</td><td>Limited</td><td>Unlimited</td></tr><tr><td>Recipes</td><td>Limited</td><td>Unlimited</td></tr><tr><td>Meal prep</td><td>Limited</td><td>✓</td></tr><tr><td>Dish scans</td><td>1/week</td><td>Unlimited</td></tr><tr><td>Make vs. buy</td><td>✓</td><td>✓</td></tr><tr><td>Saved favorites</td><td>✓</td><td>✓</td></tr></table>
     <div style="height:14px"></div>
     <div class="plan" data-plan="yr"><span class="rd"></span><span class="p"><b>Yearly <span class="save">SAVE 33%</span></b><span id="proYrSub">Coming soon · about $3.33/mo</span></span><span class="pr">$39.99</span></div>
     <div class="plan on" data-plan="mo"><span class="rd"></span><span class="p"><b>Monthly</b><span>Founders price, first 100 members, locked in</span></span><span class="pr" id="proPrice">$3.99</span></div>
@@ -412,7 +421,7 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
     </div>
   </section>
 
-  <nav class="tabbar">
+  <nav class="tabbar" aria-label="Main">
     <a class="tab" href="#home" data-for="home settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9H3z"/></svg>Home</a>
     <a class="tab" href="#scan" data-for="scan recipes recipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Snap</a>
     <a class="tab" href="#crave" data-for="crave compare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M4 6h16M4 18h10"/></svg>Crave</a>
@@ -420,22 +429,22 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
     <a class="tab" href="#pro" data-for="pro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Pro</a>
   </nav>
 </div>
-<div class="proto">SnapCravings beta</div>
+<div class="proto" aria-hidden="true">SnapCravings beta</div>
 
 <input type="file" id="snapCam" accept="image/*" capture="environment" multiple hidden>
 <input type="file" id="snapLib" accept="image/*" multiple hidden>
-<div id="toast" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
-<script defer src="holiday.js?v=ui44"></script>
-<script defer src="config.js?v=ui44"></script>
-<script defer src="i18n.js?v=ui44"></script>
-<script defer src="app.js?v=ui44"></script>
-<script defer src="prep.js?v=ui44"></script>
-<script defer src="more.js?v=ui44"></script>
-<script defer src="grow.js?v=ui44"></script>
-<script defer src="hplan-i18n.js?v=ui44"></script>
-<script defer src="hplan.js?v=ui44"></script>
-<script defer src="dishcore.js?v=ui44"></script>
-<script defer src="dish-i18n.js?v=ui44"></script>
-<script defer src="dish.js?v=ui44"></script>
+<div id="toast" role="status" aria-live="polite" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
+<script defer src="holiday.js?v=ui45"></script>
+<script defer src="config.js?v=ui45"></script>
+<script defer src="i18n.js?v=ui45"></script>
+<script defer src="app.js?v=ui45"></script>
+<script defer src="prep.js?v=ui45"></script>
+<script defer src="more.js?v=ui45"></script>
+<script defer src="grow.js?v=ui45"></script>
+<script defer src="hplan-i18n.js?v=ui45"></script>
+<script defer src="hplan.js?v=ui45"></script>
+<script defer src="dishcore.js?v=ui45"></script>
+<script defer src="dish-i18n.js?v=ui45"></script>
+<script defer src="dish.js?v=ui45"></script>
 </body>
 </html>

@@ -479,4 +479,8 @@
 "One photo is too big (max 1.5 MB).":"एक फोटो बहुत बड़ी है (अधिकतम 1.5 MB)।",
 "None of your ingredients fit your diet. Add a few that do, or edit My diet!":"आपकी सामग्री आपकी डाइट के हिसाब से नहीं है। कुछ और सामग्री जोड़ें या 'मेरी डाइट' एडिट करें!",
 "We couldn't find recipes that fit your diet with these ingredients. Tap Retry or add a few more ingredients!":"हमें इन सामग्री के साथ आपकी डाइट के लिए कोई रेसिपी नहीं मिली। 'फिर से कोशिश करें' पर टैप करें या कुछ और सामग्री जोड़ें!",
-"Couldn't make that one fit your diet. Try a different craving!":"यह आपकी डाइट के हिसाब से फिट नहीं बैठा। कुछ और ट्राई करें!"};
+"Couldn't make that one fit your diet. Try a different craving!":"यह आपकी डाइट के हिसाब से फिट नहीं बैठा। कुछ और ट्राई करें!",
+"Back":"वापस",
+"Less":"कम",
+"More":"ज़्यादा",
+"Feature":"सुविधा"};
