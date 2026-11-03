@@ -102,7 +102,7 @@ const kvOf = env => env.RECIPE_KV || env.RATE_KV || null;
 const bucket = (lang, section, ck) => `lib1:${lang}:${section}:${ck}`;
 const BUCKET_MAX = 150;
 let sbDown = 0; // per-isolate: Supabase RPCs missing (migration not applied) -> KV fallback for 10 min
-async function rpc(env, fn, body, ms = 1500) {
+export async function rpc(env, fn, body, ms = 1500) {
   if (env.__libStore) return env.__libStore.rpc(fn, body);
   if (Date.now() < sbDown) return { missing: true };
   const ac = new AbortController(); const t = setTimeout(() => ac.abort(), ms);
@@ -111,7 +111,7 @@ async function rpc(env, fn, body, ms = 1500) {
     if (!r.ok) return { error: r.status }; return { data: await r.json() };
   } catch (e) { return { error: e.name }; } finally { clearTimeout(t); }
 }
-const libKey = async env => env.__libKey || (await import('./stats_key.js').then(m => m.STATS_KEY ? sha('snap-lib:' + m.STATS_KEY, 64) : '').catch(() => ''));
+export const libKey = async env => env.__libKey || (await import('./stats_key.js').then(m => m.STATS_KEY ? sha('snap-lib:' + m.STATS_KEY, 64) : '').catch(() => ''));
 // Candidates for one lang + section + craving that share at least one required item with the user.
 export async function libFind(env, { lang, section, craving, ing }) {
   const ck = await cravingKey(craving); const norm = [...new Set(ing.map(normIngredient).filter(Boolean))];

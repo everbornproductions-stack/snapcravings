@@ -92,7 +92,7 @@ fetch('/api/sub/config').then(r => r.json()).then(c => { subCfg = c; renderPro()
 }).catch(() => {});
 let favs = LS.get('favs', []);
 const isFav = r => !!r && favs.some(f => f.name.toLowerCase() === r.name.toLowerCase());
-function toggleFav(r) { if (!r) return; if (isFav(r)) { favs = favs.filter(f => f.name.toLowerCase() !== r.name.toLowerCase()); toast(t('Removed from favorites.')); } else { favs.unshift({ ...r, savedAt: Date.now() }); toast(t('Saved to favorites! ❤️')); track('favorite', 'recipe'); } LS.set('favs', favs); renderFavCount(); }
+function toggleFav(r) { if (!r) return; if (isFav(r)) { favs = favs.filter(f => f.name.toLowerCase() !== r.name.toLowerCase()); toast(t('Removed from favorites.')); } else { favs.unshift({ ...r, savedAt: Date.now() }); try { fetch('/api/trending', { method: 'POST', headers: { 'content-type': 'application/json', 'x-sc-dev': DEV }, body: JSON.stringify({ made: r.name, lang: I18N.lang }) }).catch(() => {}); } catch {} toast(t('Saved to favorites! ❤️')); track('favorite', 'recipe'); } LS.set('favs', favs); renderFavCount(); }
 const heart = (key, r) => `<button data-fav="${key}" aria-label="${isFav(r) ? t('Unsave') : t('Save')}" style="background:none;border:0;font-size:20px;cursor:pointer;color:var(--coral);padding:4px;flex-shrink:0">${isFav(r) ? '♥' : '♡'}</button>`;
 function renderFavCount() { const n = favs.length; el('favCount').textContent = n ? t(n === 1 ? '{n} saved recipe. Pantry power!' : '{n} saved recipes. Pantry power!', { n }) : t('Tap ♡ on any recipe to save it'); }
 function renderFavs() {
@@ -533,6 +533,16 @@ function setLang(l) { if (l === I18N.lang) return; I18N.load(l, () => setLang2(l
 function setLang2(l) { I18N.set(l); I18N.applyStatic(document.querySelector('.phone')); renderLeft(); renderPro(); renderFavCount(); renderDietCount(); applyHoliday(); route(); toast(I18N.t('Done: the app is in English.'), 1800); }
 I18N.applyStatic(document.querySelector('.phone')); renderLeft(); applyHoliday();
 route(); if (!location.hash || location.hash === '#home') setTimeout(() => holidayAnim(), 400);
+/* TRENDING Popular cravings: /api/trending (7-day picks + favorites per country, holiday dishes blended in), cached 1 h. Static list stays when there is little data. */
+function popular() {
+  const q = new URLSearchParams(location.search), qs = new URLSearchParams({ lang: I18N.lang, tz: new Date().getTimezoneOffset() });
+  if (q.get('country')) qs.set('country', q.get('country')); qs.set('holiday', HOLI.cur ? HOLI.cur.id : 'off');
+  const key = 'sc.pop.' + qs; let c = null; try { c = JSON.parse(sessionStorage.getItem(key) || 'null'); } catch {}
+  const show = j => { if (!j || !j.items?.length || (j.source === 'static' && !j.items.some(i => i.holiday))) return; el('popChips').innerHTML = j.items.map(i => `<a class="chip" href="#crave" data-crave="${esc(i.label)}">${esc(i.emoji || '🔥')} ${esc(i.holiday || i.n ? i.label : t(i.label))}</a>`).join(''); };
+  if (c && Date.now() - c.t < 3600e3) return show(c.j);
+  fetch('/api/trending?' + qs).then(r => r.json()).then(j => { try { sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), j })); } catch {} show(j); }).catch(() => {});
+}
+setTimeout(popular, 600);
 if (!new URLSearchParams(location.search).get('country')) { let g = null; try { g = sessionStorage.getItem('sc.geo'); } catch {} if (!g) fetch('/api/geo').then(r => r.json()).then(j => { if (j.country) { try { sessionStorage.setItem('sc.geo', j.country); } catch {} const before = HOLI.cur?.id; applyHoliday(); if (HOLI.cur?.id !== before) route(); } }).catch(() => {}); } setTimeout(cleanGlist, 2500);
 /* INSTALL */
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;

@@ -8,7 +8,7 @@
 <title>SnapCravings</title>
 <script>
 // Language pick (EN/ES built in; others load web/i18n/<code>.js before the deferred app scripts). Arabic is right-to-left.
-window.SC_IV = 'ui35';
+window.SC_IV = 'ui36';
 window.SC_LANGS = [['en', 'English'], ['es', 'Español'], ['pt', 'Português (BR)'], ['hi', 'हिन्दी'], ['id', 'Bahasa Indonesia'], ['fr', 'Français'], ['de', 'Deutsch'], ['ar', 'العربية'], ['ru', 'Русский'], ['tr', 'Türkçe']];
 (function () { var ok = function (l) { return SC_LANGS.some(function (x) { return x[0] === l; }); }, l = null;
   try { var s = localStorage.getItem('sc.lang'); if (s) { var v = JSON.parse(s); if (ok(v)) l = v; } } catch (e) {}
@@ -235,7 +235,7 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
       <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 3v18M5 8c0-3 3-5 7-5s7 2 7 5-3 4-7 4-7 1-7 4 3 5 7 5 7-2 7-5"/></svg></div>
     </a>
     <h3>Popular cravings <span style="color:var(--coral)">· crave smarter, not harder</span></h3>
-    <div class="chips"><a class="chip" href="#crave" data-crave="Pad thai">🍜 Pad thai</a><a class="chip" href="#crave" data-crave="Pizza">🍕 Pizza</a><a class="chip" href="#crave" data-crave="Tacos">🌮 Tacos</a><a class="chip" href="#crave" data-crave="Burger">🍔 Burger</a><a class="chip" href="#crave" data-crave="Sushi">🍣 Sushi</a></div>
+    <div class="chips" id="popChips"><a class="chip" href="#crave" data-crave="Pad thai">🍜 Pad thai</a><a class="chip" href="#crave" data-crave="Pizza">🍕 Pizza</a><a class="chip" href="#crave" data-crave="Tacos">🌮 Tacos</a><a class="chip" href="#crave" data-crave="Burger">🍔 Burger</a><a class="chip" href="#crave" data-crave="Sushi">🍣 Sushi</a></div>
     <div class="card" style="margin-top:14px;display:flex;align-items:center;gap:10px">
       <div style="font-size:22px">✨</div><div style="flex:1;font-size:13px"><b id="scanLeft">3 of 3 free scans left this week</b><br><span class="sub" style="font-size:12px">Go unlimited with Pro</span></div>
       <a class="chip" href="#pro" style="background:var(--dark);color:#fff;border:0">Pro</a>
@@ -413,12 +413,12 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
 <input type="file" id="snapCam" accept="image/*" capture="environment" multiple hidden>
 <input type="file" id="snapLib" accept="image/*" multiple hidden>
 <div id="toast" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
-<script defer src="holiday.js?v=ui35"></script>
-<script defer src="config.js?v=ui35"></script>
-<script defer src="i18n.js?v=ui35"></script>
-<script defer src="app.js?v=ui35"></script>
-<script defer src="prep.js?v=ui35"></script>
-<script defer src="more.js?v=ui35"></script>
-<script defer src="grow.js?v=ui35"></script>
+<script defer src="holiday.js?v=ui36"></script>
+<script defer src="config.js?v=ui36"></script>
+<script defer src="i18n.js?v=ui36"></script>
+<script defer src="app.js?v=ui36"></script>
+<script defer src="prep.js?v=ui36"></script>
+<script defer src="more.js?v=ui36"></script>
+<script defer src="grow.js?v=ui36"></script>
 </body>
 </html>

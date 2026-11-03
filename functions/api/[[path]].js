@@ -4,6 +4,7 @@
 import { libFind, libSave, libCount, libStats, pick as libPick, prefKey as libPrefKey } from '../_lib/recipelib.js';
 import { verifyToken, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
 import '../../web/holiday.js'; // sets globalThis.SC_HOLIDAY (holiday mode, shared with the web app)
+import { trendHit } from '../_lib/trending.js';
 import { INTL, langCode, intlNote, intlScanNote } from '../_lib/lang.js';
 import { dietOf, dietPrompt, bad, hits, recipeBad, recipeHits, flagScan, staplesFor as dietStaples } from '../_lib/diet.js';
 const FREE_SCANS_PER_WEEK = 3; const IP_SCANS_PER_WEEK = 30;
@@ -388,6 +389,7 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
       }
       if (h.length) return json({ error: "Couldn't make that one fit your diet. Try a different craving!", why: h.slice(0, 12) }, 502);
     }
+    if (route === 'crave' && data?.recipe?.name) bg(trendHit(env, { country: request.cf?.country, kind: 'crave', label: data.recipe.name, lang, device: String(request.headers.get('x-sc-dev') || '').replace(/[^\w-]/g, '').slice(0, 64) })); // trending Popular cravings
     return json({ ...data, craving: body.craving, usage });
   } catch (e) { return json({ error: e.message || 'Something went sideways. Try again!', tries: e.tries, ...(e.why?.length ? { why: e.why } : {}) }, e.why ? 502 : 502); }
 }
