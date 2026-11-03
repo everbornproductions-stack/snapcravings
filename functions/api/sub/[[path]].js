@@ -9,7 +9,7 @@ import { hourly } from '../../_lib/limit.js';
 export const REDEEM_HOURLY = 8, REDEEM_WEEKLY = 20;
 const sha = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map(b => b.toString(16).padStart(2, '0')).join('');
 // true = allowed. Fails open on a Supabase error (the per-instance cap still applies).
-export async function redeemGate(env, ip, f = (env && env.__fetch) || fetch) {
+export async function redeemGate(env, ip, f = (env && env.__fetch) || ((...a) => fetch(...a))) { /* bare `fetch` reference throws Illegal invocation on Workers */
   const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 3000);
   try { const h = await sha('snapcravings-redeem:' + ip);
     const r = await f(`${SUPABASE_URL}/rest/v1/rpc/snap_scan_gate`, { method: 'POST', signal: ac.signal, headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`, 'Content-Type': 'application/json' },
