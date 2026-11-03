@@ -109,6 +109,7 @@ function renderFavCount() { const n = favs.length; el('favCount').textContent = 
 function renderFavs() {
   el('favsBody').innerHTML = favs.length ? favs.map((r, i) => `<div class="card recipe"><a href="#recipe" data-rec="fav:${i}" style="display:flex;gap:12px;align-items:center;flex:1;color:inherit;text-decoration:none"><div class="thumb" style="background:${THUMBS[i % 4]}">${esc(r.emoji || '🍳')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${t('{n} min · {s} servings', { n: esc(r.minutes), s: esc(r.servings) })}</div>${(r.missing || []).length ? `<span class="pill c">${t('Missing {n}: {items}', { n: r.missing.length, items: esc(r.missing.map(m => m.item).join(', ')) })}</span>` : `<span class="pill g">${t('Pantry power! You have everything')}</span>`}</div></a>${heart('fav:' + i, r)}</div>`).join('')
     : `<div class="card" style="text-align:center;padding:22px"><div style="font-size:30px">♡</div><b>${t('No favorites yet')}</b><p class="sub" style="font-size:13px;margin-top:4px">${t('Tap ♡ on any recipe and it lands here.')}</p><a class="btn primary" href="#scan">${t('📸 Snap it')}</a></div>`;
+  if (!favs.length && LS.get('dishFavs', []).length) el('favsBody').firstElementChild.remove(); /* only plates saved: no empty-state card */
   if (window.dishFavsHtml) el('favsBody').insertAdjacentHTML('beforeend', dishFavsHtml()); /* saved plates (web/dish.js) */
 }
 const CRAVINGS_BASE = ['Anything', 'Noodles', 'Something quick', 'Comfort food', 'Spicy'];
