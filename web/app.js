@@ -44,6 +44,7 @@ let playDG = null; const inPlay = () => !!playDG;
 async function playInit() {
   if (!('getDigitalGoodsService' in window)) return;
   try { playDG = await window.getDigitalGoodsService(PLAY_METHOD); } catch { playDG = null; return; }
+  try { const ic = document.getElementById('installCard'); if (playDG && ic) { ic.hidden = true; ic.style.display = 'none'; } } catch {}
   renderPro(); if (!sub.code) playRestore(true);
 }
 async function playVerify(purchaseToken, quiet, productId = PLAY_SKU) {
@@ -548,7 +549,9 @@ if (!new URLSearchParams(location.search).get('country')) { let g = null; try { 
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 let deferredInstall = null;
-function showInstall(sub, btn) { const c = el('installCard'); if (standalone()) { c.hidden = true; c.style.display = 'none'; return; } c.hidden = false; c.style.display = 'flex'; if (sub) el('installSub').textContent = t(sub); el('installBtn').style.display = btn === false ? 'none' : ''; }
+// Android app (TWA from Play): already installed, so never offer Install. Same check as grow.js isTWA; safe in any load order.
+const inTWA = () => { try { if (document.referrer.startsWith('android-app://app.snapcravings.twa')) LS.set('twa', 1); } catch {} try { return !!LS.get('twa', 0) || (typeof inPlay === 'function' && inPlay()) || (typeof window.isTWA === 'function' && !!window.isTWA()); } catch { return false; } };
+function showInstall(sub, btn) { const c = el('installCard'); if (!c) return; if (standalone() || inTWA()) { c.hidden = true; c.style.display = 'none'; return; } c.hidden = false; c.style.display = 'flex'; if (sub) el('installSub').textContent = t(sub); el('installBtn').style.display = btn === false ? 'none' : ''; }
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; showInstall(null, true); });
 window.addEventListener('appinstalled', () => { track('install', 'home'); deferredInstall = null; el('installCard').style.display = 'none'; toast(t('Installed! Find SnapCravings on your home screen.')); });
 const isAndroid = /android/i.test(navigator.userAgent), isMobile = isIOS || isAndroid || /mobi/i.test(navigator.userAgent);

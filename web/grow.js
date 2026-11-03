@@ -9,7 +9,8 @@
   });
   // Android app (TWA) detection: Play's referrer on first launch, or Play Billing present. Remembered on the device.
   const isTWA = () => { try { if (document.referrer.startsWith('android-app://app.snapcravings.twa')) LS.set('twa', 1); } catch {} return !!LS.get('twa', 0) || (typeof inPlay === 'function' && inPlay()); };
-  isTWA();
+  isTWA(); window.isTWA = isTWA;
+  try { const ic = document.getElementById('installCard'); if (ic && isTWA()) { ic.hidden = true; ic.style.display = 'none'; } } catch {}
   const DAY = 864e5;
   function reviewCard(trigger) {
     if (!isTWA() || el('reviewCard') || reviewCard.shown) return;
