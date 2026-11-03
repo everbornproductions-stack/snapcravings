@@ -539,8 +539,8 @@ route(); if (!location.hash || location.hash === '#home') setTimeout(() => holid
 function popular() {
   const q = new URLSearchParams(location.search), qs = new URLSearchParams({ lang: I18N.lang, tz: new Date().getTimezoneOffset() });
   if (q.get('country')) qs.set('country', q.get('country')); qs.set('holiday', HOLI.cur ? HOLI.cur.id : 'off');
-  const key = 'sc.pop.' + qs; let c = null; try { c = JSON.parse(sessionStorage.getItem(key) || 'null'); } catch {}
-  const show = j => { if (!j || !j.items?.length || (j.source === 'static' && !j.items.some(i => i.holiday))) return; el('popChips').innerHTML = j.items.map(i => `<a class="chip" href="#crave" data-crave="${esc(i.label)}">${esc(i.emoji || '🔥')} ${esc(i.holiday || i.n ? i.label : t(i.label))}</a>`).join(''); };
+  const key = 'sc.pop2.' + qs; let c = null; try { c = JSON.parse(sessionStorage.getItem(key) || 'null'); } catch {}
+  const show = j => { if (!j || !j.items?.length) return; // static = that country's own popular dishes, already in the UI language el('popChips').innerHTML = j.items.map(i => `<a class="chip" href="#crave" data-crave="${esc(i.label)}">${esc(i.emoji || '🔥')} ${esc(i.holiday || i.n ? i.label : t(i.label))}</a>`).join(''); };
   if (c && Date.now() - c.t < 3600e3) return show(c.j);
   fetch('/api/trending?' + qs).then(r => r.json()).then(j => { try { sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), j })); } catch {} show(j); }).catch(() => {});
 }

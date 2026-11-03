@@ -4,7 +4,7 @@ import '../web/holiday.js';
 const S = globalThis.SC_HOLIDAY, d = (y, m, x) => new Date(y, m - 1, x), on = (y, m, x, c) => S.active(d(y, m, x), c)?.id || null;
 test('Thanksgiving 2026 is Nov 26, window starts Nov 19 (US)', () => {
   const w = S.windowOf('thanksgiving', 2026); assert.equal(w.end.getDate(), 26); assert.equal(w.start.getDate(), 19);
-  assert.equal(on(2026, 11, 18, 'US'), null); assert.equal(on(2026, 11, 19, 'US'), 'thanksgiving'); assert.equal(on(2026, 11, 26, 'US'), 'thanksgiving'); assert.equal(on(2026, 11, 27, 'US'), 'hanukkah'); assert.equal(on(2026, 11, 27, 'GB'), null);
+  assert.equal(on(2026, 11, 18, 'US'), null); assert.equal(on(2026, 11, 19, 'US'), 'thanksgiving'); assert.equal(on(2026, 11, 26, 'US'), 'thanksgiving'); assert.equal(on(2026, 11, 27, 'US'), null); assert.equal(on(2026, 11, 27, 'GB'), null);
   assert.equal(S.windowOf('thanksgiving', 2027).end.getDate(), 25);
 });
 test('US fixed + computed dates', () => {
@@ -60,4 +60,12 @@ test('every holiday palette meets WCAG AA contrast (4.5:1 text)', () => {
   for (const id of S.ids) { assert.equal(S.P[id]?.length, 7, id); for (const c of contrastPairs(S.P[id])) if (c.r < c.min) fails.push(`${id} ${c.name} ${c.r.toFixed(2)}`); }
   assert.deepEqual(fails, []);
   for (const id of S.ids) assert.ok(S.A[id] && ['walk', 'fly', 'hop', 'bats', 'float', 'fireworks', 'glow'].includes(S.A[id][0]), id);
+});
+test('each country shows only its own mainstream holidays (no Diwali/Eid/Lunar/Hanukkah in the US)', () => {
+  const US = S.setFor('US'); for (const id of ['diwali', 'holi', 'ramadan', 'eid', 'eidadha', 'lunarnewyear', 'hanukkah']) assert.ok(!US.includes(id), id);
+  for (let d = 0; d < 4 * 366; d++) { const x = on(2025, 1, 1 + d, 'US'); assert.ok(!['diwali', 'ramadan', 'eid', 'lunarnewyear', 'hanukkah'].includes(x), x); }
+  assert.equal(on(2026, 11, 2, 'US'), null); assert.equal(on(2026, 11, 2, 'IN'), 'diwali');
+  for (const c of ['US', 'BR', 'MX', 'ES', 'FR', 'DE', 'RU', 'GB']) assert.ok(!S.setFor(c).includes('diwali') && !S.setFor(c).includes('holi'), c);
+  for (const c of ['SA', 'EG', 'ID', 'TR']) assert.ok(S.setFor(c).includes('eid'), c); for (const c of ['US', 'IN', 'BR', 'DE']) assert.ok(!S.setFor(c).includes('eid'), c);
+  assert.ok(S.setFor('ID').includes('lunarnewyear')); assert.ok(!S.setFor('IN').includes('ramadan'));
 });

@@ -115,9 +115,10 @@
   const ARAB = 'SA AE EG QA KW BH OM JO LB SY IQ YE PS MA DZ TN LY SD'.split(' ');
   const LATAM = 'MX AR CO CL PE VE EC GT CU BO DO HN PY SV NI CR PA UY PR'.split(' ');
   const SETS = {
-    US: ['newyear', 'valentines', 'stpatricks', 'easter', 'cincodemayo', 'mothersday', 'memorialday', 'fathersday', 'july4', 'laborday', 'halloween', 'thanksgiving', 'hanukkah', 'christmas', 'diwali', 'ramadan', 'eid', 'lunarnewyear'],
+    // Rule (Chris, 2026-11-02): each country shows only its own mainstream major holidays.
+    US: ['newyear', 'valentines', 'stpatricks', 'easter', 'cincodemayo', 'mothersday', 'memorialday', 'fathersday', 'july4', 'laborday', 'halloween', 'thanksgiving', 'christmas'],
     BR: ['newyear', 'carnaval', 'easter', 'festajunina', 'christmas'],
-    IN: ['newyear', 'holi', 'ramadan', 'eid', 'diwali', 'christmas'],
+    IN: ['newyear', 'holi', 'diwali', 'christmas'],
     ID: ['newyear', 'lunarnewyear', 'ramadan', 'eid', 'eidadha', 'christmas'],
     MX: ['newyear', 'reyes', 'easter', 'muertos', 'posadas'],
     ES: ['newyear', 'reyes', 'easter', 'christmas'],
@@ -143,5 +144,5 @@
     return best; }
   const li = l => Math.max(0, LANGS.indexOf(String(l || 'en').slice(0, 2)));
   const info = (id, lang) => H[id] ? { id, emoji: H[id][0], accent: H[id][1], soft: H[id][2], name: L[id][li(lang)] || L[id][0], nameEn: L[id][0], dishes: H[id][5], ui: UI[LANGS[li(lang)]], pal: P[id], anim: A[id] } : null;
-  root.SC_HOLIDAY = { H, L, UI, P, A, INK, MUTED, SETS, ids: Object.keys(H), setFor, active, info, windowOf, easter, orthEaster, countryFromLocale, isHoliday: c => /^holiday:[a-z0-9]+$/.test(String(c || '')) && !!H[String(c).slice(8)] };
+  root.SC_HOLIDAY = { H, L, UI, P, A, INK, MUTED, SETS, ids: Object.keys(H), setFor, active, info, windowOf, easter, orthEaster, countryFromLocale, region: cc => { cc = String(cc || '').toUpperCase(); return SETS[cc] ? cc : ALIAS[cc] || 'GLOBAL'; }, LANG_COUNTRY, isHoliday: c => /^holiday:[a-z0-9]+$/.test(String(c || '')) && !!H[String(c).slice(8)] };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
