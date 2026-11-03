@@ -10,7 +10,7 @@
 <title>SnapCravings</title>
 <script>
 // Language pick (EN/ES built in; others load web/i18n/<code>.js before the deferred app scripts). Arabic is right-to-left.
-window.SC_IV = 'ui48';
+window.SC_IV = 'ui49';
 window.SC_LANGS = [['en', 'English'], ['es', 'Español'], ['pt', 'Português (BR)'], ['hi', 'हिन्दी'], ['id', 'Bahasa Indonesia'], ['fr', 'Français'], ['de', 'Deutsch'], ['ar', 'العربية'], ['ru', 'Русский'], ['tr', 'Türkçe']];
 (function () { var ok = function (l) { return SC_LANGS.some(function (x) { return x[0] === l; }); }, l = null;
   try { var s = localStorage.getItem('sc.lang'); if (s) { var v = JSON.parse(s); if (ok(v)) l = v; } } catch (e) {}
@@ -85,6 +85,7 @@ h3{font-size:15px;margin:18px 0 8px}
 .recipe{display:flex;gap:12px;align-items:center;text-decoration:none;color:var(--ink)}
 .thumb{width:68px;height:68px;border-radius:14px;flex-shrink:0;display:grid;place-items:center;font-size:30px}
 .recipe .meta{font-size:12px;color:var(--muted);margin-top:3px}
+.offscreen{position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none}
 .pill{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;margin-top:5px}
 .pill.g{background:var(--green-soft);color:#1F6B42}
 .pill.c{background:var(--coral-soft);color:#A8401F}
@@ -431,21 +432,22 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
 </div>
 <div class="proto" aria-hidden="true">SnapCravings beta</div>
 
-<input type="file" id="snapCam" accept="image/*" capture="environment" multiple hidden>
-<input type="file" id="snapLib" accept="image/*" multiple hidden>
+<!-- iOS: no `multiple` on the camera input (Safari ignores capture with it), and offscreen instead of hidden so .click() works everywhere -->
+<input type="file" id="snapCam" accept="image/*" capture="environment" class="offscreen" tabindex="-1" aria-hidden="true">
+<input type="file" id="snapLib" accept="image/*" multiple class="offscreen" tabindex="-1" aria-hidden="true">
 <div id="toast" role="status" aria-live="polite" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
-<script defer src="holiday.js?v=ui48"></script>
-<script defer src="config.js?v=ui48"></script>
-<script defer src="i18n.js?v=ui48"></script>
-<script defer src="app.js?v=ui48"></script>
-<script defer src="prep.js?v=ui48"></script>
-<script defer src="more.js?v=ui48"></script>
-<script defer src="grow.js?v=ui48"></script>
-<script defer src="hplan-i18n.js?v=ui48"></script>
-<script defer src="hplan.js?v=ui48"></script>
-<script defer src="dishcore.js?v=ui48"></script>
-<script defer src="dish-i18n.js?v=ui48"></script>
-<script defer src="dish.js?v=ui48"></script>
-<script defer src="fixes.js?v=ui48"></script>
+<script defer src="holiday.js?v=ui49"></script>
+<script defer src="config.js?v=ui49"></script>
+<script defer src="i18n.js?v=ui49"></script>
+<script defer src="app.js?v=ui49"></script>
+<script defer src="prep.js?v=ui49"></script>
+<script defer src="more.js?v=ui49"></script>
+<script defer src="grow.js?v=ui49"></script>
+<script defer src="hplan-i18n.js?v=ui49"></script>
+<script defer src="hplan.js?v=ui49"></script>
+<script defer src="dishcore.js?v=ui49"></script>
+<script defer src="dish-i18n.js?v=ui49"></script>
+<script defer src="dish.js?v=ui49"></script>
+<script defer src="fixes.js?v=ui49"></script>
 </body>
 </html>

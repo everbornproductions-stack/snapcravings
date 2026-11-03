@@ -50,7 +50,7 @@
     const b = el('familyBody'); if (!b || famBusy) return;
     b.innerHTML = `<div class="kick">${t('Saved for later!')}</div><h2>${t('My family recipes')}</h2><p class="sub">${t('Paste your recipe or snap a photo of the card. We tidy it up, save it here and can adapt it to your diet.')}</p>
       <div class="card"><textarea id="famText" rows="6" placeholder="${esc(t('Paste your recipe here (name, ingredients, steps)'))}" aria-label="${esc(t('Paste your recipe here (name, ingredients, steps)'))}" style="width:100%;border:0;outline:0;resize:vertical;font:500 14px var(--font);background:transparent;color:var(--ink)"></textarea></div>
-      <button class="btn ghost" id="famPhoto" style="padding:11px">${famImg ? '✓ ' + t('Photo added.') : t('📸 Photo of the recipe')}</button><input type="file" id="famFile" accept="image/*" hidden>
+      <button class="btn ghost" id="famPhoto" style="padding:11px">${famImg ? '✓ ' + t('Photo added.') : t('📸 Photo of the recipe')}</button><input type="file" id="famFile" accept="image/*" class="offscreen" tabindex="-1" aria-hidden="true">
       <button class="btn primary" id="famGo">${dietOn() ? t('Save and adapt to my diet') : t('Save my recipe')}</button>
       <h3>${t('Your saved recipes')}</h3>${fam.length ? fam.map((r, i) => card(r, i, 'fam', `${r.changes?.length ? `<span class="pill c">${t('Adapted: {c}', { c: esc(r.changes.slice(0, 2).join('; ')) })}</span>` : ''}<button class="chip" data-famrm="${i}" style="cursor:pointer;margin-top:4px">${t('Remove')}</button>`)).join('') : `<p class="fine">${t('Nothing saved yet.')}</p>`}
       <p class="fine">${t('Saved on this device only.')} ${t('AI-adapted. Check allergens yourself.')}</p>`;

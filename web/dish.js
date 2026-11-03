@@ -10,7 +10,7 @@
   const S = { photo: null, dish: null, portion: 'regular', servings: 1, busy: false, err: null, paywall: false, edit: false, flash: '' };
   Object.assign(S, LS.get('dishLast', {}), { busy: false, err: null, paywall: false, edit: false, flash: '' });
   const save = () => LS.set('dishLast', { dish: S.dish, portion: S.portion, servings: S.servings, photo: S.photo && S.photo.length < 400000 ? S.photo : null });
-  const mk = (id, cap) => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.id = id; i.hidden = true; if (cap) i.setAttribute('capture', 'environment'); document.body.appendChild(i); i.addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) go(f); }); return i; };
+  const mk = (id, cap) => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.id = id; i.className = 'offscreen'; i.tabIndex = -1; i.setAttribute('aria-hidden', 'true'); /* not hidden: iOS */ if (cap) i.setAttribute('capture', 'environment'); document.body.appendChild(i); i.addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) go(f); }); return i; };
   const cam = mk('dishCam', true), lib = mk('dishLib', false);
   const logGet = () => { const l = LS.get('dishLog', null); return l && l.day === X.dayKey() ? l : { day: X.dayKey(), entries: [] }; };
   const fmt = (v, u) => v == null ? '–' : `${v}${u}`;

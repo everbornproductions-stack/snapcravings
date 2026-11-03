@@ -330,6 +330,7 @@ function renderScan() {
       <button class="btn primary" data-addphoto>📸 ${here ? t('Add another') : t('Snap it')}</button>
       <div style="display:flex;gap:8px"><button class="btn ghost" data-addlib style="flex:1">${t('🖼 Pick photos')}</button><button class="btn ghost" data-next style="flex:1">${here ? t('Next →') : t('Skip')}</button></div>${!n && state.step === 0 && window.renderDish ? `<a class="card" href="#dish" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);margin-top:12px"><div style="font-size:22px">🍽️</div><div style="flex:1;font-size:13px"><b>${t('Scan my plate')}</b><br><span class="sub" style="font-size:12px">${t('Snap a plated meal for estimated calories and macros.')}</span></div><span>›</span></a>` : ''}`
       : `<div class="kick">${t('Fridge to fabulous!')}</div><h2>${t(n === 1 ? '{n} photo ready!' : '{n} photos ready!', { n })}</h2><p class="sub">${t("We'll look at all of them together: one list, spices and sauces too.")}</p>${n < MAX_PHOTOS ? `<button class="chip" data-back style="cursor:pointer;margin-top:8px">${t('‹ Add more photos')}</button>` : ''}`}
+      ${n && !LS.get('dietSeen', false) ? `<a class="chip" href="#settings" data-dietfirst style="display:inline-block;margin:10px 0 0;text-decoration:none">🥗 ${t('My diet & allergies')}</a>` : ''}
       ${n ? `<button class="btn primary" id="scanGo" style="font-size:20px;padding:20px">${t('Go! 🚀')}</button>` : ''}`;
     return;
   }
@@ -482,15 +483,16 @@ document.addEventListener('click', e => {
   const t = e.target;
   const fv = t.closest('[data-fav]'); if (fv) { e.preventDefault(); e.stopPropagation(); toggleFav(pick(fv.dataset.fav)); const y = document.querySelector('.screen.active').scrollTop; if (location.hash === '#favs') renderFavs(); else renderRecipes(); document.querySelector('.screen.active').scrollTop = y; return; }
   if (t.closest('#recipeFav')) { toggleFav(state.recipe); el('recipeFav').textContent = isFav(state.recipe) ? '♥' : '♡'; return; }
-  if (t.closest('a.big-choice.snap') || t.closest('a.tab[href="#scan"]')) { if (!state.photos.length && !state.ingredients.length) { e.preventDefault(); if (!LS.get('dietSeen', false)) { state.dietFirst = true; location.hash = '#settings'; return; } state.step = 0; location.hash = '#scan'; openSnap(); } return; }
+  if (t.closest('a.big-choice.snap') || t.closest('a.tab[href="#scan"]')) { if (!state.photos.length && !state.ingredients.length) { e.preventDefault(); openSnap(); /* camera FIRST, synchronously in the tap (iOS drops a file-input click after a hash change); the optional diet prompt now sits on the scan screen */ state.step = 0; location.hash = '#scan'; } return; }
   const dt = t.closest('[data-dtag]'); if (dt) { const k = dt.dataset.dtag; diet.tags = diet.tags.includes(k) ? diet.tags.filter(x => x !== k) : [...diet.tags, k]; saveDiet(); return renderSettings(); }
   const dm = t.closest('[data-dmood]'); if (dm) { const k = dm.dataset.dmood; const parts = diet.mood.split(/[,;]/).map(x => x.trim()).filter(Boolean); const has = parts.some(x => x.toLowerCase() === k.toLowerCase()); diet.mood = (has ? parts.filter(x => x.toLowerCase() !== k.toLowerCase()) : [...parts, k]).join(', '); saveDiet(); return renderSettings(); }
   if (t.closest('#dietSnap') || t.closest('#dietDone') || t.closest('#dietSkip')) cleanGlist();
   if (t.closest('#dietSnap') || t.closest('#dietDone')) track('diet_saved', 'settings', { n: (diet.tags || []).length });
-  if (t.closest('#dietSnap') || t.closest('#dietSkip')) { LS.set('dietSeen', true); state.dietFirst = false; state.step = 0; location.hash = '#scan'; if (t.closest('#dietSnap') && dietOn()) toast(I18N.t("Saved! Let's get cooking!")); return openSnap(); }
+  if (t.closest('#dietSnap') || t.closest('#dietSkip')) { const cam = !state.photos.length && !state.ingredients.length; if (cam) openSnap(); /* synchronous, before the hash change */ LS.set('dietSeen', true); state.dietFirst = false; if (cam) state.step = 0; location.hash = '#scan'; if (t.closest('#dietSnap') && dietOn()) toast(I18N.t("Saved! Let's get cooking!")); return; }
   if (t.closest('#dietDone')) { toast(state.dietReset ? I18N.t('Saved! Hit Show recipes for fresh ideas that fit.') : I18N.t("Saved! Let's get cooking!")); state.dietReset = false; location.hash = '#home'; return; }
   const lg = t.closest('[data-lang]'); if (lg) { setLang(lg.dataset.lang); return; }
   if (t.closest('#subCancel')) return cancelSub();
+  if (t.closest('[data-dietfirst]')) state.dietFirst = true;
   if (t.closest('[data-addphoto]')) return openSnap();
   if (t.closest('[data-addlib]')) return openSnap(true);
   const rm = t.closest('[data-rmi]'); if (rm) { state.ingredients.splice(+rm.dataset.rmi, 1); LS.set('ingredients', state.ingredients); return renderScan(); }
