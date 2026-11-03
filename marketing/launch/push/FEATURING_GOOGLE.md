@@ -8,7 +8,7 @@ SnapCravings is made by Chris Magee, a one-person founder in Sacramento, Califor
 - Fridge, freezer, pantry and spice photo scan to recipes; recipes stream in one by one (first recipe in about 2 s), plus a growing recipe library for instant matches.
 - Diet and allergy settings as hard rules (gluten-free, vegan, nut/shellfish/egg/soy allergies, keto, halal and more).
 - Crave it: cook-vs-order cost check (grocery cost for the dish; delivery-app prices shown as "coming soon", never invented).
-- Scan my plate (Pro; 1 free a week): dish name + estimated calories, protein, carbs, fat, fiber, sugar, sodium, with portion and servings controls and a daily total against meal-prep targets. Labeled "AI estimate, not medical advice."
+- Scan my plate (Pro; 3 free a day): dish name + estimated calories, protein, carbs, fat, fiber, sugar, sodium, with portion and servings controls and a daily total against meal-prep targets. Labeled "AI estimate, not medical advice."
 - Meal prep: a week of meals, one grocery list, a prep-day guide, optional calorie and protein targets.
 - Holiday mode per country (themed colors, a short animation, Holiday foods) and the Holiday planner: full menu for 2-30 guests, scaled shopping list, cooking timeline.
 - Favorites, grocery list, Library with seasonal collections, family recipes adapted to your diet.

@@ -3,7 +3,7 @@
 (function () {
   // Strings live in web/dish-i18n.js (globalThis.DISH_I18N[lang]); merge them into the app dictionaries without overwriting keys
   // the app already has, now and whenever Settings loads another language file.
-  const merge = l => { const src = (globalThis.DISH_I18N || {})[l], d = l === 'es' ? I18N.ES : I18N.D[l]; if (src && d) for (const k in src) if (!Object.prototype.hasOwnProperty.call(d, k)) d[k] = src[k]; };
+  const merge = l => { const d = l === 'es' ? I18N.ES : I18N.D[l]; if (!d) return; for (const src of [(globalThis.DISH_I18N || {})[l], (globalThis.SHIP_I18N || {})[l]]) if (src) for (const k in src) if (!Object.prototype.hasOwnProperty.call(d, k)) d[k] = src[k]; };
   Object.keys(globalThis.DISH_I18N || {}).forEach(merge);
   const load0 = I18N.load; I18N.load = (l, cb) => load0(l, () => { merge(l); cb(); });
   const X = globalThis.SC_DISH;
@@ -12,6 +12,11 @@
   const save = () => LS.set('dishLast', { dish: S.dish, portion: S.portion, servings: S.servings, photo: S.photo && S.photo.length < 400000 ? S.photo : null });
   const mk = (id, cap) => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.id = id; i.className = 'offscreen'; i.tabIndex = -1; i.setAttribute('aria-hidden', 'true'); /* not hidden: iOS */ if (cap) i.setAttribute('capture', 'environment'); document.body.appendChild(i); i.addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) go(f); }); return i; };
   const cam = mk('dishCam', true), lib = mk('dishLib', false);
+  const usedToday = () => LS.get('dishScans', []).filter(x => Date.now() - x < 864e5).length;
+  const favGet = () => LS.get('dishFavs', []);
+  const isSaved = () => !!S.dish && favGet().some(f => f.dish.name.toLowerCase() === S.dish.name.toLowerCase());
+  const LOWCARB = /low-carb|keto|diabetic/i;
+  const carbDiet = () => (LS.get('diet', {}).tags || []).some(x => LOWCARB.test(x));
   const logGet = () => { const l = LS.get('dishLog', null); return l && l.day === X.dayKey() ? l : { day: X.dayKey(), entries: [] }; };
   const fmt = (v, u) => v == null ? '–' : `${v}${u}`;
   async function go(file) {
@@ -25,6 +30,7 @@
     try {
       const j = await api('dish', body, 50000);
       S.dish = j.dish; S.edit = false; S.flash = body.fix ? t('Updated!') : '';
+      if (!body.fix && !unlimited()) { const a = LS.get('dishScans', []).filter(x => Date.now() - x < 864e5); a.push(Date.now()); LS.set('dishScans', a); }
       track(body.fix ? 'dish_fix' : 'dish_scan', 'dish', { ms: Date.now() - t0, model: j.model });
     } catch (e) { S.err = e.message; S.paywall = !!e.paywall; }
     S.busy = false; save(); render();
@@ -34,10 +40,10 @@
     const free = !unlimited();
     if (S.busy) return (S.photo ? `<div class="photo" style="display:flex;padding:6px"><img src="${S.photo}" alt="${esc(t('Your plate photo'))}"></div>` : '') + loading('Reading your plate…');
     const snapBtns = `<button class="btn primary" data-dish-cam>📸 ${t('Snap it')}</button><button class="btn ghost" data-dish-lib>${t('🖼 Pick a photo')}</button>`;
-    if (S.paywall) return `<div class="kick">${t('Hungry for more?')}</div><h2>${t('Free dish scan used')}</h2><p class="sub">${esc(S.err)} ${t('Pro gets unlimited dish scans.')}</p><a class="btn primary" href="#pro">${subCfg.enabled ? t("Go Unlimited — let's get cooking!") : t('Go Pro')}</a>`;
+    if (S.paywall) return `<div class="kick">${t('Hungry for more?')}</div><h2>${t('Free dish scans used today')}</h2><p class="sub">${esc(S.err)} ${t('Pro gets unlimited dish scans.')}</p><a class="btn primary" href="#pro">${subCfg.enabled ? t("Go Unlimited — let's get cooking!") : t('Go Pro')}</a>`;
     if (S.err) return `<div class="kick">${t('Oops, kitchen hiccup!')}</div><h2>${t("We couldn't read your plate")}</h2><p class="sub">${esc(S.err)}</p>${S.photo && !S.dish ? `<button class="btn primary" data-dish-retry>${t('Retry')}</button>` : ''}${snapBtns}`;
-    if (!S.dish) return `<div class="kick">${t('Know your plate!')}</div><h2>${t('Snap your meal')}</h2><p class="sub">${t('One photo of your plate, from above. We estimate calories, protein, carbs and fat.')}</p>${free ? `<p class="pill g" style="display:inline-block;margin:0 0 10px;font-size:12px">🎟️ ${t('Free plan: 1 dish scan a week. Pro: unlimited.')}</p>` : ''}${snapBtns}${today()}`; /* limit shown BEFORE the free scan is used */
-    const d = S.dish, n = X.scale(d.total, S.portion, S.servings);
+    if (!S.dish) return `<div class="kick">${t('Know your plate!')}</div><h2>${t('Snap your meal')}</h2><p class="sub">${t('One photo of your plate, from above. We estimate calories, protein, carbs and fat.')}</p>${free ? `<p class="pill g" style="display:inline-block;margin:0 0 10px;font-size:12px">🎟️ ${t('Free plan: 3 dish scans a day. Pro: unlimited.')}</p>` : ''}${snapBtns}${today()}`; /* limit shown BEFORE the free scan is used */
+    const d = S.dish, n = X.scale(d.total, S.portion, S.servings), cd = carbDiet(), net = n.fiber == null ? n.carbs : Math.max(0, Math.round((n.carbs - n.fiber) * 10) / 10);
     const conf = { high: ['g', 'High confidence'], medium: ['g', 'Medium confidence'], low: ['c', 'Low confidence'] }[d.confidence] || ['g', 'Medium confidence'];
     return `${S.photo ? `<div class="photo" style="display:flex;padding:6px"><img src="${S.photo}" alt="${esc(t('Your plate photo'))}"></div>` : ''}
       <div class="kick">${t('Know your plate!')}</div><h2>${esc(d.emoji)} ${esc(d.name)}</h2><span class="pill ${conf[0]}">${t(conf[1])}</span>${S.flash ? ` <span class="pill g">${esc(S.flash)}</span>` : ''}
@@ -46,13 +52,18 @@
       <div style="display:flex;align-items:center;gap:8px"><b style="flex:1">${t('Servings')}</b><button class="chip" data-dish-srv="-1" style="cursor:pointer;font-family:var(--font)" aria-label="−">−</button><b id="dishSrv">${S.servings}</b><button class="chip" data-dish-srv="1" style="cursor:pointer;font-family:var(--font)" aria-label="+">+</button></div>
       <div class="card" style="text-align:center;margin-top:10px"><div style="font-size:34px;font-weight:800" id="dishKcal">${n.kcal}</div><div class="sub">${t('Calories')} · ${t('Per serving × {s}', { s: X.factor(S.portion, S.servings).toFixed(2).replace(/\.?0+$/, '') })}</div>
         <div class="stats">${stat('Protein', fmt(n.protein, 'g'))}${stat('Carbs', fmt(n.carbs, 'g'))}${stat('Fat', fmt(n.fat, 'g'))}</div>
-        <div class="stats">${stat('Fiber', fmt(n.fiber, 'g'))}${stat('Sugar', fmt(n.sugar, 'g'))}${stat('Sodium', fmt(n.sodium, ' mg'))}</div>
+        <div class="stats">${cd ? stat('Net carbs', fmt(net, 'g')) : ''}${stat('Fiber', fmt(n.fiber, 'g'))}${stat('Sugar', fmt(n.sugar, 'g'))}${cd ? '' : stat('Sodium', fmt(n.sodium, ' mg'))}</div>
+        ${cd ? `<p class="fine" style="margin:4px 0 0"><b>${t('Watching carbs? Sugar, fiber and net carbs are highlighted for your diet.')}</b></p>` : ''}
         <p class="fine">${t('AI estimate, not medical advice.')}${d.note ? ' ' + esc(d.note) : ''}</p></div>
       <button class="btn primary" data-dish-log>${t('Add to today')}</button>
+      <div style="display:flex;gap:8px"><button class="btn ghost" data-dish-save style="flex:1">${isSaved() ? t('♥ Plate saved') : t('♡ Save this plate')}</button><button class="btn ghost" data-dish-home style="flex:1">${t('👩‍🍳 Make it at home')}</button></div>
+      <a class="btn ghost" href="#crave" data-craveit="${esc(d.name)}">${t('Make it or take it? Compare with ordering →')}</a>
       ${S.edit ? editor() : `<button class="btn ghost" data-dish-edit>${t('Wrong dish or ingredients? Fix it')}</button>`}
       ${today()}
-      <button class="btn ghost" data-dish-cam>${t('📸 New plate')}</button>${free ? `<p class="fine" style="text-align:center">${t('Free plan: 1 dish scan a week. Pro: unlimited.')}</p>` : ''}`;
+      <button class="btn ghost" data-dish-cam>${t('📸 New plate')}</button>${free ? `<p class="fine" style="text-align:center">${t('{n} of 3 free dish scans left today', { n: Math.max(0, 3 - usedToday()) })}</p>` : ''}`;
   }
+  window.dishFavsHtml = () => { const f = favGet(); if (!f.length) return '';
+    return `<h3 style="grid-column:1/-1">${t('Saved plates')}</h3>` + f.map((x, i) => `<div class="card recipe"><a href="#dish" data-dish-open="${i}" style="display:flex;gap:12px;align-items:center;flex:1;color:inherit;text-decoration:none"><div class="thumb" style="background:var(--coral-soft)">${esc(x.dish.emoji)}</div><div style="flex:1"><b>${esc(x.dish.name)}</b><div class="meta">${x.dish.total.kcal} ${t('Calories')} · ${x.dish.total.protein}g ${t('Protein')}</div></div></a><button class="chip" data-dish-unsave="${i}" style="cursor:pointer" aria-label="${esc(t('Plate removed.'))}">✕</button></div>`).join(''); };
   function editor() {
     const d = S.dish;
     return `<div class="card"><h3 style="margin-top:0">${t('Dish name')}</h3><div class="input"><span>🍽️</span><input id="dishName" maxlength="80" value="${esc(d.name)}" aria-label="${esc(t('Dish name'))}"></div>
@@ -77,8 +88,8 @@
     return { name, items };
   }
   document.addEventListener('click', e => {
-    const x = e.target.closest('[data-dish-cam],[data-dish-lib],[data-dish-retry],[data-dish-portion],[data-dish-srv],[data-dish-log],[data-dish-edit],[data-dish-add],[data-dish-del],[data-dish-recalc],[data-dish-clear]');
-    if (!x || !x.closest('#dish, #scan')) return;
+    const x = e.target.closest('[data-dish-cam],[data-dish-lib],[data-dish-retry],[data-dish-portion],[data-dish-srv],[data-dish-log],[data-dish-edit],[data-dish-add],[data-dish-del],[data-dish-recalc],[data-dish-clear],[data-dish-save],[data-dish-home],[data-dish-open],[data-dish-unsave]');
+    if (!x || !x.closest('#dish, #scan, #favs')) return;
     const D = x.dataset;
     if ('dishCam' in D) return cam.click();
     if ('dishLib' in D) return lib.click();
@@ -90,6 +101,10 @@
     if ('dishAdd' in D) { const f = readEdit(); S.dish = { ...S.dish, name: f.name || S.dish.name, items: [...f.items, { name: '', grams: 0 }] }; return render(); }
     if ('dishDel' in D) { x.closest('[data-dish-row]').remove(); return; }
     if ('dishRecalc' in D) { const f = readEdit(); if (!f.name) return toast(t('Dish name')); return run({ fix: f, lang: I18N.lang }); }
+    if ('dishSave' in D) { const f = favGet(), k = f.findIndex(y => y.dish.name.toLowerCase() === S.dish.name.toLowerCase()); if (k >= 0) { f.splice(k, 1); toast(t('Plate removed.')); } else { f.unshift({ dish: S.dish, portion: S.portion, servings: S.servings, savedAt: Date.now() }); toast(t('Plate saved! ❤️')); track('dish_save', 'dish'); } LS.set('dishFavs', f.slice(0, 50)); return render(); }
+    if ('dishOpen' in D) { const f = favGet()[+D.dishOpen]; if (f) { S.dish = f.dish; S.portion = f.portion; S.servings = f.servings; S.photo = null; S.err = null; S.edit = false; S.flash = ''; save(); } return; }
+    if ('dishUnsave' in D) { const f = favGet(); f.splice(+D.dishUnsave, 1); LS.set('dishFavs', f); toast(t('Plate removed.')); return renderFavs(); }
+    if ('dishHome' in D) { const nm = S.dish.name; return crave(nm).then(() => { if (state.crave && state.crave.craving === nm) { state.recipe = state.crave.recipe; state.from = 'crave'; location.hash = '#recipe'; } }); }
     if ('dishClear' in D) { LS.set('dishLog', null); return render(); }
   });
   window.renderDish = render;

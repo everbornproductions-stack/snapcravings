@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import '../web/dishcore.js';
-import { onRequest, estimate, FREE_DISH_PER_WEEK } from '../functions/api/dish.js';
+import { onRequest, estimate, FREE_DISH_PER_DAY } from '../functions/api/dish.js';
 const X = globalThis.SC_DISH;
 const good = { is_food: true, dish: 'Chicken, rice and broccoli', emoji: '🍗', confidence: 'high', items: [{ name: 'Chicken', grams: 150 }, { name: 'Rice', grams: '180' }], total: { kcal: 560, protein: 52, carbs: 62, fat: 11, fiber: 4, sugar: 2, sodium: 520 } };
 const IMG = 'data:image/jpeg;base64,' + Buffer.from('fakejpeg').toString('base64');
@@ -42,13 +42,13 @@ test('daily total adds logged entries', () => {
   assert.deepEqual(X.dayTotal([{ kcal: 500.4, protein: 30, carbs: 50, fat: 10 }, { kcal: 300, protein: 20.6 }]), { kcal: 800, protein: 51, carbs: 50, fat: 10 });
   assert.match(X.dayKey(new Date(2026, 10, 2)), /^2026-11-02$/);
 });
-test('free users get 1 dish scan: a denied gate returns 402 paywall, AI is never called', async () => {
-  assert.equal(FREE_DISH_PER_WEEK, 1);
+test('free users get 3 dish scans a day: a denied gate returns 402 paywall, AI is never called', async () => {
+  assert.equal(FREE_DISH_PER_DAY, 3);
   let called = 0; const env = { GEMINI_API_KEY: 'k', __gate: () => ({ allowed: false }), __fetch: async () => { called++; return gem(good)(); } };
   const r = await onRequest({ request: req({ image: IMG }), env });
   assert.equal(r.status, 402); const j = await r.json(); assert.equal(j.paywall, true); assert.equal(called, 0);
 });
-test('allowed scan returns a validated dish; recalculating a correction skips the weekly gate', async () => {
+test('allowed scan returns a validated dish; recalculating a correction skips the daily gate', async () => {
   let gates = 0; const env = { GEMINI_API_KEY: 'k', __gate: () => { gates++; return { allowed: true }; }, __fetch: gem(good) };
   const r = await onRequest({ request: req({ image: IMG }), env }); assert.equal(r.status, 200);
   const j = await r.json(); assert.equal(j.dish.name, good.dish); assert.equal(gates, 1);

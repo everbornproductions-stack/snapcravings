@@ -54,7 +54,7 @@ Around the holidays in your country, the app dresses up in holiday colors with a
 English, Español, Português (Brasil), हिन्दी, Bahasa Indonesia, Français, Deutsch, العربية, Русский and Türkçe.
 
 FREE TO TRY
-3 free fridge scans every week. Upgrade to SnapCravings Pro for unlimited scans. Pro also unlocks the full meal-prep week. Pro also includes unlimited dish scans (free: 1 a week). Founders price: $3.99/month for the first 100 members, then $4.99/month. Cancel anytime.
+3 free fridge scans every week. Upgrade to SnapCravings Pro for unlimited scans. Pro also unlocks the full meal-prep week. Pro also includes unlimited dish scans (free: 3 a day). Founders price: $3.99/month for the first 100 members, then $4.99/month. Cancel anytime.
 
 GREAT FOR
 - Quick weeknight dinner ideas

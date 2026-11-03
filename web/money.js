@@ -43,11 +43,13 @@
   const note = cc => { cc = cc2(cc) || 'US'; const k = of(cc); return `PRICES: The user shops in ${name(cc)}. Give every price (est_price, est_cook_cost, est_menu_price) in ${k.c} as a plain number, using realistic current ${name(cc)} supermarket prices, local brands and local package sizes, not US prices converted. For scale: 1 kg chicken breast costs about ${k.ck} ${k.c} there.`; };
   // Rough delivery-app total for ONE order of this dish (servings x a typical menu price + markup + delivery + service + tip).
   // An ESTIMATE range, never a quote; menu = typical restaurant price of one serving in local money.
-  function delivery(menu, servings, cc) {
+  // o.mem = the user has a delivery membership (DashPass / Uber One): delivery fee waived, service fee halved. o.tip = a flat tip in US$ the user picked (replaces the usual tip share).
+  function delivery(menu, servings, cc, o) {
     const k = of(cc), s = Math.max(1, Math.min(8, +servings || 1)), m = menuFix(menu, cc); if (!m) return null;
+    const mem = !!(o && o.mem), tipFlat = o && +o.tip > 0 && k.tip > 0 ? fromUS(+o.tip, cc) : 0, sv = mem ? k.sv / 2 : k.sv;
     const food = m * s, lo = food * 0.9 * (1 + k.mk * 0.5), hi = food * 1.1 * (1 + k.mk);
-    const tot = (f, d, x) => f + d + f * k.sv * x + f * k.tip * x;
-    return { lo: round(tot(lo, k.d[0], 0.8), k.c), hi: round(tot(hi, k.d[1], 1.2), k.c), c: k.c };
+    const tot = (f, d, x) => f + (mem ? 0 : d) + f * sv * x + (tipFlat || f * k.tip * x);
+    return { lo: round(tot(lo, k.d[0], 0.8), k.c), hi: round(tot(hi, k.d[1], 1.2), k.c), c: k.c, mem };
   }
   // Fallback menu price when the AI gave none: home cost per serving x 3.5, at least a cheap local meal.
   // AI menu prices swing (Schnitzel 12 EUR one call, 24 EUR the next): keep them inside 0.6x-1.8x of a typical local main dish.

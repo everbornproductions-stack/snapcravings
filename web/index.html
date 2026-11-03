@@ -10,7 +10,7 @@
 <title>SnapCravings</title>
 <script>
 // Language pick (EN/ES built in; others load web/i18n/<code>.js before the deferred app scripts). Arabic is right-to-left.
-window.SC_IV = 'ui60';
+window.SC_IV = 'ui61';
 window.SC_LANGS = [['en', 'English'], ['es', 'Español'], ['pt', 'Português (BR)'], ['hi', 'हिन्दी'], ['id', 'Bahasa Indonesia'], ['fr', 'Français'], ['de', 'Deutsch'], ['ar', 'العربية'], ['ru', 'Русский'], ['tr', 'Türkçe']];
 (function () { var ok = function (l) { return SC_LANGS.some(function (x) { return x[0] === l; }); }, l = null;
   try { var s = localStorage.getItem('sc.lang'); if (s) { var v = JSON.parse(s); if (ok(v)) l = v; } } catch (e) {}
@@ -308,7 +308,7 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
     <div class="kick">Crave smarter, not harder.</div>
     <h1 style="margin-top:6px">What are you<br><em>craving?</em></h1>
     <div class="input"><span>🔍</span><input id="craveInput" placeholder="Chicken pad thai" aria-label="Craving"></div>
-    <h3 aria-level="2">Your memberships <span style="color:var(--muted);font-weight:600;font-size:12px">· for the ordering comparison, coming soon</span></h3>
+    <h3 aria-level="2">Your memberships <span style="color:var(--muted);font-weight:600;font-size:12px">· lowers the delivery estimate</span></h3>
     <div class="card">
       <div class="toggle">DashPass (DoorDash)<button class="sw" data-mem="dashpass" aria-label="DashPass"></button></div>
       <div class="toggle" style="margin-top:8px">Uber One (Uber Eats)<button class="sw" data-mem="uberone" aria-label="Uber One"></button></div>
@@ -316,10 +316,7 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
     <h3 aria-level="2">Tip for delivery</h3>
     <div class="seg" id="tipSeg"><button data-tip="2">$2</button><button data-tip="3" class="on">$3</button><button data-tip="5">$5</button></div>
     <button class="btn primary" id="craveGo">Make it or take it? Compare →</button>
-    <div class="card" style="margin-top:12px;background:#F4EEE5;border-style:dashed">
-      <b style="font-size:13px">📸 Have a checkout screen? Fees? We see 'em.</b>
-      <p class="sub" style="font-size:12px;margin-top:3px">Coming soon: upload a screenshot of your own cart and we'll read the real total. We never log in to or scrape delivery apps.</p>
-    </div>
+    <div class="card" id="chkBody" style="margin-top:12px;background:#F4EEE5;border-style:dashed"></div>
   </section>
 
   <!-- COMPARE -->
@@ -413,7 +410,7 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
     <div class="feat"><span class="ck">✓</span><span><b>Unlimited photo scans</b><br><span class="sub" style="font-size:12.5px">Free plan: a few scans a week</span></span></div>
     <div class="feat"><span class="ck">✓</span><span><b>Meal prep</b><br><span class="sub" style="font-size:12.5px">A week of meals, one grocery list and a prep-day guide.</span></span></div>
     <div class="feat"><span class="ck">✓</span><span><b>Dish scans for macros</b><br><span class="sub" style="font-size:12.5px">Unlimited dish scans with estimated calories and macros</span></span></div>
-    <table class="cmp"><tr><th><span class="sr">Feature</span></th><th>Free</th><th>Pro</th></tr><tr><td>Photo scans</td><td>Limited</td><td>Unlimited</td></tr><tr><td>Recipes</td><td>Limited</td><td>Unlimited</td></tr><tr><td>Meal prep</td><td>Limited</td><td>✓</td></tr><tr><td>Dish scans</td><td>1/week</td><td>Unlimited</td></tr><tr><td>Make vs. buy</td><td>✓</td><td>✓</td></tr><tr><td>Saved favorites</td><td>✓</td><td>✓</td></tr></table>
+    <table class="cmp"><tr><th><span class="sr">Feature</span></th><th>Free</th><th>Pro</th></tr><tr><td>Photo scans</td><td>Limited</td><td>Unlimited</td></tr><tr><td>Recipes</td><td>Limited</td><td>Unlimited</td></tr><tr><td>Meal prep</td><td>Limited</td><td>✓</td></tr><tr><td>Dish scans</td><td>3/day</td><td>Unlimited</td></tr><tr><td>Make vs. buy</td><td>✓</td><td>✓</td></tr><tr><td>Saved favorites</td><td>✓</td><td>✓</td></tr></table>
     <div style="height:14px"></div>
     <div class="plan" data-plan="yr"><span class="rd"></span><span class="p"><b>Yearly <span class="save">SAVE 16%</span></b><span id="proYrSub">US$39.99/yr (about US$3.33/mo), 16% less than 12 months at US$3.99</span></span><span class="pr">US$39.99</span></div>
     <div class="plan on" data-plan="mo"><span class="rd"></span><span class="p"><b>Monthly</b><span>Founders price, first 100 members, locked in</span></span><span class="pr" id="proPrice">US$3.99</span></div>
@@ -441,23 +438,25 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
 <input type="file" id="snapCam" accept="image/*" capture="environment" class="offscreen" tabindex="-1" aria-hidden="true">
 <input type="file" id="snapLib" accept="image/*" multiple class="offscreen" tabindex="-1" aria-hidden="true">
 <div id="toast" role="status" aria-live="polite" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
-<script defer src="holiday.js?v=ui60"></script>
-<script defer src="money.js?v=ui60"></script>
-<script defer src="config.js?v=ui60"></script>
-<script defer src="i18n.js?v=ui60"></script>
-<script defer src="speed.js?v=ui60"></script>
-<script defer src="app.js?v=ui60"></script>
-<script defer src="prep.js?v=ui60"></script>
-<script defer src="more.js?v=ui60"></script>
-<script defer src="grow.js?v=ui60"></script>
-<script defer src="hplan-i18n.js?v=ui60"></script>
-<script defer src="hplan.js?v=ui60"></script>
-<script defer src="dishcore.js?v=ui60"></script>
-<script defer src="dish-i18n.js?v=ui60"></script>
-<script defer src="dish.js?v=ui60"></script>
-<script defer src="fixes.js?v=ui60"></script>
-<script defer src="prices.js?v=ui60"></script>
-<script defer src="feat-i18n.js?v=ui60"></script>
-<script defer src="feat.js?v=ui60"></script>
+<script defer src="holiday.js?v=ui61"></script>
+<script defer src="money.js?v=ui61"></script>
+<script defer src="config.js?v=ui61"></script>
+<script defer src="i18n.js?v=ui61"></script>
+<script defer src="speed.js?v=ui61"></script>
+<script defer src="app.js?v=ui61"></script>
+<script defer src="prep.js?v=ui61"></script>
+<script defer src="more.js?v=ui61"></script>
+<script defer src="grow.js?v=ui61"></script>
+<script defer src="hplan-i18n.js?v=ui61"></script>
+<script defer src="hplan.js?v=ui61"></script>
+<script defer src="ship-i18n.js?v=ui61"></script>
+<script defer src="dishcore.js?v=ui61"></script>
+<script defer src="dish-i18n.js?v=ui61"></script>
+<script defer src="dish.js?v=ui61"></script>
+<script defer src="checkout.js?v=ui61"></script>
+<script defer src="fixes.js?v=ui61"></script>
+<script defer src="prices.js?v=ui61"></script>
+<script defer src="feat-i18n.js?v=ui61"></script>
+<script defer src="feat.js?v=ui61"></script>
 </body>
 </html>

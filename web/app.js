@@ -109,6 +109,7 @@ function renderFavCount() { const n = favs.length; el('favCount').textContent = 
 function renderFavs() {
   el('favsBody').innerHTML = favs.length ? favs.map((r, i) => `<div class="card recipe"><a href="#recipe" data-rec="fav:${i}" style="display:flex;gap:12px;align-items:center;flex:1;color:inherit;text-decoration:none"><div class="thumb" style="background:${THUMBS[i % 4]}">${esc(r.emoji || '🍳')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${t('{n} min · {s} servings', { n: esc(r.minutes), s: esc(r.servings) })}</div>${(r.missing || []).length ? `<span class="pill c">${t('Missing {n}: {items}', { n: r.missing.length, items: esc(r.missing.map(m => m.item).join(', ')) })}</span>` : `<span class="pill g">${t('Pantry power! You have everything')}</span>`}</div></a>${heart('fav:' + i, r)}</div>`).join('')
     : `<div class="card" style="text-align:center;padding:22px"><div style="font-size:30px">♡</div><b>${t('No favorites yet')}</b><p class="sub" style="font-size:13px;margin-top:4px">${t('Tap ♡ on any recipe and it lands here.')}</p><a class="btn primary" href="#scan">${t('📸 Snap it')}</a></div>`;
+  if (window.dishFavsHtml) el('favsBody').insertAdjacentHTML('beforeend', dishFavsHtml()); /* saved plates (web/dish.js) */
 }
 const CRAVINGS_BASE = ['Anything', 'Noodles', 'Something quick', 'Comfort food', 'Spicy'];
 /* HOLIDAY MODE (web/holiday.js): ~7 days before a country's major holiday through the day itself. Accent colors,
@@ -432,6 +433,9 @@ function renderRecipe() {
 }
 
 /* CRAVE + COMPARE */
+/* Delivery memberships + tip picked on the Crave screen feed the delivery ESTIMATE (never a quote). */
+const dOpts = () => { const m = LS.get('mem', {}); return { mem: !!(m.dashpass || m.uberone), tip: LS.get('tipUS', 3) }; };
+{ const m = LS.get('mem', {}); document.querySelectorAll('[data-mem]').forEach(b => b.classList.toggle('on', !!m[b.dataset.mem])); const tp = LS.get('tipUS', 3); document.querySelectorAll('#tipSeg button').forEach(b => b.classList.toggle('on', +b.dataset.tip === tp)); }
 async function crave(text) {
   text = (text || '').trim(); if (!text) return toast(t('Name a craving first!'));
   location.hash = '#compare'; el('compareBody').innerHTML = loading('Crunching the numbers…');
@@ -444,7 +448,7 @@ function renderCompare() {
   const r = c.recipe; const miss = r.missing || []; const groc = r2(miss.reduce((s, m) => s + (+m.est_price || 0), 0));
   const cu = c.cur || (c.recipe && c.cur) || 'USD', cc = c.country || scCountry(), serv = Math.max(1, +r.servings || 1);
   /* Delivery = ESTIMATE range (typical local menu price x servings + app markup + delivery, service fee, tip). Never a quote, never app data. */
-  const M = window.SC_MONEY, menu = M.menuFix(+c.est_menu_price > 0 ? +c.est_menu_price : M.menuGuess((+c.est_cook_cost || 0) / serv, cc), cc), dl = M.delivery(menu, serv, cc);
+  const M = window.SC_MONEY, menu = M.menuFix(+c.est_menu_price > 0 ? +c.est_menu_price : M.menuGuess((+c.est_cook_cost || 0) / serv, cc), cc), dl = M.delivery(menu, serv, cc, dOpts());
   const homeAll = r2(+groc + 0), save = dl ? Math.max(0, r2(dl.lo - Math.max(homeAll, +c.est_cook_cost || 0))) : 0;
   el('compareBody').innerHTML = `<span class="example">${t('⚠ Cook cost is an estimate')}</span><div class="kick">${t('Make it or take it?')}</div><h2>${esc(c.craving)}</h2>
     <p class="sub" style="font-size:13px">${t('{s} servings · {name}', { s: esc(r.servings), name: esc(r.name) })}</p>
@@ -452,7 +456,7 @@ function renderCompare() {
     <details class="opt best" open><summary><span class="badge" style="background:#2F8F5B">M</span><span class="nm">${t('Make it')} <small>${t('{n} min cook · estimate', { n: esc(r.minutes) })}</small></span><span class="amt">~${$(groc, cu)}</span></summary>
       <div class="bd">${miss.map(m => `<div class="row"><span class="m">${esc(m.item)}${m.qty ? ', ' + esc(m.qty) : ''}${m.priceSrc && window.SC_PRICES ? ` <small style="color:var(--muted);font-size:11px">· ${esc(SC_PRICES.tag(m.priceSrc, I18N.lang))}</small>` : ''}</span><span>~${$(m.est_price, cu)}</span></div>`).join('') || `<div class="row"><span class="m">${t('Nothing to buy')}</span><span>${$(0, cu)}</span></div>`}</div></details>
     ${dl ? `<details class="opt" id="dlEst"><summary><span class="badge" style="background:#1E1B18">🛵</span><span class="nm">${t('Order it delivered')}<small>${t('Estimate, not a quote. Check the app.')}</small></span><span class="amt">~${$(dl.lo, cu)}–${$(dl.hi, cu)}</span></summary>
-      <div class="bd"><div class="row"><span class="m">${t('Delivery usually ~{lo}-{hi} with fees', { lo: $(dl.lo, cu), hi: $(dl.hi, cu) })}</span></div><div class="row"><span class="m">${t('Typical menu price ~{p} per serving × {n}, plus delivery, service fee and tip', { p: $(menu, cu), n: serv })}</span></div></div></details>` : ''}
+      <div class="bd"><div class="row"><span class="m">${t('Delivery usually ~{lo}-{hi} with fees', { lo: $(dl.lo, cu), hi: $(dl.hi, cu) })}</span></div><div class="row"><span class="m">${t('Typical menu price ~{p} per serving × {n}, plus delivery, service fee and tip', { p: $(menu, cu), n: serv })}</span></div>${dl.mem ? `<div class="row"><span class="m">${t('With your membership: delivery fee waived and lower service fees (estimate).')}</span></div>` : ''}</div></details>` : ''}${window.scOrderLine ? scOrderLine(c) : ''}
     <p class="fine"><b>${t("Fees? We see 'em.")}</b> ${t('The delivery range is our rough estimate from typical local menu prices plus usual delivery, service fees and tip. It is not a quote and not from any delivery app; check the app for the real price. Cook cost is an AI estimate of local grocery prices.')}</p>
     <a class="btn primary" href="#recipe" data-rec="crave">${t("Let's get cooking! See the recipe →")}</a>
     ${miss.length ? `<a class="btn ghost" href="#list" data-addmiss="crave">${t('🛒 Restock time! Add missing items to my list')}</a>` : ''}`;
@@ -531,8 +535,8 @@ document.addEventListener('click', e => {
   if (t.closest('#listAddBtn')) { addToList(el('listAdd').value, 'manual', 0); el('listAdd').value = ''; return; }
   if (t.closest('#listSend')) return sendList();
   if (t.closest('#listClear')) { glist = glist.filter(g => !g.done); LS.set('glist', glist); el('listLinks').innerHTML = ''; return renderList(); }
-  const tip = t.closest('[data-tip]'); if (tip) document.querySelectorAll('#tipSeg button').forEach(b => b.classList.toggle('on', b === tip));
-  const s = t.closest('[data-mem]'); if (s) s.classList.toggle('on');
+  const tip = t.closest('[data-tip]'); if (tip) { document.querySelectorAll('#tipSeg button').forEach(b => b.classList.toggle('on', b === tip)); LS.set('tipUS', +tip.dataset.tip); }
+  const s = t.closest('[data-mem]'); if (s) { s.classList.toggle('on'); LS.set('mem', { ...LS.get('mem', {}), [s.dataset.mem]: s.classList.contains('on') }); }
   const p = t.closest('.plan'); if (p) { if (p.dataset.plan === 'yr' && !subCfg.linkYearly && !(typeof inPlay === 'function' && inPlay())) toast(I18N.t('Yearly is coming soon! Monthly is ready now.')); else { document.querySelectorAll('.plan').forEach(x => x.classList.toggle('on', x === p)); renderPro(); } }
   if (t.closest('#proGo')) return goUnlimited();
   if (t.closest('#proCodeGo')) return redeem();
