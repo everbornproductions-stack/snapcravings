@@ -133,13 +133,13 @@ function holidayAnim(force) {
   document.getElementById('holAnim')?.remove(); const box = document.createElement('div'); box.id = 'holAnim'; box.setAttribute('aria-hidden', 'true');
   const [kind, spr] = h.anim, parts = [...new Intl.Segmenter().segment(spr)].map(x => x.segment), R = (a, b) => a + Math.random() * (b - a);
   const add = (cls, html, style) => { const i = document.createElement('i'); i.className = cls; i.innerHTML = html; if (style) i.style.cssText = style; box.appendChild(i); };
-  if (kind === 'walk') add('walk', `<b>${spr}</b>`);
-  else if (kind === 'hop') add('hop', `<b>${spr}</b>`);
-  else if (kind === 'fly') add('fly', `${spr}<s>✨✨</s>`);
-  else if (kind === 'bats') parts.forEach((p, n) => add('bat', p, `top:${10 + n * 9}%;animation-delay:${n * .35}s`));
-  else if (kind === 'fireworks') for (let n = 0; n < 7; n++) add('fw', parts[n % parts.length], `left:${R(8, 78)}%;top:${R(8, 45)}%;animation-delay:${n * .45}s`);
-  else for (let n = 0; n < 8; n++) add(kind, parts[n % parts.length], `left:${R(4, 86)}%;animation-delay:${R(0, 1.2).toFixed(2)}s`);
-  document.querySelector('.phone').appendChild(box); setTimeout(() => box.remove(), 6500);
+  // Every holiday: the main character flies in, swoops toward the viewer (2.6x near the center with a wiggle/bounce), then flies out.
+  const star = kind === 'fly' ? spr : kind === 'bats' ? '👻' : parts[0], inner = kind === 'walk' || kind === 'hop' ? 'hop' : 'wig';
+  add('hsw hsw-' + kind, `<b class="${inner}">${star}</b>${kind === 'fly' ? '<s>✨✨</s>' : ''}`);
+  if (kind === 'fireworks') for (let n = 0; n < 6; n++) add('fw', parts[1 + n % (parts.length - 1)], `left:${R(5, 70)}%;top:${R(6, 50)}%;animation-delay:${(n * .55).toFixed(2)}s`);
+  else if (kind === 'bats') for (let n = 0; n < 3; n++) add('bat', '🦇', `top:${12 + n * 10}%;animation-delay:${n * .4}s`);
+  else if (kind !== 'fly') for (let n = 0; n < 6; n++) add(kind === 'glow' ? 'glow' : 'float', parts[n % parts.length], `left:${R(4, 86)}%;animation-delay:${R(.3, 1.8).toFixed(2)}s`);
+  document.querySelector('.phone').appendChild(box); setTimeout(() => box.remove(), 7500);
 }
 Object.defineProperty(window, 'CRAVINGS_LIST', { get: () => HOLI.cur ? ['holiday:' + HOLI.cur.id, ...CRAVINGS_BASE] : CRAVINGS_BASE });
 

@@ -95,10 +95,10 @@
   const INK = '#1C1A17', MUTED = '#5A534B';
   // Animations (once per session on home, and on Holiday foods tap): [kind, sprite]
   const A = { thanksgiving: ['walk', '🦃'], christmas: ['fly', '🦌🦌🛷🎅'], posadas: ['fly', '🦌🦌🛷🎅'], orthodoxxmas: ['fly', '🦌🦌🛷🎅'], easter: ['hop', '🐰'], halloween: ['bats', '🦇👻🦇'],
-    valentines: ['float', '💕💖💘'], mothersday: ['float', '💐🌷💖'], newyear: ['fireworks', '🎆🎇✨'], july4: ['fireworks', '🎆🎇✨'], memorialday: ['fireworks', '🇺🇸✨🎇'], laborday: ['walk', '🌭'], fathersday: ['walk', '🍔'],
+    valentines: ['float', '💕💖💘'], mothersday: ['float', '💐🌷💖'], newyear: ['fireworks', '🥂✨💥🌟'], july4: ['fireworks', '🦅✨💥🌟'], memorialday: ['fireworks', '🇺🇸✨💥🌟'], laborday: ['walk', '🌭'], fathersday: ['walk', '🍔'],
     diwali: ['glow', '🪔🪔🪔'], ramadan: ['glow', '🏮🌙⭐'], eid: ['glow', '🌙⭐🏮'], eidadha: ['glow', '🌙⭐🏮'], lunarnewyear: ['glow', '🏮🧧🏮'], hanukkah: ['glow', '🕎✨⭐'],
-    stpatricks: ['float', '☘️🍀☘️'], cincodemayo: ['float', '🎉🌮🎊'], holi: ['float', '🎨💜💛'], carnaval: ['float', '🎭🎉🎊'], festajunina: ['glow', '🎆🌽🔥'], muertos: ['float', '🌼💀🌼'],
-    reyes: ['walk', '🐫'], bastille: ['fireworks', '🎆🎇✨'], oktoberfest: ['walk', '🥨'], maslenitsa: ['float', '🥞☀️🥞'] };
+    stpatricks: ['float', '☘️🍀☘️'], cincodemayo: ['float', '🎉🌮🎊'], holi: ['float', '🎨💜💛'], carnaval: ['float', '🎭🎉🎊'], festajunina: ['glow', '🌽🔥🎉'], muertos: ['float', '🌼💀🌼'],
+    reyes: ['walk', '🐫'], bastille: ['fireworks', '🥖✨💥🌟'], oktoberfest: ['walk', '🥨'], maslenitsa: ['float', '🥞☀️🥞'] };
   const LANGS = ['en', 'es', 'pt', 'hi', 'id', 'fr', 'de', 'ar', 'ru', 'tr'];
   const UI = { // [Holiday foods, {h} is coming!, Snap your fridge, then pick Holiday foods for {h} recipes.]
     en: ['Holiday foods', '{h} is coming!', 'Snap your fridge, then pick Holiday foods for {h} recipes.'],
