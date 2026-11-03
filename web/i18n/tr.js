@@ -10,7 +10,7 @@
 "Snap your fridge for recipes, or name a craving and see which way is cheaper.":"Tarifler için buzdolabının fotoğrafını çek veya canının çektiği bir şeyi söyle, hangisinin daha ucuza geldiğini gör.",
 "Your fridge has ideas!":"Buzdolabında fikirler var!",
 "Snap it":"Fotoğrafını çek",
-"Photograph your fridge or pantry. Get recipes with full steps.":"Buzdolabının veya kilerinin fotoğrafını çek. Adım adım tarifleri al.",
+"Snap your fridge, freezer, pantry and spices. Get recipes with full steps.":"Buzdolabı, dondurucu, kiler ve baharatlarının fotoğrafını çek. Adım adım tarifler al.",
 "Make it or take it?":"Kendin mi yaparsın, sipariş mi edersin?",
 "Crave it":"Canın çekti",
 "Name it. We compare cooking it with ordering it, fees and all.":"Adını söyle. Evde pişirmekle sipariş etmeyi, ücretler dahil her şeyiyle karşılaştıralım.",

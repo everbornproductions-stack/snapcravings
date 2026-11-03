@@ -10,7 +10,7 @@
 "Snap your fridge for recipes, or name a craving and see which way is cheaper.":"Foto isi kulkasmu buat dapet resep, atau sebutin makanan yang kamu pengen dan liat mana yang lebih murah.",
 "Your fridge has ideas!":"Kulkasmu punya ide!",
 "Snap it":"Foto yuk",
-"Photograph your fridge or pantry. Get recipes with full steps.":"Foto kulkas atau lemari makanmu. Dapet resep lengkap dengan langkah-langkahnya.",
+"Snap your fridge, freezer, pantry and spices. Get recipes with full steps.":"Foto kulkas, freezer, lemari makanan, dan bumbumu. Dapet resep lengkap step by step.",
 "Make it or take it?":"Masak atau pesan?",
 "Crave it":"Lagi pengen",
 "Name it. We compare cooking it with ordering it, fees and all.":"Sebutin makanannya. Kami bandingin biaya masak sendiri vs pesan antar, lengkap sama biayanya.",

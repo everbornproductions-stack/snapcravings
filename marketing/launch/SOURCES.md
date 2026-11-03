@@ -1,0 +1,19 @@
+# Sources (checked Nov 1, 2026)
+- In-App Review API (timing, no pre-questions, quota, no button trigger): https://developer.android.com/guide/playcore/in-app-review
+- In-App Review Kotlin integration: https://developer.android.com/guide/playcore/in-app-review/kotlin-java
+- Testing in-app review (internal track, no quota): https://developer.android.com/guide/playcore/in-app-review/test
+- Google Play dev blog, "Demystifying the in-app review API": https://medium.com/googleplaydev/demystifying-the-new-play-in-app-review-api-1a78e351db7a
+- Play search discovery / metadata guidance: https://support.google.com/googleplay/android-developer/answer/4448378
+- Metadata policy (no keyword stuffing, no "#1/best", no rank/price claims in title/icon): https://support.google.com/googleplay/android-developer/answer/9898842
+- Ratings, Reviews & Installs policy (no incentivized/fake reviews): https://support.google.com/googleplay/android-developer/answer/9898684
+- Android vitals + bad-behavior thresholds (1.09% crash, 0.47% ANR): https://developer.android.com/google/play/vitals
+- Ranking factors confirmed vs inferred: https://theionproject.com/blog/google-play-aso-guide-2026/ , https://www.netguru.com/blog/google-play-store-optimization
+- Custom store listings: https://play.google.com/console/about/customstorelistings/
+- Store listing experiments: https://support.google.com/googleplay/android-developer/answer/6227309
+- Promotional content (LiveOps) eligibility: https://support.google.com/googleplay/android-developer/answer/12932541 , https://play.google.com/console/about/guides/premium-growth-tools/
+- Promo codes (subs: 3-90 day trials; custom codes 2,000-99,999 redemptions): https://support.google.com/googleplay/android-developer/answer/6321495
+- Pre-registration: https://support.google.com/googleplay/android-developer/answer/9084187
+- Google Ads App campaign tips (budget >= 50x target CPI; conversion delay): https://support.google.com/google-ads/answer/9176652 , https://support.google.com/google-ads/answer/6167162
+- Smart Bidding learning (up to 7 days): https://support.google.com/google-ads/answer/13020501
+- Payments policy (digital subs in Play apps): https://support.google.com/googleplay/android-developer/answer/9858738
+- Competitor listings: RecipeGenie https://play.google.com/store/apps/details?id=com.karobyte.recipegenie ; AI Recipe Creator from Camera https://play.google.com/store/apps/details?id=space.tombstone.airecipecreator ; SuperCook https://play.google.com/store/apps/details?id=com.supercook.app ; AI Photo Cooking Recipes https://play.google.com/store/apps/details?id=com.ai.cooking.recipes

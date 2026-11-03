@@ -10,7 +10,7 @@
 "Snap your fridge for recipes, or name a craving and see which way is cheaper.":"صوّر ثلاجتك للحصول على وصفات، أو أخبرنا بما تشتهيه لتعرف أيهما أوفر.",
 "Your fridge has ideas!":"ثلاجتك مليئة بالأفكار!",
 "Snap it":"صوّرها",
-"Photograph your fridge or pantry. Get recipes with full steps.":"صوّر ثلاجتك أو خزانة المطبخ. واحصل على وصفات بخطوات كاملة.",
+"Snap your fridge, freezer, pantry and spices. Get recipes with full steps.":"صوّر ثلاجتك والفريزر وخزانة المطبخ والتوابل. واحصل على وصفات بخطوات كاملة.",
 "Make it or take it?":"تطبخه أم تطلبه؟",
 "Crave it":"اشتهِ",
 "Name it. We compare cooking it with ordering it, fees and all.":"سمِّه. وسنقارن بين تكلفة طبخه وتكلفة طلبه، شاملة الرسوم وكل شيء.",

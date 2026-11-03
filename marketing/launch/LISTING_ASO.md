@@ -15,10 +15,10 @@ Alt for A/B test via store listing experiment: "SnapCravings: Fridge Recipes" (2
 
 ## Short description (80 max) – 80 chars
 Snap your fridge, get AI recipes for your diet & allergies. Cheaper than takeout
-(Alt test: "Photo your fridge or pantry and get recipes you can cook tonight. Diet-friendly" – 79)
+(Alt test: "Snap fridge, freezer, pantry & spices for recipes to cook tonight. Diet-friendly" – 80)
 
 ## Full description (~2,500 chars, under 4,000)
-Not sure what to cook? Snap a photo of your fridge or pantry and SnapCravings uses AI to spot your ingredients and turn them into recipes you can make tonight. It's the fastest way to get a recipe from a photo, use up leftovers, and skip another pricey delivery order.
+Not sure what to cook? Snap a photo of your fridge, freezer, pantry and spices and SnapCravings uses AI to spot your ingredients and turn them into recipes you can make tonight. It's the fastest way to get a recipe from a photo, use up leftovers, and skip another pricey delivery order.
 
 SNAP YOUR FRIDGE, GET RECIPES
 Take a few photos of your fridge, pantry, and spice shelf. SnapCravings recognizes your ingredients, sauces, and spices, then suggests recipes from the ingredients you already have, with clear step-by-step instructions.

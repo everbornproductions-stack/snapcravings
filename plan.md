@@ -7,7 +7,7 @@ When a craving hits, people don't know whether to cook with what they have or or
 
 ## Solution
 One app with two doors:
-1. **Snap it.** Photograph the fridge or pantry. AI identifies the ingredients and suggests craving-matched recipes with full steps, plus a list of what's missing.
+1. **Snap it.** Photograph the fridge, freezer, pantry and spices. AI identifies the ingredients and suggests craving-matched recipes with full steps, plus a list of what's missing.
 2. **Crave it.** Name a craving. The app shows whether making it (grocery cost of the missing items, e.g. via Instacart) or buying it is cheaper. It compares all-in totals: DoorDash, Uber Eats, Grubhub, restaurant direct, pickup vs. delivery, menu markups, delivery/service/small-order fees, tax, tip, and memberships (DashPass, Uber One). Then it builds the cart.
 
 ## Target user

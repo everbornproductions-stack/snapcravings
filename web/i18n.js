@@ -7,7 +7,7 @@
     'an Everborn product': 'un producto de Everborn', 'My diet and settings': 'Mi dieta y ajustes', 'Snap. Cook. Yum!': '¡Foto. Cocina. Ñam!',
     'Craving something?': '¿Se te antoja algo?', 'Make it': 'Prepáralo', 'or': 'o', 'buy it': 'cómpralo', ', the smart way.': ', de la forma más lista.',
     'Snap your fridge for recipes, or name a craving and see which way is cheaper.': 'Toma foto a tu refri para recibir recetas, o dinos qué se te antoja y mira qué sale más barato.',
-    'Your fridge has ideas!': '¡Tu refri tiene ideas!', 'Snap it': 'Tómale foto', 'Photograph your fridge or pantry. Get recipes with full steps.': 'Fotografía tu refri o alacena. Recibe recetas con todos los pasos.',
+    'Your fridge has ideas!': '¡Tu refri tiene ideas!', 'Snap it': 'Tómale foto', 'Snap your fridge, freezer, pantry and spices. Get recipes with full steps.': 'Tómale foto a tu refri, congelador, alacena y especias. Recibe recetas paso a paso.',
     'Make it or take it?': '¿Lo cocinas o lo pides?', 'Crave it': 'Antójate', 'Name it. We compare cooking it with ordering it, fees and all.': 'Dinos qué es. Comparamos cocinarlo con pedirlo, con todo y comisiones.',
     'Popular cravings': 'Antojos populares', '· crave smarter, not harder': '· antójate con cabeza', 'Go unlimited with Pro': 'Hazlo ilimitado con Pro',
     'Your favorites': 'Tus favoritos', 'My diet & allergies': 'Mi dieta y alergias', 'Install SnapCravings': 'Instala SnapCravings', 'Install': 'Instalar',

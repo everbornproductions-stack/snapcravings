@@ -10,7 +10,7 @@
 "Snap your fridge for recipes, or name a craving and see which way is cheaper.":"अपने फ्रिज की फोटो खींचकर रेसिपीज़ पाएं, या अपनी पसंद की डिश बताएं और देखें कि क्या सस्ता पड़ेगा।",
 "Your fridge has ideas!":"आपके फ्रिज के पास आइडियाज़ हैं!",
 "Snap it":"फोटो खींचो",
-"Photograph your fridge or pantry. Get recipes with full steps.":"अपने फ्रिज या किचन की फोटो लें। पूरी रेसिपी स्टेप्स के साथ पाएं।",
+"Snap your fridge, freezer, pantry and spices. Get recipes with full steps.":"फ्रिज, फ्रीज़र, किचन और मसालों की फोटो लें। पूरी स्टेप्स वाली रेसिपी पाएं।",
 "Make it or take it?":"खुद बनाएं या ऑर्डर करें?",
 "Crave it":"मनपसंद डिश",
 "Name it. We compare cooking it with ordering it, fees and all.":"डिश का नाम बताएं। हम घर पर बनाने और बाहर से ऑर्डर करने के खर्च की तुलना करेंगे, फीस के साथ।",

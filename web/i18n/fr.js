@@ -10,7 +10,7 @@
 "Snap your fridge for recipes, or name a craving and see which way is cheaper.":"Prends ton frigo en photo pour des recettes, ou dis-nous ce qui te fait envie et vois ce qui est le moins cher.",
 "Your fridge has ideas!":"Ton frigo a des idées !",
 "Snap it":"Prends la photo",
-"Photograph your fridge or pantry. Get recipes with full steps.":"Prends ton frigo ou ton garde-manger en photo. Reçois des recettes avec toutes les étapes.",
+"Snap your fridge, freezer, pantry and spices. Get recipes with full steps.":"Prends en photo frigo, congélateur, placard et épices. Reçois des recettes détaillées.",
 "Make it or take it?":"Cuisiner ou commander ?",
 "Crave it":"Envie de quoi ?",
 "Name it. We compare cooking it with ordering it, fees and all.":"Dis-nous ce que c'est. On compare le prix maison et la livraison, frais inclus.",

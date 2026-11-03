@@ -27,9 +27,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>SnapCravings uses the camera so you can snap your fridge or pantry and get recipe ideas.</string>
+	<string>SnapCravings uses the camera so you can snap your fridge, freezer, pantry and spices and get recipe ideas.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>SnapCravings lets you pick photos of your fridge or pantry to get recipe ideas.</string>
+	<string>SnapCravings lets you pick photos of your fridge, freezer, pantry and spices to get recipe ideas.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

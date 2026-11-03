@@ -10,7 +10,7 @@
 "Snap your fridge for recipes, or name a craving and see which way is cheaper.":"Сфотографируй свой холодильник для рецептов или введи блюдо и узнай, что дешевле.",
 "Your fridge has ideas!":"У твоего холодильника есть идеи!",
 "Snap it":"Сфоткай его",
-"Photograph your fridge or pantry. Get recipes with full steps.":"Сфотографируй холодильник или кладовую. Получи пошаговые рецепты.",
+"Snap your fridge, freezer, pantry and spices. Get recipes with full steps.":"Сфотографируй холодильник, морозилку, кладовку и специи. Получи пошаговые рецепты.",
 "Make it or take it?":"Готовить или заказать?",
 "Crave it":"Хочу!",
 "Name it. We compare cooking it with ordering it, fees and all.":"Назови блюдо. Мы сравним цену готовки и заказа, включая все сборы.",
