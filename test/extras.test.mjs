@@ -18,7 +18,7 @@ test('library search and filters', () => {
 });
 test('cleanRecipe trims junk and rejects empty', () => {
   assert.equal(cleanRecipe({}), null); const r = cleanRecipe({ name: 'X', emoji: 'pizza', minutes: 9999, evil: 1, steps: ['a'] });
-  assert.equal(r.emoji, '🍳'); assert.equal(r.minutes, 600); assert.equal(r.evil, undefined);
+  assert.equal(r.emoji, '🍕'); assert.equal(r.minutes, 600); assert.equal(r.evil, undefined);
   assert.equal(recipeKey({ name: 'Tacos  Ñ', ingredients: [{ item: 'Chicken' }] }), 'tacos n|chicken');
 });
 test('seasonal collections', () => {

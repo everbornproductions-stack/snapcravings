@@ -1,3 +1,4 @@
+import { recipeEmoji } from './emoji.js';
 import '../../web/money.js';
 // Weekly meal-prep planner: pure helpers (prompt, schema, diet post-check, combined grocery list). Used by functions/api/plan.js and tests.
 import { INTL, intlNote } from './lang.js';
@@ -70,10 +71,10 @@ ${dietPrompt(p.diet) ? dietPrompt(p.diet) + '\n' : ''}${fitNote(p)}It must be di
 // Diet check for a planner meal (reuses the recipe check: name, every ingredient, steps).
 export const mealHits = (d, m) => recipeHits(d, { name: m?.name, ingredients: m?.ingredients || [], missing: [], steps: m?.steps || [] });
 // Models sometimes send the code point as text ("1f95f" or "U+1F35D"): turn it into the emoji, else a bento box.
-export function emojiOf(e) { const s = String(e || '').trim(); const h = /^(?:u\+)?([0-9a-f]{4,6})$/i.exec(s); if (h) { try { return String.fromCodePoint(parseInt(h[1], 16)); } catch {} } return s && !/[A-Za-z0-9]/.test(s) ? s.slice(0, 8) : '🍱'; }
+export function emojiOf(e, name) { return recipeEmoji(e, name); }
 export function cleanMeal(m, p) {
   const day = p.onlyDay || clampInt(m?.day, 1, p.genDays, 1); const slot = p.slots.includes(m?.slot) ? m.slot : p.slots[p.slots.length - 1];
-  return { day, slot, name: String(m?.name || '').slice(0, 90), emoji: emojiOf(m?.emoji), minutes: clampInt(m?.minutes, 1, 240, 20), servings: clampInt(m?.servings, 1, 12, p.servings),
+  return { day, slot, name: String(m?.name || '').slice(0, 90), emoji: emojiOf(m?.emoji, m?.name), minutes: clampInt(m?.minutes, 1, 240, 20), servings: clampInt(m?.servings, 1, 12, p.servings),
     ingredients: (m?.ingredients || []).slice(0, 20).map(i => ({ item: String(i?.item || '').slice(0, 80), qty: String(i?.qty || '').slice(0, 40), aisle: AISLES.includes(i?.aisle) ? i.aisle : 'Other', have: !!i?.have })).filter(i => i.item),
     steps: (m?.steps || []).slice(0, 8).map(s => String(s).slice(0, 300)), est_cook_cost: Math.max(0, Math.round(Number(m?.est_cook_cost || 0) * 100) / 100), keeps_days: clampInt(m?.keeps_days, 0, 30, 3), kcal: clampInt(m?.kcal, 0, 3000, 0), protein_g: clampInt(m?.protein_g, 0, 300, 0), carbs_g: clampInt(m?.carbs_g, 0, 400, 0), fat_g: clampInt(m?.fat_g, 0, 300, 0) };
 }

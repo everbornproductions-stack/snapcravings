@@ -39,7 +39,7 @@ test('grocery list: merged, grouped by aisle, minus fridge and staples', () => {
   assert.equal(g.find(x => x.aisle === 'Meat & Seafood').items[0].meals, 2);
   assert.ok(inFridge('baby spinach', ['spinach'])); assert.ok(!inFridge('peanut butter', ['butter lettuce']));
 });
-test('emoji text code points are fixed', () => { assert.equal(emojiOf('1f35d'), '🍝'); assert.equal(emojiOf('U+1F35D'), '🍝'); assert.equal(emojiOf('pasta'), '🍱'); assert.equal(emojiOf('🌮'), '🌮'); });
+test('emoji text code points are fixed', () => { assert.equal(emojiOf('1f35d'), '🍝'); assert.equal(emojiOf('U+1F35D'), '🍝'); assert.equal(emojiOf('pasta'), '🍝'); assert.equal(emojiOf('qq'), '🍽️'); assert.equal(emojiOf('🌮'), '🌮'); });
 test('fitness goals: optional, targets in prompt, macros kept per meal', async () => {
   const { fitNote } = await import('../functions/_lib/plan.js');
   const reg = planInput({}); assert.equal(reg.fit, null); assert.match(planPrompt(reg), /regular people/);

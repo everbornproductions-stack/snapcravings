@@ -1,3 +1,4 @@
+import { recipeEmoji } from './emoji.js';
 // Shared helpers for Library, collections and family recipes.
 import { recipeHits } from './diet.js';
 export const RECIPE = { type: 'object', properties: {
@@ -13,7 +14,7 @@ const s = (v, k) => String(v ?? '').slice(0, k);
 // Keep only known fields with sane sizes (stored in Supabase and shown to other users).
 export function cleanRecipe(r) {
   if (!r || typeof r !== 'object' || !s(r.name, 120).trim()) return null;
-  return { name: s(r.name, 120).trim(), emoji: /[A-Za-z0-9]/.test(s(r.emoji, 8)) || !r.emoji ? '🍳' : s(r.emoji, 8), minutes: n(r.minutes, 1, 600, 20), servings: n(r.servings, 1, 20, 2), level: ['Easy', 'Medium', 'Chef mode'].includes(r.level) ? r.level : 'Easy',
+  return { name: s(r.name, 120).trim(), emoji: recipeEmoji(r.emoji, r.name), minutes: n(r.minutes, 1, 600, 20), servings: n(r.servings, 1, 20, 2), level: ['Easy', 'Medium', 'Chef mode'].includes(r.level) ? r.level : 'Easy',
     ingredients: (Array.isArray(r.ingredients) ? r.ingredients : []).slice(0, 30).map(i => ({ item: s(i?.item, 80), qty: s(i?.qty, 40), have: !!i?.have, ...(i?.en ? { en: s(i.en, 80) } : {}) })).filter(i => i.item),
     missing: (Array.isArray(r.missing) ? r.missing : []).slice(0, 15).map(i => ({ item: s(i?.item, 80), qty: s(i?.qty, 40), est_price: Math.max(0, Math.min(200, Number(i?.est_price) || 0)), ...(i?.en ? { en: s(i.en, 80) } : {}) })).filter(i => i.item),
     steps: (Array.isArray(r.steps) ? r.steps : []).slice(0, 16).map(x => s(x, 400)).filter(Boolean),

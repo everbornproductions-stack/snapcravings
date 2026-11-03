@@ -10,6 +10,7 @@ import { realPrices } from '../_lib/prices.js';
 import { costRecipe, costKey, costGet, costPut, linePrice, localUse } from '../_lib/cost.js'; // sets globalThis.SC_MONEY (local currency + price levels, shared with the web app) // sets globalThis.SC_HOLIDAY (holiday mode, shared with the web app)
 import { trendHit } from '../_lib/trending.js';
 import { INTL, langCode, intlNote, intlScanNote } from '../_lib/lang.js';
+import { recipeEmoji } from '../_lib/emoji.js';
 import { dietOf, dietPrompt, bad, hits, recipeBad, recipeHits, flagScan, staplesFor as dietStaples } from '../_lib/diet.js';
 const FREE_SCANS_PER_WEEK = 3; const IP_SCANS_PER_WEEK = 30;
 
@@ -383,7 +384,7 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
   // If too few survive, ask again (up to 2 more times) and tell the model exactly which terms broke the rules.
   const recipes = async onKeep => {
     const keep = libHits.map(h => ({ ...h.recipe, __lib: 1 })), banned = new Set(); let tried = 0; keep.forEach(r => { const { __lib, ...x } = r; onKeep?.(x); });
-    const take = r => { tried++; const h = hardDiet ? recipeHits(dd, r) : []; if (h.length) { h.forEach(x => banned.add(x)); return; } if (keep.some(k => k.name?.toLowerCase() === String(r.name).toLowerCase())) return; keep.push(r); onKeep?.(r); };
+    const take = r => { tried++; if (r) r.emoji = recipeEmoji(r.emoji, r.name); const h = hardDiet ? recipeHits(dd, r) : []; if (h.length) { h.forEach(x => banned.add(x)); return; } if (keep.some(k => k.name?.toLowerCase() === String(r.name).toLowerCase())) return; keep.push(r); onKeep?.(r); };
     const aiCount = () => keep.filter(r => !r.__lib).length;
     const first = await gemini(env, route, parts, onKeep ? { onRecipe: take } : {}).catch(e => { if (libHits.length) { console.log('ai failed, library only', libHits.length); return null; } throw e; });
     if (first && !onKeep) first.data.recipes.forEach(take);
@@ -412,6 +413,7 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
       }
       if (h.length) return json({ error: "Couldn't make that one fit your diet. Try a different craving!", why: h.slice(0, 12) }, 502);
     }
+    if (route === 'crave' && data?.recipe) data.recipe.emoji = recipeEmoji(data.recipe.emoji, data.recipe.name);
     if (route === 'crave' && data?.recipe) data = await steadyCost(env, data, body.craving, cc, dd, bg);
     if (route === 'crave' && data?.recipe && cc === 'US') { const g = request.cf || {}; const us = g.country === 'US'; data = await realPrices(env, data, { cc, state: us ? g.regionCode : '', zip: us ? g.postalCode : '', lat: us ? g.latitude : '', lon: us ? g.longitude : '' }).catch(() => data); } // BLS regional / Kroger store prices (functions/_lib/prices.js)
     if (route === 'crave' && data?.recipe?.name) bg(trendHit(env, { country: request.cf?.country, kind: 'crave', label: data.recipe.name, lang, device: String(request.headers.get('x-sc-dev') || '').replace(/[^\w-]/g, '').slice(0, 64) })); // trending Popular cravings
