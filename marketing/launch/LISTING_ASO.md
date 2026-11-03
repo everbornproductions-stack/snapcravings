@@ -41,6 +41,9 @@ Stop asking "what should I make for dinner?" Use what's in your fridge before it
 MEAL PREP FOR THE WEEK
 Plan a week of meals with one grocery list and a prep-day guide, with optional calorie and protein targets.
 
+DISH SCAN FOR MACROS
+Snap your plate and get the dish name with estimated calories, protein, carbs, fat, fiber, sugar and sodium. Adjust the portion and servings, fix the dish or ingredients, and log it against your meal-prep targets. AI estimate, not medical advice.
+
 RECIPES IN SECONDS
 Recipes stream in one by one, and a growing recipe library gives instant matches for common ingredients.
 
@@ -51,7 +54,7 @@ Around the holidays in your country, the app dresses up in holiday colors with a
 English, Español, Português (Brasil), हिन्दी, Bahasa Indonesia, Français, Deutsch, العربية, Русский and Türkçe.
 
 FREE TO TRY
-3 free fridge scans every week. Upgrade to SnapCravings Pro for unlimited scans. Pro also unlocks the full meal-prep week. Founders price: $3.99/month for the first 100 members, then $4.99/month. Cancel anytime.
+3 free fridge scans every week. Upgrade to SnapCravings Pro for unlimited scans. Pro also unlocks the full meal-prep week. Pro also includes unlimited dish scans (free: 1 a week). Founders price: $3.99/month for the first 100 members, then $4.99/month. Cancel anytime.
 
 GREAT FOR
 - Quick weeknight dinner ideas

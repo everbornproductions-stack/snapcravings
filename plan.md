@@ -51,5 +51,8 @@ Catchphrases: "Let's get cooking!" · "Fridge to fabulous!" · "Craving unlocked
 ## Live: Holiday planner (2026-11-02)
 - **Holiday planner** (next to the holiday banner, only during a holiday window, per country): a full holiday menu (mains, sides, desserts, drinks) for 2-30 guests with diet/allergy rules and the optional fridge scan, a shopping list scaled to the guest count (can be added to the grocery list) and a cooking timeline counted back from the meal time. Free: menu + the first 3 timeline steps; Pro: full timeline and shopping list. 10 languages.
 
+## Live: Dish scan for macros (2026-11-02)
+- **Scan my plate** (Snap screen card, #dish): one photo of a plated meal gives the dish name plus estimated kcal, protein, carbs, fat, fiber, sugar and sodium per serving; portion (small/regular/large) and servings rescale live; the user can fix the dish or ingredients and recalculate (no scan used); optional daily log compared with Meal prep's calorie/protein targets. Labeled 'AI estimate, not medical advice.' Free: 1 dish scan per 7 days; Pro: unlimited. 10 languages. AI: Gemini 3.5/3.1 flash-lite, then Workers AI Llama 4 Scout, strict JSON with range + energy validation.
+
 ## Roadmap (NOT live; never list these as current features in store, site or launch copy)
-- **Dish scanning for macros**: snap a plated dish to estimate calories and macros. Today only recipe and meal-prep estimates show macros.
+- (nothing listed right now)

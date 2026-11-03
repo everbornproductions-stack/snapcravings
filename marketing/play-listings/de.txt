@@ -7,7 +7,7 @@ SnapCravings: KI-Rezepte
 == Short description (75/80) ==
 Kühlschrank fotografieren, KI-Rezepte erhalten. Günstiger als Lieferdienst.
 
-== Full description (2835/4000) ==
+== Full description (3405/4000) ==
 Du weißt nicht, was du kochen sollst? Fotografiere einfach deinen Kühlschrank oder Vorratsschrank und SnapCravings nutzt KI, um deine Zutaten zu erkennen und daraus Rezepte für heute Abend zu erstellen. Der schnellste Weg, um aus einem Foto ein Rezept zu erhalten, Reste zu verwerten und dir die teure Bestellung beim Lieferdienst zu sparen.
 
 FOTOGRAFIERE DEINEN KÜHLSCHRANK, ERHALTE REZEPTE
@@ -31,6 +31,9 @@ Hör auf zu fragen, was du kochen sollst. Nutze, was im Kühlschrank ist, bevor 
 MEAL PREP FÜR DIE WOCHE
 Plane eine Woche voller Mahlzeiten mit einer Einkaufsliste und einem Leitfaden für den Vorkoch-Tag, auf Wunsch mit Kalorien- und Proteinzielen.
 
+TELLER-SCAN FÜR MAKROS
+Fotografiere deinen Teller und erhalte den Namen des Gerichts mit geschätzten Kalorien, Eiweiß, Kohlenhydraten, Fett, Ballaststoffen, Zucker und Natrium. Passe Portion und Anzahl an, korrigiere Gericht oder Zutaten und trage es in deinen Tag ein, passend zu deinen Meal-Prep-Zielen. KI-Schätzung, keine medizinische Beratung.
+
 REZEPTE IN SEKUNDEN
 Rezepte erscheinen nacheinander, und eine stetig wachsende Rezeptbibliothek liefert sofort Treffer für gängige Zutaten.
 
@@ -41,7 +44,7 @@ Rund um die Feiertage in deinem Land zeigt sich die App in festlichen Farben, mi
 Deutsch, English, Español, Português (Brasil), हिन्दी, Bahasa Indonesia, Français, العربية, Русский und Türkçe.
 
 KOSTENLOS TESTEN
-Jede Woche drei kostenlose Kühlschrank-Scans. Upgrade auf SnapCravings Pro für unbegrenzte Scans. Mit Pro bekommst du außerdem die ganze Meal-Prep-Woche. Jederzeit kündbar.
+Jede Woche drei kostenlose Kühlschrank-Scans. Upgrade auf SnapCravings Pro für unbegrenzte Scans. Mit Pro bekommst du außerdem die ganze Meal-Prep-Woche. Pro enthält außerdem unbegrenzte Teller-Scans (kostenlos: 1 pro Woche). Jederzeit kündbar.
 
 IDEAL FÜR
 - Schnelle Ideen für das Abendessen unter der Woche

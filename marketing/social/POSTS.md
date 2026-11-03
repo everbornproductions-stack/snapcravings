@@ -147,3 +147,15 @@ Link en la bio.
 **Pinterest (pin-1000x1500, link https://snapcravings.pages.dev/?ref=pinterest):** Title: Meal prep en español: tu semana + lista del súper / Description: Planea 7 días de comidas con presupuesto o macros y una sola lista del súper. App gratis en español.
 **X (landscape-1200x675):** Planea tu semana en 1 minuto, con una sola lista del súper. SnapCravings: https://snapcravings.pages.dev/?ref=x
 **Visual notes:** slide-1 hook + real screen, slide-2 how it works, slide-3 brand CTA with "An Everborn Production".
+
+## 10-scan-my-plate  (new, Nov 2: dish scan for macros; images: use /workspace/dish-scan-2-result.png style screens from the live app, no made-up numbers)
+**Instagram / Facebook / Threads / Lemon8 (carousel: plate photo, result screen, Large x2 + Today bar)**
+How many calories are on that plate? 📸🍝
+
+Snap your meal and SnapCravings estimates calories, protein, carbs and fat (plus fiber, sugar and sodium). Pick small, regular or large, change servings, fix the dish if we guessed wrong, and add it to today next to your meal-prep targets.
+
+AI estimate, not medical advice. 1 free plate scan a week, unlimited with Pro. Link in bio.
+
+#SnapCravings #macros #caloriecounting #highprotein #mealprep
+**TikTok:** Snap your plate, get the macros in seconds. 📸 Link in bio 👆 #SnapCravings #macros #caloriecounting #fitfood
+**X:** Snap your plate → estimated calories + macros in a few seconds, portions adjustable. AI estimate, not medical advice. SnapCravings: https://snapcravings.pages.dev/?ref=x

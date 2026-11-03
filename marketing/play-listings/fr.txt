@@ -7,7 +7,7 @@ SnapCravings: Recettes par IA
 == Short description (76/80) ==
 Prenez votre frigo en photo et obtenez des recettes adaptées à votre régime.
 
-== Full description (2900/4000) ==
+== Full description (3497/4000) ==
 Vous ne savez pas quoi cuisiner ? Prenez une photo de votre frigo ou de vos placards et SnapCravings utilise l'IA pour identifier vos ingrédients et vous proposer des recettes réalisables immédiatement. C'est la solution la plus rapide pour trouver une idée repas, utiliser vos restes et éviter de commander à manger.
 
 SCANNEZ VOTRE FRIGO ET CUISINEZ
@@ -31,6 +31,9 @@ Arrêtez de vous demander quoi préparer pour le dîner. Utilisez ce qui se trou
 MEAL PREP POUR LA SEMAINE
 Planifiez une semaine de repas avec une seule liste de courses et un guide pour le jour de préparation, avec des objectifs de calories et de protéines en option.
 
+SCAN DE L'ASSIETTE POUR LES MACROS
+Photographiez votre assiette et obtenez le nom du plat avec une estimation des calories, protéines, glucides, lipides, fibres, sucres et sodium. Ajustez la portion et le nombre de parts, corrigez le plat ou les ingrédients, et notez-le dans votre journée face à vos objectifs de meal prep. Estimation par IA, pas un avis médical.
+
 DES RECETTES EN QUELQUES SECONDES
 Les recettes arrivent une par une, et une bibliothèque de recettes qui s'agrandit sans cesse donne des résultats instantanés pour les ingrédients courants.
 
@@ -41,7 +44,7 @@ Pendant les fêtes de votre pays, l'appli prend des couleurs festives, avec une 
 Français, English, Español, Português (Brasil), हिन्दी, Bahasa Indonesia, Deutsch, العربية, Русский et Türkçe.
 
 ESSAI GRATUIT
-Profitez de 3 scans de frigo gratuits chaque semaine. Pro débloque aussi la semaine complète de meal prep. Passez à SnapCravings Pro pour des scans illimités. Annulez à tout moment.
+Profitez de 3 scans de frigo gratuits chaque semaine. Pro débloque aussi la semaine complète de meal prep. Pro inclut aussi les scans d'assiette illimités (gratuit : 1 par semaine). Passez à SnapCravings Pro pour des scans illimités. Annulez à tout moment.
 
 IDÉAL POUR
 - Trouver des idées de dîners rapides en semaine

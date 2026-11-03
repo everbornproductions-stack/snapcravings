@@ -7,7 +7,7 @@ SnapCravings: Resep Masakan AI
 == Short description (77/80) ==
 Foto isi kulkas, dapatkan resep AI sesuai diet dan alergi. Hemat biaya makan.
 
-== Full description (2747/4000) ==
+== Full description (3257/4000) ==
 Bingung mau masak apa? Foto isi kulkas atau dapur Anda dan SnapCravings menggunakan AI untuk mengenali bahan makanan lalu mengubahnya menjadi resep masakan yang bisa Anda buat hari ini. Ini adalah cara tercepat untuk mendapatkan resep dari foto, memanfaatkan sisa bahan makanan, dan menghindari biaya pesan antar yang mahal.
 
 FOTO KULKAS, DAPATKAN RESEP
@@ -31,6 +31,9 @@ Berhenti bertanya mau masak apa untuk makan malam. Gunakan bahan di kulkas sebel
 MEAL PREP SEMINGGU
 Rencanakan menu seminggu dengan satu daftar belanja dan panduan hari persiapan, dengan target kalori dan protein opsional.
 
+PINDAI PIRING UNTUK MAKRO
+Foto piring Anda dan dapatkan nama hidangan beserta perkiraan kalori, protein, karbohidrat, lemak, serat, gula, dan natrium. Atur porsi dan jumlah sajian, perbaiki hidangan atau bahannya, lalu catat di hari Anda sesuai target meal prep. Perkiraan AI, bukan saran medis.
+
 RESEP DALAM HITUNGAN DETIK
 Resep muncul satu per satu, dan perpustakaan resep yang terus bertambah memberi hasil instan untuk bahan-bahan umum.
 
@@ -41,7 +44,7 @@ Saat hari raya di negara Anda, aplikasi tampil dengan warna bertema, animasi sin
 Bahasa Indonesia, English, Español, Português (Brasil), हिन्दी, Français, Deutsch, العربية, Русский, dan Türkçe.
 
 GRATIS UNTUK DICOBA
-Nikmati 3 pemindaian kulkas gratis setiap minggu. Tingkatkan ke SnapCravings Pro untuk pemindaian tak terbatas. Pro juga membuka meal prep untuk seminggu penuh. Batalkan kapan saja.
+Nikmati 3 pemindaian kulkas gratis setiap minggu. Tingkatkan ke SnapCravings Pro untuk pemindaian tak terbatas. Pro juga membuka meal prep untuk seminggu penuh. Pro juga mencakup pindai hidangan tanpa batas (gratis: 1 per minggu). Batalkan kapan saja.
 
 COCOK UNTUK
 - Ide makan malam praktis di hari kerja
