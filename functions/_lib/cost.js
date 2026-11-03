@@ -6,6 +6,10 @@
 import '../../web/money.js';
 import { normIngredient, rpc, libKey } from './recipelib.js';
 import { sha } from './extras.js';
+import INTL from './intl-prices.js';
+// Real local prices (scripts/intl/build.mjs: Open Prices, ONS, DIEESE, ...) in the country's own currency per row unit.
+// Lookup order: country data first, then the US table scaled by money.js, then the AI share for unknown items.
+export function localPrice(key, cc) { const c = INTL.c[String(cc || '').toUpperCase()], it = c && c.i[key]; if (!it || c.cur !== globalThis.SC_MONEY.of(cc).c || !P[key] || it.u !== P[key][1]) return null; return it; }
 // name: [US$ per unit, unit ('kg' | 'l' | 'ea'), grams (or ml) per "each" piece, smallest pack in the unit]
 export const P = {
   'chicken breast': [9, 'kg', 200, 0.5], chicken: [7, 'kg', 200, 0.5], 'chicken thigh': [6.5, 'kg', 120, 0.5], 'ground beef': [11, 'kg', 0, 0.45], beef: [16, 'kg', 0, 0.45], steak: [22, 'kg', 250, 0.3],
@@ -39,23 +43,23 @@ export function amount(qty, row) {
 export function linePrice(item, qty, cc, pack = false) {
   const f = find(item); if (!f) return null; const row = f[1], k = globalThis.SC_MONEY.of(cc); const a = amount(qty, row); if (!a) return null;
   let units = row[1] === 'ea' ? a : a / 1000; if (pack) units = Math.max(units, row[3]);
-  return row[0] * units * k.fx * k.g;
+  const loc = localPrice(f[0], cc); return (loc ? loc.p : row[0] * k.fx * k.g) * units;
 }
 // Cook cost for a recipe (what it uses) + store prices for the missing items, all in local money.
 export function costRecipe(r, aiCost, cc) {
   const M = globalThis.SC_MONEY, k = M.of(cc), serv = Math.max(1, +r.servings || 2);
-  const ings = (r.ingredients || []).filter(i => i && i.item); let known = 0, nKnown = 0;
-  ings.forEach(i => { const p = linePrice(i.en || i.item, i.qty, cc); if (p != null) { known += p; nKnown++; } });
+  const ings = (r.ingredients || []).filter(i => i && i.item); let known = 0, nKnown = 0, nLocal = 0;
+  ings.forEach(i => { const p = linePrice(i.en || i.item, i.qty, cc); if (p != null) { known += p; nKnown++; const f = find(i.en || i.item); if (f && localPrice(f[0], cc)) nLocal++; } });
   const unknown = ings.length - nKnown, ai = Math.max(0, +aiCost || 0);
   // Unknown items: their share of the AI total (staples like salt/oil are cheap, so cap each at 1.5 US$-equivalent).
   const unk = ings.length ? Math.min(ai * unknown / ings.length, unknown * 1.5 * k.fx * k.g) : ai;
   const lo = 1.5 * k.fx * k.g * serv, hi = 12 * k.fx * k.g * serv; // believable: 1.5 to 12 US$-equivalent per serving
   const total = M.round(Math.min(hi, Math.max(lo, known + unk)), k.c);
   const missing = (r.missing || []).map(m => { const p = linePrice(m.en || m.item, m.qty, cc, true); return { ...m, est_price: p != null ? M.round(p, k.c) : m.est_price }; });
-  return { total, missing, known: nKnown, of: ings.length };
+  return { total, missing, known: nKnown, of: ings.length, local: nLocal };
 }
 // Cache per dish + country + diet tags: Cloudflare cache (per colo, 30 days) then the Supabase library (global).
-export const costKey = async (dish, cc, tags = []) => sha('cost1|' + String(dish || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim() + '|' + cc + '|' + [...tags].sort().join(','), 32);
+export const costKey = async (dish, cc, tags = []) => sha('cost2|' + String(dish || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim() + '|' + cc + '|' + [...tags].sort().join(','), 32);
 const CK = k => 'https://sc-cache.internal/cost/' + k;
 export async function costGet(env, key, cc) {
   try { const c = typeof caches !== 'undefined' && caches.default; if (c) { const r = await c.match(CK(key)); if (r) return await r.json(); } } catch {}

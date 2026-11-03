@@ -1,6 +1,11 @@
 // Network-first for everything (HTML/JS/CSS always fresh when online); cache only as offline fallback.
+<<<<<<< Updated upstream
 const VERSION = 'sc-2026-11-02r-ui56';
 const SHELL = ['./', './index.html', './money.js?v=ui56', './config.js?v=ui56', './i18n.js?v=ui56', './app.js?v=ui56', './prep.js?v=ui56', './more.js?v=ui56', './grow.js?v=ui56', './holiday.js?v=ui56', './hplan-i18n.js?v=ui56', './hplan.js?v=ui56', './dishcore.js?v=ui56', './dish-i18n.js?v=ui56', './dish.js?v=ui56', './fixes.js?v=ui56', './prices.js?v=ui56', './feat-i18n.js?v=ui56', './feat.js?v=ui56', './i18n/pt.js?v=ui56', './i18n/hi.js?v=ui56', './i18n/id.js?v=ui56', './i18n/fr.js?v=ui56', './i18n/de.js?v=ui56', './i18n/ar.js?v=ui56', './i18n/ru.js?v=ui56', './i18n/tr.js?v=ui56', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+=======
+const VERSION = 'sc-2026-11-02s-ui56';
+const SHELL = ['./', './index.html', './money.js?v=ui56', './config.js?v=ui56', './i18n.js?v=ui56', './app.js?v=ui56', './prep.js?v=ui56', './more.js?v=ui56', './grow.js?v=ui56', './holiday.js?v=ui56', './hplan-i18n.js?v=ui56', './hplan.js?v=ui56', './dishcore.js?v=ui56', './dish-i18n.js?v=ui56', './dish.js?v=ui56', './fixes.js?v=ui56', './prices.js?v=ui56', './i18n/pt.js?v=ui56', './i18n/hi.js?v=ui56', './i18n/id.js?v=ui56', './i18n/fr.js?v=ui56', './i18n/de.js?v=ui56', './i18n/ar.js?v=ui56', './i18n/ru.js?v=ui56', './i18n/tr.js?v=ui56', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+>>>>>>> Stashed changes
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).catch(() => {})); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {

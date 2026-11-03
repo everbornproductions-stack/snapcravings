@@ -433,9 +433,9 @@ export async function steadyCost(env, data, craving, cc, dd, bg = p => p) {
   const M = globalThis.SC_MONEY, r = data.recipe, serv = Math.max(1, +r.servings || 2), key = await costKey(craving || r.name, cc, dd?.tags || []);
   const missing = (r.missing || []).map(m => { const p = linePrice(m.en || m.item, m.qty, cc, true); return { ...m, est_price: p != null ? M.round(p, M.cur(cc)) : m.est_price }; });
   let hit = await costGet(env, key, cc).catch(() => null); const wasCached = !!hit;
-  if (!hit) { const c = costRecipe(r, data.est_cook_cost, cc); hit = { total: c.total, menu: M.menuFix(+data.est_menu_price > 0 ? +data.est_menu_price : M.menuGuess(c.total / serv, cc), cc), servings: serv, known: c.known, of: c.of }; bg(costPut(env, key, cc, hit)); }
+  if (!hit) { const c = costRecipe(r, data.est_cook_cost, cc); hit = { total: c.total, menu: M.menuFix(+data.est_menu_price > 0 ? +data.est_menu_price : M.menuGuess(c.total / serv, cc), cc), servings: serv, known: c.known, of: c.of, local: c.local }; bg(costPut(env, key, cc, hit)); }
   const total = M.round(hit.total * serv / Math.max(1, hit.servings || serv), M.cur(cc));
-  return { ...data, recipe: { ...r, missing }, est_cook_cost: total, est_menu_price: hit.menu, costBasis: { known: hit.known, of: hit.of, cached: wasCached } };
+  return { ...data, recipe: { ...r, missing }, est_cook_cost: total, est_menu_price: hit.menu, costBasis: { known: hit.known, of: hit.of, local: hit.local || 0, cached: wasCached } };
 }
 // Library recipes store prices as US-equivalent US$; convert missing-item prices for the reader's country (and back on save).
 export const locRecipe = (r, cc, f) => r && Array.isArray(r.missing) ? { ...r, missing: r.missing.map(m => ({ ...m, est_price: f(m.est_price, cc) })) } : r;
