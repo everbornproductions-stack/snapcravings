@@ -15,7 +15,7 @@ test('input: holiday must exist, guests 2-30, time on the hour', () => {
 test('menu: sorted by course, diet offenders dropped, serves = guests', () => {
   const p = hpInput({ holiday: 'thanksgiving', guests: 8, prefs: { tags: ['Nut allergy'] } });
   const { menu, banned } = checkMenu(p, MENU); const C = ['Main', 'Side', 'Dessert', 'Drink']; assert.ok(menu.every((d, i) => !i || C.indexOf(menu[i - 1].course) <= C.indexOf(d.course))); assert.equal(menu[0].name, 'Roast turkey');
-  assert.ok(!menu.some(d => /pecan/i.test(d.name))); assert.ok(banned.length); assert.ok(menu.every(d => d.serves === 8));
+  assert.ok(!menu.some(d => /pecan/i.test(d.name))); assert.ok(banned.length); assert.ok(menu.every(d => d.serves === 8)); assert.equal(checkMenu(p, [{ ...MENU[1], note: 'Thaw it for two days. Baste often.' }]).menu[0].note, 'Baste often.');
 });
 test('timeline counts back (earliest first); free preview hides the rest + shopping', () => {
   const tl = cleanTimeline(TL); assert.deepEqual(tl.map(s => s.before_min), [2880, 240, 60, 30, 0]);

@@ -38,7 +38,7 @@ export function checkMenu(p, menu) {
     if (!d || !d.name || !COURSES.includes(d.course) || !Array.isArray(d.ingredients)) continue;
     const h = p.diet.hard ? recipeHits(p.diet, { name: d.name, ingredients: d.ingredients, steps: [d.note || ''] }) : [];
     if (h.length) { h.forEach(x => banned.add(x)); continue; }
-    good.push({ course: d.course, name: String(d.name).slice(0, 80), emoji: String(d.emoji || '🍽️').slice(0, 8), minutes: clamp(d.minutes, 5, 2880, 60), serves: p.guests, note: String(d.note || '').slice(0, 200),
+    good.push({ course: d.course, name: String(d.name).slice(0, 80), emoji: String(d.emoji || '🍽️').slice(0, 8), minutes: clamp(d.minutes, 5, 2880, 60), serves: p.guests, note: String(d.note || '').split(/(?<=[.!?。])\s+/).filter(x => !/thaw|descongel|décongel|auftau|разморо|çöz/i.test(x)).join(' ').slice(0, 200), // thawing lives in the timeline (thawFix)
       ingredients: d.ingredients.filter(i => i && i.item).slice(0, 25).map(i => ({ item: String(i.item).slice(0, 60), qty: String(i.qty || '').slice(0, 40), aisle: AISLES.includes(i.aisle) ? i.aisle : 'Other', have: !!i.have })) });
   }
   good.sort((a, b) => COURSES.indexOf(a.course) - COURSES.indexOf(b.course));
