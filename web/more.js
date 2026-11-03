@@ -28,11 +28,12 @@
     try { await POST('library', { action: 'rate', recipe: r, vote: nv, lang: I18N.lang }, 15000); toast(nv ? t('Thanks! Your rating helps the Library.') : t('Rating cleared.')); } catch (e) { toast(e.message); } }
   // ---- Library + collections
   const L = { q: '', f: '', list: null, cols: null, col: null, colData: {}, busy: false, hidden: 0 };
-  async function loadLib() { try { const j = await POST('library', { action: 'list', q: L.q, quick: L.f === 'quick', level: L.f === 'easy' ? 'Easy' : '', maxKcal: L.f === 'light' ? 500 : 0, minProtein: L.f === 'protein' ? 30 : 0, prefs: prefs(), lang: I18N.lang }, 20000); L.list = j.recipes; L.hidden = j.hidden; } catch (e) { L.list = []; L.err = e.message; } renderLib(); }
-  async function loadCols() { try { L.cols = (await POST('collections', { lang: I18N.lang }, 15000)).collections; } catch { L.cols = []; } renderLib(); }
+  async function loadLib() { try { const j = await POST('library', { action: 'list', q: L.q, quick: L.f === 'quick', level: L.f === 'easy' ? 'Easy' : '', maxKcal: L.f === 'light' ? 500 : 0, minProtein: L.f === 'protein' ? 30 : 0, prefs: prefs(), lang: I18N.lang }, 20000); L.list = j.recipes; L.hidden = j.hidden; if (!L.q && !L.f) LS.set('libc.' + I18N.lang, { sig: JSON.stringify(prefs()), recipes: (j.recipes || []).slice(0, 30), hidden: j.hidden }); } catch (e) { if (!L.list || !L.list.length) { L.list = []; L.err = e.message; } } renderLib(); }
+  async function loadCols() { try { L.cols = (await POST('collections', { lang: I18N.lang }, 15000)).collections; LS.set('colc.' + I18N.lang, L.cols); } catch { L.cols = L.cols || []; } renderLib(); }
   async function openCol(k) { L.col = k; renderLib(); if (L.colData[k + I18N.lang]) return; try { L.colData[k + I18N.lang] = await POST('collections', { key: k, prefs: prefs(), lang: I18N.lang }, 90000); } catch (e) { L.colData[k + I18N.lang] = { error: e.message }; } renderLib(); }
+  setTimeout(() => { if (L.list === null && !L.loading && !(navigator.connection && navigator.connection.saveData)) renderLib(); }, 5000); /* warm the Library while you look at home */
   function renderLib() {
-    const b = el('libBody'); if (!b) return; if (L.list === null && !L.loading) { L.loading = true; loadLib(); loadCols(); }
+    const b = el('libBody'); if (!b) return; if (L.list === null && !L.loading) { L.loading = true; /* show the last list instantly, refresh behind it */ const c = !L.q && !L.f && LS.get('libc.' + I18N.lang, null); if (c && c.sig === JSON.stringify(prefs()) && (c.recipes || []).length) { L.list = c.recipes; L.hidden = c.hidden; } L.cols = L.cols || LS.get('colc.' + I18N.lang, null); loadLib(); loadCols(); }
     const F = [['', 'Top rated'], ['quick', 'Quick (15 min)'], ['protein', 'High protein (30g+)'], ['light', 'Under 500 kcal'], ['easy', 'Easy']];
     const cd = L.col && L.colData[L.col + I18N.lang];
     b.innerHTML = `<div class="kick">${t('Crave smarter, not harder.')}</div><h2>${t('SnapCravings Library')}</h2><p class="sub">${t('Loved recipes from the SnapCravings community.')}</p>

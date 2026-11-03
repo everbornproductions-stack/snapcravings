@@ -228,7 +228,7 @@ async function shrink(file) {
   while (out.length * 0.75 > 350000 && q > 0.35) { q -= 0.12; out = c.toDataURL('image/jpeg', q); }
   c.width = c.height = 0; return out;
 }
-const loading = (msg) => `<div class="card" style="text-align:center;padding:26px"><span class="spin"></span><div style="margin-top:10px;font-weight:700">${esc(t(msg))}</div></div>`;
+const loading = (msg, opt) => window.scLoading ? scLoading(msg, t(msg), opt) : `<div class="card" style="text-align:center;padding:26px"><span class="spin"></span><div style="margin-top:10px;font-weight:700">${esc(t(msg))}</div></div>`;
 
 /* MY DIET + SETTINGS */
 const DIET_TAGS = ['Gluten-free', 'Dairy-free', 'Vegetarian', 'Vegan', 'Nut allergy', 'Shellfish allergy', 'Egg-free', 'Soy allergy', 'Keto/low-carb', 'Low-carb', 'Diabetic-friendly', 'Halal'];
@@ -298,7 +298,7 @@ async function scan() {
   if (state.busy) return; /* a second Go while a scan runs used to start a second race */
   state.busy = true; const n = state.photos.length; const run = state.scanRun = (state.scanRun || 0) + 1; /* state.scanId = the server's signed scan ticket (10 min); a Retry of the same photos reuses it, new photos clear it */
   const batches = []; for (let i = 0; i < n; i += BATCH) batches.push(state.photos.slice(i, i + BATCH));
-  let done = 0; const prog = () => el('scanBody').innerHTML = loading(t(n === 1 ? 'Peeking at {n} photo… spices too! ({d}/{n})' : 'Peeking at {n} photos… spices too! ({d}/{n})', { n, d: Math.min(done * BATCH, n) }));
+  let done = 0; const prog = () => el('scanBody').innerHTML = loading(t(n === 1 ? 'Peeking at {n} photo… spices too! ({d}/{n})' : 'Peeking at {n} photos… spices too! ({d}/{n})', { n, d: Math.min(done * BATCH, n) }), { area: 'scan', exp: 6 + 5 * Math.ceil(n / BATCH), skel: 0 });
   prog();
   let rechecked = false; /* paywall for someone who looks subscribed: refresh the plan once, then retry */
   const one = async b => { for (let a = 0; a < 2; a++) { try { const j = await api('scan', { images: b.map(p => ({ data: p.src, area: p.area })) }, 60000); done++; prog(); return j.ingredients; } catch (e) { if (e.paywall && !rechecked && looksSubbed()) { rechecked = true; if (await recheckSub()) { a--; continue; } } if (a || e.paywall) throw e; } } };

@@ -10,7 +10,7 @@
 <title>SnapCravings</title>
 <script>
 // Language pick (EN/ES built in; others load web/i18n/<code>.js before the deferred app scripts). Arabic is right-to-left.
-window.SC_IV = 'ui58';
+window.SC_IV = 'ui59';
 window.SC_LANGS = [['en', 'English'], ['es', 'Español'], ['pt', 'Português (BR)'], ['hi', 'हिन्दी'], ['id', 'Bahasa Indonesia'], ['fr', 'Français'], ['de', 'Deutsch'], ['ar', 'العربية'], ['ru', 'Русский'], ['tr', 'Türkçe']];
 (function () { var ok = function (l) { return SC_LANGS.some(function (x) { return x[0] === l; }); }, l = null;
   try { var s = localStorage.getItem('sc.lang'); if (s) { var v = JSON.parse(s); if (ok(v)) l = v; } } catch (e) {}
@@ -441,22 +441,23 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
 <input type="file" id="snapCam" accept="image/*" capture="environment" class="offscreen" tabindex="-1" aria-hidden="true">
 <input type="file" id="snapLib" accept="image/*" multiple class="offscreen" tabindex="-1" aria-hidden="true">
 <div id="toast" role="status" aria-live="polite" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
-<script defer src="holiday.js?v=ui58"></script>
-<script defer src="money.js?v=ui58"></script>
-<script defer src="config.js?v=ui58"></script>
-<script defer src="i18n.js?v=ui58"></script>
-<script defer src="app.js?v=ui58"></script>
-<script defer src="prep.js?v=ui58"></script>
-<script defer src="more.js?v=ui58"></script>
-<script defer src="grow.js?v=ui58"></script>
-<script defer src="hplan-i18n.js?v=ui58"></script>
-<script defer src="hplan.js?v=ui58"></script>
-<script defer src="dishcore.js?v=ui58"></script>
-<script defer src="dish-i18n.js?v=ui58"></script>
-<script defer src="dish.js?v=ui58"></script>
-<script defer src="fixes.js?v=ui58"></script>
-<script defer src="prices.js?v=ui58"></script>
-<script defer src="feat-i18n.js?v=ui58"></script>
-<script defer src="feat.js?v=ui58"></script>
+<script defer src="holiday.js?v=ui59"></script>
+<script defer src="money.js?v=ui59"></script>
+<script defer src="config.js?v=ui59"></script>
+<script defer src="i18n.js?v=ui59"></script>
+<script defer src="speed.js?v=ui59"></script>
+<script defer src="app.js?v=ui59"></script>
+<script defer src="prep.js?v=ui59"></script>
+<script defer src="more.js?v=ui59"></script>
+<script defer src="grow.js?v=ui59"></script>
+<script defer src="hplan-i18n.js?v=ui59"></script>
+<script defer src="hplan.js?v=ui59"></script>
+<script defer src="dishcore.js?v=ui59"></script>
+<script defer src="dish-i18n.js?v=ui59"></script>
+<script defer src="dish.js?v=ui59"></script>
+<script defer src="fixes.js?v=ui59"></script>
+<script defer src="prices.js?v=ui59"></script>
+<script defer src="feat-i18n.js?v=ui59"></script>
+<script defer src="feat.js?v=ui59"></script>
 </body>
 </html>
