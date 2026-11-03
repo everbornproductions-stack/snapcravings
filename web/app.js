@@ -13,10 +13,24 @@ sub = LS.get('sub', {});
 const DEV = LS.get('dev', null) || (() => { const d = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2)); LS.set('dev', d); return d; })();
 /* Usage events: anonymous, fire-and-forget (no cookies, no IP/email). Hashed server-side by /api/ev. */
 const planNow = () => sub.code ? 'owner' : (sub.token && sub.active) ? 'paid' : 'free';
+const IS_TEST = (() => { try { if (/[?&]test=1\b/.test(location.search)) localStorage.setItem('sc_test', '1'); return !!(localStorage.getItem('sc_test') || localStorage.getItem('sc.test') || navigator.webdriver); } catch { return !!navigator.webdriver; } })();
+/* Where this device came from: captured once on the first visit (referrer domain + utm_*), sent with the first page_view only. */
+function firstSource() {
+  try {
+    if (localStorage.getItem('sc.srcSent')) return null;
+    localStorage.setItem('sc.srcSent', '1');
+    const q = new URLSearchParams(location.search); let ref = '';
+    try { ref = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, '') : ''; if (ref === location.hostname) ref = ''; } catch {}
+    return { ref, utm_source: q.get('utm_source') || '', utm_medium: q.get('utm_medium') || '', utm_campaign: q.get('utm_campaign') || '' };
+  } catch { return null; }
+}
 function track(event, screen, meta) {
   try {
     if (localStorage.getItem('sc.noTrack')) return; // opt-out switch (no personal data is collected anyway)
-    const body = JSON.stringify({ event, screen: screen || null, plan: planNow(), dev: DEV, meta: meta || {} });
+    const o = { event, screen: screen || null, plan: planNow(), dev: DEV, meta: meta || {} };
+    if (IS_TEST) o.test = 1;
+    if (event === 'page_view') { const src = firstSource(); if (src) o.src = src; }
+    const body = JSON.stringify(o);
     if (!(navigator.sendBeacon && navigator.sendBeacon('/api/ev', new Blob([body], { type: 'application/json' })))) fetch('/api/ev', { method: 'POST', body, keepalive: true, headers: { 'content-type': 'application/json' } }).catch(() => {});
   } catch {}
 }
@@ -364,7 +378,7 @@ function renderScan() {
 
 /* RECIPES */
 async function moreIdeas() {
-  if (state.moreBusy || state.recipesLoading || !state.recipes) return; state.moreBusy = true; renderRecipes(); track('more_ideas', 'recipes');
+  if (state.moreBusy || state.recipesLoading || !state.recipes) return; state.moreBusy = true; track('more_ideas', 'recipes'); renderRecipes();
   const R = state.recipes; const avoid = [...(R.ready || []), ...(R.more || [])].map(r => r.name).slice(-40);
   const ingredients = state.ingredients.slice(0, 80).map(i => (i.cat === 'Spices & Seasonings' ? '[spice] ' : '') + i.name + (i.qty ? ' (' + i.qty + ')' : ''));
   const seen = new Set(avoid.map(n => n.toLowerCase()));

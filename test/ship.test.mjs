@@ -100,5 +100,5 @@ test('speed.js: hi, id, ar, ru, tr have every step and tip line; checkout steps 
   assert.ok(planned.length);
 });
 test('service worker caches the new files and the cache name was bumped', () => {
-  const s = rd('web/sw.js'); assert.match(s, /ship-i18n\.js\?v=ui61/); assert.match(s, /checkout\.js\?v=ui61/); assert.match(s, /ui61/); assert.match(rd('web/index.html'), /SC_IV = 'ui61'/);
+  const s = rd('web/sw.js'); assert.match(s, /ship-i18n\.js\?v=ui62/); assert.match(s, /checkout\.js\?v=ui62/); assert.match(s, /ui62/); assert.match(rd('web/index.html'), /SC_IV = 'ui62'/);
 });

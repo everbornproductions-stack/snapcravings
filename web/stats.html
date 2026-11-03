@@ -57,11 +57,12 @@ svg{display:block;width:100%;height:auto}
   </section>
   <section id="dash" hidden>
     <h1>How's it <em>cooking?</em></h1>
-    <div class="bar"><div class="seg"><button data-d="7" class="on">7 days</button><button data-d="30">30 days</button></div><button class="ghost" id="refresh">Refresh</button><button class="ghost" id="logout">Forget code</button></div>
+    <div class="bar"><div class="seg"><button data-d="7" class="on">7 days</button><button data-d="30">30 days</button></div><div class="seg" id="realSeg"><button data-r="1" class="on">Real people</button><button data-r="0">All traffic</button></div><button class="ghost" id="refresh">Refresh</button><button class="ghost" id="logout">Forget code</button></div>
     <p class="fine" id="gen"></p>
     <div class="grid" id="cards"></div>
     <h3>Visits and unique visitors</h3><div class="card"><div id="cVisits"></div><div class="legend"><span><i style="background:#F2B6A1"></i>Visits (screen views)</span><span><i style="background:var(--coral)"></i>Unique visitors</span></div></div>
     <h3>Scans per day</h3><div class="card"><div id="cScans"></div></div>
+    <h3>Where visitors come from</h3><div class="card" id="sources"></div>
     <h3>Free vs paid vs owner</h3><div class="card" id="plans"></div>
     <h3>Upgrade funnel</h3><div class="card" id="funnel"></div>
     <h3>Top screens</h3><div class="card" id="screens"></div>
@@ -71,13 +72,13 @@ svg{display:block;width:100%;height:auto}
 <script>
 const $ = id => document.getElementById(id);
 const LSK = 'sc.statskey';
-let days = 7, key = localStorage.getItem(LSK) || '';
+let days = 7, real = true, key = localStorage.getItem(LSK) || '';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = n => Number(n || 0).toLocaleString();
 async function load() {
   $('login').hidden = true; $('dash').hidden = false; $('cards').innerHTML = ''; $('gen').textContent = 'Loading…';
   let r, j;
-  try { r = await fetch('/api/stats', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key, days }) }); j = await r.json(); } catch { $('gen').textContent = 'Could not reach the server. Tap Refresh.'; return; }
+  try { r = await fetch('/api/stats', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key, days, real }) }); j = await r.json(); } catch { $('gen').textContent = 'Could not reach the server. Tap Refresh.'; return; }
   if (r.status === 403) { localStorage.removeItem(LSK); key = ''; $('dash').hidden = true; $('login').hidden = false; $('err').textContent = 'That code did not work.'; return; }
   if (!r.ok) { $('gen').textContent = j.error || 'Stats are having a moment.'; return; }
   render(j);
@@ -101,7 +102,7 @@ function render(s) {
   $('cards').innerHTML = card('Visits', fmt(t.visits)) + card('Unique visitors', fmt(t.unique_devices)) + card('Scans', fmt(t.scans)) + card('Recipe sets', fmt(t.recipes_shown))
     + card('Upgrade clicks', fmt(t.upgrade_clicks), 'hot') + card('Paid conversions', fmt(t.checkout_returns), 'good', 'returned from checkout') + card('New subscribers', fmt(sb.new_in_range), 'good') + card('Active subscribers', fmt(sb.active), 'good', sb.canceling ? `${sb.canceling} canceling` : '')
     + card('More ideas', fmt(t.more_ideas)) + card('Favorites', fmt(t.favorites)) + card('Diet saved', fmt(t.diet_saved)) + card('Installs', fmt(t.installs));
-  $('gen').textContent = `Last ${s.days} days · updated ${new Date(s.generated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  $('gen').textContent = `${s.legacy ? 'All traffic (filter not live yet) · ' : s.real_only ? 'Real people only · ' : 'All traffic, bots and tests included · '}Last ${s.days} days · updated ${new Date(s.generated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
   bars($('cVisits'), s.daily, [{ k: 'visits', c: '#F2B6A1' }, { k: 'unique_devices', c: '#E8613A' }]);
   bars($('cScans'), s.daily, [{ k: 'scans', c: '#2F8F5B' }]);
   const tot = dev('free') + dev('paid') + dev('owner');
@@ -110,6 +111,11 @@ function render(s) {
   const max = Math.max(1, t.unique_devices);
   $('funnel').innerHTML = hrow('Visitors', t.unique_devices, max, '#F2B6A1') + hrow('Scanned', Math.min(t.scans, t.unique_devices) , max, '#2F8F5B') + hrow('Clicked upgrade', upDev, max, '#E8613A') + hrow('Back from checkout', convDev, max, '#1E1B18')
     + `<p class="fine" style="margin-top:8px">${upDev ? `${Math.round(convDev / upDev * 100)}% of devices that clicked Upgrade came back from checkout.` : 'No upgrade clicks yet.'} "Scanned" is capped at visitors (scan count is not unique).</p>`;
+  const SRC = [['instagram', 'Instagram', '#E8613A'], ['tiktok', 'TikTok', '#1E1B18'], ['facebook', 'Facebook', '#2F6FB5'], ['youtube', 'YouTube', '#C0392B'], ['google', 'Google', '#B8862F'], ['email', 'Email', '#2F8F5B'], ['direct', 'Direct', '#F2B6A1'], ['other', 'Other', '#6F675E']];
+  const sv = Object.fromEntries((s.sources || []).map(x => [x.src, x.visitors])), stot = Object.values(sv).reduce((a, b) => a + b, 0);
+  $('sources').innerHTML = (stot ? SRC.filter(x => sv[x[0]]).map(x => hrow(x[1], sv[x[0]], stot, x[2])).join('') : '<p class="fine">No first visits with a source yet.' + (s.legacy ? ' (Needs the 20261103 database migration.)' : '') + '</p>')
+    + ((s.campaigns || []).length ? `<p class="fine" style="margin-top:8px"><b>Campaigns:</b> ${s.campaigns.map(c => esc(c.label) + ' (' + fmt(c.visitors) + ')').join(' · ')}</p>` : '')
+    + '<p class="fine" style="margin-top:8px">First visit per device: utm_source if present, otherwise the referrer site. Visitors who typed the address or opened a saved link show as Direct.</p>';
   const sm = Math.max(1, ...(s.screens || []).map(x => x.views));
   $('screens').innerHTML = (s.screens || []).map(x => hrow(x.screen, x.views, sm, '#E8613A')).join('') || '<p class="fine">No views yet.</p>';
 }
@@ -117,7 +123,8 @@ $('go').onclick = () => { key = $('key').value.trim(); if (!key) { $('err').text
 $('key').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').click(); });
 $('refresh').onclick = load;
 $('logout').onclick = () => { localStorage.removeItem(LSK); key = ''; $('dash').hidden = true; $('login').hidden = false; $('key').value = ''; };
-document.querySelectorAll('.seg button').forEach(b => b.onclick = () => { days = +b.dataset.d; document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b)); load(); });
+document.querySelectorAll('#realSeg button').forEach(b => b.onclick = () => { real = b.dataset.r === '1'; document.querySelectorAll('#realSeg button').forEach(x => x.classList.toggle('on', x === b)); load(); });
+document.querySelectorAll('.seg button[data-d]').forEach(b => b.onclick = () => { days = +b.dataset.d; document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b)); load(); });
 if (key) load(); else $('login').hidden = false;
 </script>
 </body>
