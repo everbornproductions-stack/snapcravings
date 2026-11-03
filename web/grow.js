@@ -8,7 +8,7 @@
     'Ingredients': 'Ingredientes', 'Get SnapCravings on Google Play': 'Consigue SnapCravings en Google Play', 'The Android app: faster snaps, one tap away.': 'La app de Android: fotos más rápidas, a un toque.', 'Get it': 'Obtener'
   });
   // Android app (TWA) detection: Play's referrer on first launch, or Play Billing present. Remembered on the device.
-  const isTWA = () => { try { if (document.referrer.startsWith('android-app://app.snapcravings.twa')) LS.set('twa', 1); } catch {} return !!LS.get('twa', 0) || (typeof inPlay === 'function' && inPlay()); };
+  const isTWA = () => { try { if (document.referrer.startsWith('android-app://app.snapcravings.twa')) LS.set('twa', 1); } catch {} if ('getDigitalGoodsService' in window) LS.set('twa', 1); return !!LS.get('twa', 0) || (typeof inPlay === 'function' && inPlay()); };
   isTWA(); window.isTWA = isTWA;
   try { const ic = document.getElementById('installCard'); if (ic && isTWA()) { ic.hidden = true; ic.style.display = 'none'; } } catch {}
   const DAY = 864e5;

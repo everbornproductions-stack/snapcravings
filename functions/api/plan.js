@@ -5,7 +5,7 @@ import { verifyToken, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub
 import { langCode } from '../_lib/lang.js';
 import { dietPrompt } from '../_lib/diet.js';
 const dietPromptOf = p => (dietPrompt(p.diet) ? dietPrompt(p.diet) + '\n' : '');
-import { PLAN_SCHEMA, MEALS_SCHEMA, MENU_SCHEMA, PREP_SCHEMA, menuPrompt, dayPrompt, prepPrompt, planInput, planPrompt, swapPrompt, checkPlan, groceryList, planCost, cleanTexts, offDays, dayGoal } from '../_lib/plan.js';
+import { PLAN_SCHEMA, MEALS_SCHEMA, MENU_SCHEMA, PREP_SCHEMA, menuPrompt, dayPrompt, prepPrompt, planInput, planPrompt, swapPrompt, checkPlan, groceryList, planCost, cleanTexts, offDays, dayGoal, scaleToGoal, proteinShort } from '../_lib/plan.js';
 const VOICE = 'You write for SnapCravings, a fun, upbeat cooking app. Plain, friendly words. No em-dashes. Steps are specific (times, temperatures, amounts) and safe (cook meat through, cool food fast before the fridge).';
 // Gemini free quotas are per model (3.8-flash has no free quota on this key, 2.5-flash-lite is closed: 404), so the chain uses the
 // models that answer, then the same free OpenAI-style providers as /api/scan, then Workers AI, then one last Gemini try after a pause.
@@ -69,7 +69,7 @@ async function cfCall(env, schema, parts, maxOut, ms = 15000) {
 }
 // Per-isolate health: when a model last failed with 429/503/timeout. Sick models drop to the end for 60 s.
 const sick = new Map(); export const recentFail = (name, now = Date.now()) => now - (sick.get(name) || 0) < 60000;
-const HEAD = 2500, DEADLINE = 28000; // next racer starts after HEAD ms (or at once on a failure); whole call gives up at DEADLINE
+const HEAD = 2500, DEADLINE = 28000; export const PLAN_BUDGET = 38000; // one plan request never runs past ~40 s // next racer starts after HEAD ms (or at once on a failure); whole call gives up at DEADLINE
 // Every step of the plan engine: [kind, name/model, timeout ms, thinking]. Exported for tests.
 export function planChain(env) {
   const L = [];
@@ -88,7 +88,7 @@ export async function gemini(env, schema, parts, maxOut = 16000) {
   const call = ([kind, name, ms, thinking]) => kind === 'gemini' ? geminiCall(env, name, ms, thinking, schema, parts, maxOut) : kind === 'oai' ? oaiCall(env, name, schema, parts, maxOut, ms) : cfCall(env, schema, parts, maxOut, ms);
   return new Promise((resolve, reject) => {
     let running = 0, done = false, kick;
-    const dl = setTimeout(() => end(), env.__noWait ? 60000 : DEADLINE);
+    const dl = setTimeout(() => end(), env.__noWait ? 60000 : Math.min(DEADLINE, env.__budget || DEADLINE));
     const end = v => { if (done) return; done = true; clearTimeout(kick); clearTimeout(dl);
       if (v) return resolve(v); const e = new Error(busy ? BUSY : timeouts ? 'That took too long. Tap Retry!' : 'The recipe brain hiccuped. Tap Retry!'); e.tries = tries; e.busy = busy > 0; reject(e); };
     const next = () => {
@@ -195,7 +195,10 @@ const LANG_KEEP = l => (l && l !== 'en' ? `Keep all text in the same language as
 // Falls back to the original single big call if the menu call fails.
 export async function buildPlan(env, p, lang, ask0 = gemini, send = () => {}) {
   const t0 = Date.now(); let menu = null, lastErr = null, okCalls = 0;
-  const ask = (...a) => ask0(...a).then(v => { okCalls++; return v; }, e => { lastErr = e; throw e; }); // remember why the AI failed, so an empty plan says "busy" and not "diet"
+  // Server cause of the ~200 s "hang": menu + day + 3 repair rounds + fit resize could each wait a full 28 s race in a row.
+  // Now the whole plan has one budget: no new AI call starts after PLAN_BUDGET, and each call only gets the time that is left.
+  const ask = (env2, ...a) => { const left = PLAN_BUDGET - (Date.now() - t0); if (left < 3000) { const e = new Error("That took too long. Check your signal and tap Retry!"); lastErr = lastErr || e; return Promise.reject(e); }
+    return ask0({ ...env2, __budget: left }, ...a).then(v => { okCalls++; return v; }, e => { lastErr = e; throw e; }); }; // remember why the AI failed, so an empty plan says "busy" and not "diet"
 
   // The menu round trip only pays off for the full week; a 2-day preview is faster as one call (measured 4.7 s vs 5.6 s).
   if (p.genDays > 2) try { const m = await ask(env, MENU_SCHEMA, [{ text: menuPrompt(p, lang) }], 4000); menu = checkMenu(p, m.menu); } catch {}
@@ -207,21 +210,21 @@ export async function buildPlan(env, p, lang, ask0 = gemini, send = () => {}) {
       let first = []; try { first = (await ask(env, MEALS_SCHEMA, [{ text: base }], 6000)).meals || []; } catch {}
       const r = await repair(env, q, first, lang, ask, base + ` Do not reuse these names from other days: ${menu.filter(m => m.day !== day).map(m => m.name).join('; ')}.`);
       banned.push(...r.banned); open.push(...r.missing);
-      let dm = q.fit ? await fitDay(env, q, r.meals, lang, ask) : r.meals; dm = dm.sort(slotSort);
+      let dm = q.fit ? scaleToGoal(q, await fitDay(env, q, r.meals, lang, ask)) : r.meals; dm = dm.sort(slotSort);
       meals.push(...dm); if (dm.length) send({ day, meals: dm, ms: Date.now() - t0 });
     }));
     prepOut = await prepJob;
   } else {
     let first; try { first = await ask(env, PLAN_SCHEMA, [{ text: planPrompt(p, lang) }]); } catch { first = { meals: [], prep: [], storage: [] }; } // repair() refills every cell
     const r = await repair(env, p, first.meals || [], lang, ask); banned = r.banned; open = r.missing;
-    meals = p.fit ? await fitDay(env, p, r.meals, lang, ask) : r.meals; prepOut = first;
+    meals = p.fit ? scaleToGoal(p, await fitDay(env, p, r.meals, lang, ask)) : r.meals; prepOut = first;
     for (let d = 1; d <= p.genDays; d++) { const dm = meals.filter(m => m.day === d).sort(slotSort); if (dm.length) send({ day: d, meals: dm, ms: Date.now() - t0 }); }
   }
   console.log('plan', menu ? 'fast' : 'single', p.genDays, 'x', p.slots.length, 'ok', meals.length, 'ms', Date.now() - t0, 'banned', [...new Set(banned)].join('|'));
   if (!meals.length) return lastErr && !okCalls ? { error: lastErr.message || BUSY, busy: !!lastErr.busy } : lastErr?.busy && !banned.length ? { error: BUSY, busy: true } : { error: "We couldn't build a plan that fits your diet. Tap Retry!", why: [...new Set(banned)] };
   meals.sort((x, y) => x.day - y.day || slotSort(x, y)); open.sort((x, y) => x.day - y.day || slotSort(x, y));
   return { fit: p.fit, days: p.days, genDays: p.genDays, preview: p.preview, slots: p.slots, servings: p.servings, budget: p.budget, meals, open,
-    grocery: groceryList(meals, p.fridge, p.diet), prep: cleanTexts(p.diet, (prepOut.prep || []).slice(0, 10), x => (x?.title || '') + '. ' + (x?.detail || '')), storage: cleanTexts(p.diet, (prepOut.storage || []).slice(0, 8).map(String)), total: planCost(meals), lang, ...(env.MOCK_AI === '1' ? { mock: true } : {}) };
+    grocery: groceryList(meals, p.fridge, p.diet), prep: cleanTexts(p.diet, (prepOut.prep || []).slice(0, 10), x => (x?.title || '') + '. ' + (x?.detail || '')), storage: cleanTexts(p.diet, (prepOut.storage || []).slice(0, 8).map(String)), total: planCost(meals), lowProtein: proteinShort(p, meals), lang, ...(env.MOCK_AI === '1' ? { mock: true } : {}) };
 }
 const slotSort = (x, y) => SLOT_ORDER.indexOf(x.slot) - SLOT_ORDER.indexOf(y.slot);
 // A usable menu covers every (day, slot) with distinct names; otherwise use the single-call path.

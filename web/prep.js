@@ -48,12 +48,13 @@
       <div class="fine">${t('Rough starting point from your weight and goal, not medical advice.')}</div>` : ''}</div></details>
     <div class="card">${n ? `<div class="toggle">${t('Use my fridge scan ({n} items)', { n })}<button class="sw ${opts.fridge ? 'on' : ''}" id="prepFridge" aria-label="${esc(t('Use my fridge scan ({n} items)', { n }))}"></button></div>${opts.fridge ? '' : `<div class="fine">${noFridge()}</div>`}` : `<div class="fine" style="margin:0">${t('No fridge scan yet. Snap it first to use what you have.')}</div><div class="fine">${noFridge()}</div>`}
     ${dietOn() && dietLine() ? `<div class="fine">${t('🥗 Cooking for: {d} · ', { d: esc(dietLine()) })}<a href="#settings" style="color:var(--coral);font-weight:700">${t('Edit')}</a></div>` : ''}</div>
+    ${typeof unlimited === 'function' && !unlimited() && opts.days > 2 ? `<p class="pill g" style="display:inline-block;margin:0 0 8px;font-size:12px">🎟️ ${t('Free preview: 2 of {n} days. Pro unlocks all.', { n: opts.days })}</p>` : ''}
     <button class="btn primary" id="prepGo">${t('Build my week')}</button>`;
   }
   const slotT = s => t(s);
   function mealCard(m, i) {
     const per = m.est_cook_cost / Math.max(1, m.servings || 1);
-    return `<details class="opt"><summary><span class="badge" style="background:var(--green-soft);font-size:18px">${esc(m.emoji)}</span><span class="nm">${esc(m.name)}<small>${esc(slotT(m.slot))} · ${t('{m} min · keeps {k} days', { m: m.minutes, k: m.keeps_days })}${m.kcal ? ' · ' + m.kcal + ' kcal · P' + m.protein_g + ' C' + m.carbs_g + ' F' + m.fat_g : ''}</small></span><span class="amt">~${$(m.est_cook_cost)}</span></summary>
+    return `<details class="opt"><summary><span class="badge" style="background:var(--green-soft);font-size:18px">${esc(m.emoji)}</span><span class="nm">${esc(m.name)}<small>${esc(slotT(m.slot))} · ${t('{m} min · keeps {k} days', { m: m.minutes, k: m.keeps_days })}${m.portion ? ' · ' + t('Portion ×{x} to fit your goal', { x: m.portion }) : ''}${m.kcal ? ' · ' + m.kcal + ' kcal · P' + m.protein_g + ' C' + m.carbs_g + ' F' + m.fat_g : ''}</small></span><span class="amt">~${$(m.est_cook_cost)}</span></summary>
       <div class="bd" style="padding-left:14px"><div class="chips">${m.ingredients.map(g => `<span class="chip ${g.have ? 'have' : ''}">${g.have ? '✓ ' : ''}${esc(g.item)}${g.qty ? ', ' + esc(g.qty) : ''}</span>`).join('')}</div>
       <ol class="steps">${m.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>
       ${m.kcal ? `<div class="fine">${t('{k} kcal · {p}g protein · {c}g carbs · {f}g fat per serving (estimate)', { k: m.kcal, p: m.protein_g, c: m.carbs_g, f: m.fat_g })}</div>` : ''}
@@ -90,6 +91,7 @@
     const g = opts.goal, kc = Math.round(w * ({ cut: 12, bulk: 17, low_carb: 14 }[g] || 15) / 10) * 10, pr = Math.round(w * ({ maintain: 0.8, low_carb: 0.9 }[g] || 1)), fat = Math.round(kc * (g === 'low_carb' ? 0.55 : 0.28) / 9);
     Object.assign(opts, { kcal: kc, p: pr, f: fat, c: Math.max(0, Math.round((kc - pr * 4 - fat * 9) / 4)) }); save(); render(); }
   async function build() {
+    if (busy) return;
     keepInputs(); opts.budget = String(opts.budget || '').replace(/[^\d.]/g, ''); save(); busy = true; el('prepBody').innerHTML = loading('Building your week…');
     const body = { days: opts.days, meals: opts.meals, servings: opts.servings, budget: +opts.budget || 0, fridge: opts.fridge ? fridge() : [], prefs: prefs(), fit: fitBody(), lang: I18N.lang };
     // Streamed: days show up as soon as each one is ready (same cards), the spinner stays below until the whole week is in.
@@ -100,7 +102,7 @@
     catch (e) { plan = null; busy = false; el('prepBody').innerHTML = `<p class="sub">${esc(e.message)}</p>${e.paywall ? `<a class="btn primary" href="#pro">${t('Go Pro')}</a>` : ''}<button class="btn ghost" id="prepRetry">${t('Tap Retry')}</button>`; }
   }
   // NDJSON reader for /api/plan: {meta}, {day, meals} per finished day, then {done, ...full plan}. Plain JSON answers still work.
-  async function planStream(body, onMeta, onDay, ms = 150000) {
+  async function planStream(body, onMeta, onDay, ms = 45000) { /* was 150 s: a stuck request now ends with an error + Retry */
     const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), ms);
     const fail = e => new Error(e && e.name === 'AbortError' ? t('That took too long. Check your signal and tap Retry!') : t('Lost the connection for a sec. Tap Retry!'));
     try {

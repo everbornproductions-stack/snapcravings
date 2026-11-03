@@ -10,7 +10,7 @@
 <title>SnapCravings</title>
 <script>
 // Language pick (EN/ES built in; others load web/i18n/<code>.js before the deferred app scripts). Arabic is right-to-left.
-window.SC_IV = 'ui49';
+window.SC_IV = 'ui50';
 window.SC_LANGS = [['en', 'English'], ['es', 'Español'], ['pt', 'Português (BR)'], ['hi', 'हिन्दी'], ['id', 'Bahasa Indonesia'], ['fr', 'Français'], ['de', 'Deutsch'], ['ar', 'العربية'], ['ru', 'Русский'], ['tr', 'Türkçe']];
 (function () { var ok = function (l) { return SC_LANGS.some(function (x) { return x[0] === l; }); }, l = null;
   try { var s = localStorage.getItem('sc.lang'); if (s) { var v = JSON.parse(s); if (ok(v)) l = v; } } catch (e) {}
@@ -103,7 +103,7 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 .input{display:flex;align-items:center;gap:10px;background:var(--card);border:1.5px solid var(--ink);border-radius:16px;padding:14px;font-size:16px;margin:12px 0}
 .input input{border:0;outline:0;font:600 16px var(--font);flex:1;background:transparent;color:var(--ink)}
 /* large text (200%) + keyboard: nothing overflows, focus is visible */
-h1,h2,h3{overflow-wrap:break-word}.input input,.plan .p{min-width:0}.card[style*="display:flex"]{flex-wrap:wrap}.card>div[style*="flex:1"]{min-width:0;overflow-wrap:anywhere}
+h1,h2,h3{overflow-wrap:break-word;hyphens:auto;-webkit-hyphens:auto;text-wrap:balance}.input input,.plan .p{min-width:0}.card[style*="display:flex"]{flex-wrap:wrap}.card>div[style*="flex:1"]{min-width:0;overflow-wrap:anywhere}
 .input:focus-within{box-shadow:0 0 0 3px var(--coral-soft)}:focus-visible{outline:3px solid var(--coral);outline-offset:2px}
 .seg{display:flex;background:#EFE7DB;border-radius:12px;padding:3px;margin:10px 0}
 .seg button{flex:1;border:0;background:transparent;font:700 13px var(--font);padding:9px;border-radius:9px;color:var(--muted);cursor:pointer}
@@ -436,18 +436,18 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
 <input type="file" id="snapCam" accept="image/*" capture="environment" class="offscreen" tabindex="-1" aria-hidden="true">
 <input type="file" id="snapLib" accept="image/*" multiple class="offscreen" tabindex="-1" aria-hidden="true">
 <div id="toast" role="status" aria-live="polite" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
-<script defer src="holiday.js?v=ui49"></script>
-<script defer src="config.js?v=ui49"></script>
-<script defer src="i18n.js?v=ui49"></script>
-<script defer src="app.js?v=ui49"></script>
-<script defer src="prep.js?v=ui49"></script>
-<script defer src="more.js?v=ui49"></script>
-<script defer src="grow.js?v=ui49"></script>
-<script defer src="hplan-i18n.js?v=ui49"></script>
-<script defer src="hplan.js?v=ui49"></script>
-<script defer src="dishcore.js?v=ui49"></script>
-<script defer src="dish-i18n.js?v=ui49"></script>
-<script defer src="dish.js?v=ui49"></script>
-<script defer src="fixes.js?v=ui49"></script>
+<script defer src="holiday.js?v=ui50"></script>
+<script defer src="config.js?v=ui50"></script>
+<script defer src="i18n.js?v=ui50"></script>
+<script defer src="app.js?v=ui50"></script>
+<script defer src="prep.js?v=ui50"></script>
+<script defer src="more.js?v=ui50"></script>
+<script defer src="grow.js?v=ui50"></script>
+<script defer src="hplan-i18n.js?v=ui50"></script>
+<script defer src="hplan.js?v=ui50"></script>
+<script defer src="dishcore.js?v=ui50"></script>
+<script defer src="dish-i18n.js?v=ui50"></script>
+<script defer src="dish.js?v=ui50"></script>
+<script defer src="fixes.js?v=ui50"></script>
 </body>
 </html>

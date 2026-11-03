@@ -112,3 +112,16 @@ export const cleanTexts = (d, list, f = x => x) => (list || []).filter(x => !d.h
 // Day targets (one serving of each meal) and which days miss them by more than 10%.
 export const dayGoal = p => p.fit && p.fit.kcal ? Math.round(p.fit.kcal * (p.slots.length === 1 ? 0.4 : p.slots.length === 2 ? 0.75 : 1)) : 0;
 export function offDays(p, meals) { const g = dayGoal(p); if (!g) return []; const t = {}; meals.forEach(m => t[m.day] = (t[m.day] || 0) + (m.kcal || 0)); return Object.entries(t).filter(([, k]) => Math.abs(k - g) > g * 0.1).map(([d, k]) => ({ day: +d, kcal: k, goal: g })); }
+// Fitness goal backstop (2026-11-02): when the AI's meals for a day still miss the calorie target by more than 10% after the
+// resize round, scale that day's portions so the numbers on screen match the goal. kcal/macros and the leading number of each
+// quantity are scaled by the same factor (clamped 0.5x-3x) and the meal gets `portion` so the card can say so.
+const scaleQty = (q, f) => String(q || '').replace(/^(\d+(?:[.,]\d+)?)(?:\s*\/\s*(\d+))?/, (m, a, b) => { const v = (b ? parseFloat(a) / +b : parseFloat(String(a).replace(',', '.'))) * f; return String(v >= 10 ? Math.round(v) : Math.round(v * 4) / 4); });
+export function scaleToGoal(p, meals) {
+  const g = dayGoal(p); if (!g) return meals; const byDay = {};
+  meals.forEach(m => (byDay[m.day] = byDay[m.day] || []).push(m));
+  return meals.map(m => { const day = byDay[m.day]; const k = day.reduce((s, x) => s + (x.kcal || 0), 0); if (!k || Math.abs(k - g) <= g * 0.1) return m;
+    const f = Math.min(3, Math.max(0.5, g / k)); const r = x => Math.round((x || 0) * f);
+    return { ...m, portion: Math.round(f * 100) / 100, kcal: r(m.kcal), protein_g: r(m.protein_g), carbs_g: r(m.carbs_g), fat_g: r(m.fat_g), ingredients: (m.ingredients || []).map(i => ({ ...i, qty: scaleQty(i.qty, f) })) }; });
+}
+// Protein check after scaling: a day under 85% of its protein share gets `lowProtein` so the UI can be honest.
+export function proteinShort(p, meals) { if (!p.fit || !p.fit.p) return []; const share = p.fit.p * (p.slots.length === 1 ? 0.4 : p.slots.length === 2 ? 0.75 : 1); const t = {}; meals.forEach(m => t[m.day] = (t[m.day] || 0) + (m.protein_g || 0)); return Object.entries(t).filter(([, v]) => v < share * 0.85).map(([d]) => +d); }

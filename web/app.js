@@ -22,6 +22,9 @@ async function redeem() { const c = (el('proCode')?.value || '').trim(); if (!c)
 let subCfg = { enabled: false, price: 3.99 };
 const unlimited = () => !!sub.token && sub.active;
 async function subCall(path, body) { const r = await fetch('/api/sub/' + path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-sc-lang': I18N.lang }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(t(j.error || "Hmm, that didn't work. Try again!")); return j; }
+const tokLeft = () => { try { return JSON.parse(atob(String(sub.token || '').split('.')[0].replace(/-/g, '+').replace(/_/g, '/'))).x - Date.now(); } catch { return 0; } };
+const looksSubbed = () => !!(sub && (sub.active || sub.token || sub.play || sub.code) && (sub.email || sub.token));
+async function recheckSub() { try { if (sub.play && inPlay()) { await playRestore(true); return unlimited(); } if (sub.code && !sub.email) return false; return await checkSub(sub.email || '', true); } catch { return false; } }
 async function checkSub(email, quiet) {
   try { const sid = sub.sid && (!email || !sub.email || sub.email === email) ? sub.sid : ''; const j = await subCall('status', { email, token: sub.token, sid }); sub = j.active ? { email: j.email || email, token: j.token, active: true, sid: sid || undefined, checked: Date.now() } : { email, sid: sid || undefined, active: false, checked: Date.now() }; LS.set('sub', sub); renderLeft(); renderPro(); if (!quiet) toast(j.active ? t("You're Unlimited! Let's get cooking! 🎉") : t("No active plan for that email yet.")); return j.active; }
   catch (e) { if (!quiet) toast(e.message); return false; }
@@ -33,19 +36,24 @@ function renderPro() {
   if (sub.email && !el('proEmail').value) el('proEmail').value = sub.email;
   if (!subCfg.enabled) { el('proGo').textContent = t('Unlimited · coming soon!'); el('proGo').style.opacity = '.6'; el('proGo').setAttribute('aria-disabled', 'true'); el('proEmail').parentNode.style.display = 'none'; el('proRestore').style.display = 'none'; }
   else { if (!el('proGo').querySelector('.spin')) el('proGo').textContent = t("Go Unlimited — let's get cooking!"); el('proGo').style.opacity = ''; el('proGo').removeAttribute('aria-disabled'); el('proEmail').parentNode.style.display = ''; el('proRestore').style.display = ''; }
-  if (inPlay()) { if (el('proYrSub')) el('proYrSub').textContent = t('About 16% less than 12 monthly payments'); el('proEmail').parentNode.style.display = 'none'; el('proRestore').style.display = ''; el('proGo').style.opacity = ''; el('proGo').removeAttribute('aria-disabled'); if (!el('proGo').querySelector('.spin')) el('proGo').textContent = t("Go Unlimited — let's get cooking!"); if (!el('proYearly')) { const y = document.createElement('button'); y.className = 'btn ghost'; y.id = 'proYearly'; el('proGo').after(y); } if (!el('proYearly').querySelector('.spin')) el('proYearly').textContent = t('Or go yearly: $39.99/year'); el('proFine').textContent = t('${price}/mo or $39.99/year. Secure checkout by Google Play. Cancel anytime in Google Play.', { price: Number(subCfg.price).toFixed(2) }); return; }
+  if (inPlay()) { if (el('proYrSub')) el('proYrSub').textContent = t('About 16% less than 12 monthly payments'); el('proEmail').parentNode.style.display = 'none'; el('proRestore').style.display = ''; el('proGo').style.opacity = ''; el('proGo').removeAttribute('aria-disabled'); if (!el('proGo').querySelector('.spin')) el('proGo').textContent = t("Go Unlimited — let's get cooking!"); if (!el('proYearly')) { const y = document.createElement('button'); y.className = 'btn ghost'; y.id = 'proYearly'; el('proGo').after(y); } if (!el('proYearly').querySelector('.spin')) el('proYearly').textContent = t('Or go yearly: $39.99/year'); el('proFine').textContent = t('${price}/mo or $39.99/year. Secure checkout by Google Play. Cancel anytime in Google Play.', { price: Number(subCfg.price).toFixed(2) });
+    /* Real localized Play prices when getDetails answered; the text above stays as the fallback. */
+    const pm = playPrices[PLAY_SKU], py = playPrices[PLAY_YEARLY]; if (pm) el('proPrice').textContent = pm; if (pm && py) { if (!el('proYearly').querySelector('.spin')) el('proYearly').textContent = t('Or go yearly: {y}/year', { y: py }); el('proFine').textContent = t('{m}/mo or {y}/year. Secure checkout by Google Play. Cancel anytime in Google Play.', { m: pm, y: py }); if (el('proYrSub')) el('proYrSub').textContent = ''; }
+    return; }
   if (el('proYrSub')) el('proYrSub').textContent = subCfg.linkYearly ? t('US$39.99/yr (about US$3.33/mo), 16% less than 12 months at US$3.99') : t('Coming soon · about US$3.33/mo');
   if (yearlyPicked()) { el('proFine').textContent = t('US$39.99 billed once a year. Secure checkout by Stripe. We use your email only to find your plan.'); return; }
   el('proFine').textContent = subCfg.enabled ? t('US${price}/mo founders price, first 100 members, locked in. Secure checkout by Stripe. We use your email only to find your plan.', { price: Number(subCfg.price).toFixed(2) }) : t('Unlimited is coming soon. Free scans and codes still work!');
 }
 // Google Play Billing (Android TWA only): Digital Goods API + PaymentRequest. The website keeps Stripe.
 const PLAY_SKU = 'snapcravings_pro_monthly', PLAY_YEARLY = 'snapcravings_pro_yearly', PLAY_SKUS = [PLAY_SKU, PLAY_YEARLY], PLAY_METHOD = 'https://play.google.com/billing';
-let playDG = null; const inPlay = () => !!playDG;
+let playDG = null, playPrices = {}; const inPlay = () => !!playDG;
+const fmtPlay = v => { try { return new Intl.NumberFormat(I18N.lang || undefined, { style: 'currency', currency: v.currency }).format(+v.value); } catch { return v ? v.currency + ' ' + v.value : ''; } };
+async function playPricesLoad() { try { const d = await playDG.getDetails(PLAY_SKUS); (d || []).forEach(x => { if (x && x.itemId && x.price && x.price.value) playPrices[x.itemId] = fmtPlay(x.price); }); if (Object.keys(playPrices).length) renderPro(); } catch {} }
 async function playInit() {
   if (!('getDigitalGoodsService' in window)) return;
   try { playDG = await window.getDigitalGoodsService(PLAY_METHOD); } catch { playDG = null; return; }
   try { const ic = document.getElementById('installCard'); if (playDG && ic) { ic.hidden = true; ic.style.display = 'none'; } } catch {}
-  renderPro(); if (!sub.code) playRestore(true);
+  renderPro(); playPricesLoad(); if (!sub.code) playRestore(true);
 }
 async function playVerify(purchaseToken, quiet, productId = PLAY_SKU) {
   const j = await subCall('../play/verify', { purchaseToken, productId });
@@ -89,7 +97,7 @@ fetch('/api/sub/config').then(r => r.json()).then(c => { subCfg = c; renderPro()
   const sid = (/[?&]sid=(cs_[A-Za-z0-9_]+)/.exec(location.search) || [])[1];
   if (/[?&]paid=1/.test(location.search) && (sid || sub.email)) { history.replaceState(null, '', '/#pro'); track('checkout_return', 'pro'); if (sid) { sub = { ...sub, sid }; LS.set('sub', sub); } let n = 0; const poll = async () => { if (await checkSub(sub.email || '', n < 10) || ++n > 11) return; setTimeout(poll, 3000); }; toast(t('Thanks! Checking your plan…')); poll(); }
   else if (!sub.email) return;
-  else if (!sub.checked || Date.now() - sub.checked > 3 * 864e5) checkSub(sub.email, true);
+  else if (!sub.checked || Date.now() - sub.checked > 3 * 864e5 || (sub.token && tokLeft() < 7 * 864e5)) checkSub(sub.email, true); /* token under 7 days left: get a fresh one */
 }).catch(() => {});
 let favs = LS.get('favs', []);
 const isFav = r => !!r && favs.some(f => f.name.toLowerCase() === r.name.toLowerCase());
@@ -290,7 +298,8 @@ async function scan() {
   const batches = []; for (let i = 0; i < n; i += BATCH) batches.push(state.photos.slice(i, i + BATCH));
   let done = 0; const prog = () => el('scanBody').innerHTML = loading(t(n === 1 ? 'Peeking at {n} photo… spices too! ({d}/{n})' : 'Peeking at {n} photos… spices too! ({d}/{n})', { n, d: Math.min(done * BATCH, n) }));
   prog();
-  const one = async b => { for (let a = 0; a < 2; a++) { try { const j = await api('scan', { images: b.map(p => ({ data: p.src, area: p.area })) }, 60000); done++; prog(); return j.ingredients; } catch (e) { if (a || e.paywall) throw e; } } };
+  let rechecked = false; /* paywall for someone who looks subscribed: refresh the plan once, then retry */
+  const one = async b => { for (let a = 0; a < 2; a++) { try { const j = await api('scan', { images: b.map(p => ({ data: p.src, area: p.area })) }, 60000); done++; prog(); return j.ingredients; } catch (e) { if (e.paywall && !rechecked && looksSubbed()) { rechecked = true; if (await recheckSub()) { a--; continue; } } if (a || e.paywall) throw e; } } };
   const dog = setTimeout(() => { if (state.scanRun === run && state.busy) { state.scanRun++; state.busy = false; scanFail(new Error(t('That took too long. Check your signal and tap Retry!')), n); } }, 150000); /* watchdog: never leave a spinner or a silent reset */
   try {
     const results = []; // two batches at a time
@@ -384,7 +393,7 @@ const words = n => new Set(n.toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/)
 function similar(a, b, t = 0.6) { const A = words(a), B = words(b); if (!A.size || !B.size) return a.toLowerCase() === b.toLowerCase(); let k = 0; A.forEach(w => B.has(w) && k++); return k / Math.min(A.size, B.size) >= t; }
 function pick3(list, raw = [], seen = []) { const L = ['Easy', 'Medium', 'Chef mode']; list = list.slice(); if (!list.some(x => x.level === 'Chef mode')) { const c = (raw || []).find(x => x?.name && x.level === 'Chef mode' && !seen.some(n => similar(n, x.name, 0.75))); if (c) list.push(c); } const out = []; for (const l of L) { const r = list.find(x => x.level === l && !out.includes(x)); if (r) out.push(r); } for (const r of list) { if (out.length >= 3) break; if (!out.includes(r)) out.push(r); } return out.slice(0, 3).sort((a, b) => L.indexOf(a.level) - L.indexOf(b.level)); }
 function dedupe(list, seenNames) { const out = []; for (const r of list || []) { if (!r?.name) continue; if ([...seenNames, ...out.map(x => x.name)].some(n => similar(n, r.name))) continue; out.push(r); } return out; }
-const LEVEL_PILL = l => l === 'Chef mode' ? '<span class="pill" style="background:var(--dark);color:#fff;margin-left:4px">👨‍🍳 ' + t('Chef mode') + '</span>' : l === 'Medium' ? '<span class="pill" style="background:#FFF1C9;color:#7A5300;margin-left:4px">' + t('Medium') + '</span>' : '<span class="pill g" style="margin-left:4px">' + t('Easy') + '</span>';
+const LEVEL_PILL = l => ' ' + (l === 'Chef mode' ? '<span class="pill" style="background:var(--dark);color:#fff;margin-left:4px">👨‍🍳 ' + t('Chef mode') + '</span>' : l === 'Medium' ? '<span class="pill" style="background:#FFF1C9;color:#7A5300;margin-left:4px">' + t('Medium') + '</span>' : '<span class="pill g" style="margin-left:4px">' + t('Easy') + '</span>'); /* leading space: badges no longer read as one word (everythingEasy) */
 const THUMBS = ['#FFF1C9', '#E3F3E9', '#EDE6F7', '#FDE9E0'];
 function renderRecipes() {
   const R = state.recipes;
@@ -425,7 +434,7 @@ async function crave(text) {
   text = (text || '').trim(); if (!text) return toast(t('Name a craving first!'));
   location.hash = '#compare'; el('compareBody').innerHTML = loading('Crunching the numbers…');
   try { state.crave = await api('crave', { craving: text, ingredients: state.ingredients.map(i => i.name) }); state.crave.craving = text; LS.set('crave', state.crave); }
-  catch (e) { el('compareBody').innerHTML = `<p class="sub">${esc(e.message)}</p>`; return; }
+  catch (e) { el('compareBody').innerHTML = `<p class="sub">${esc(e.message)}</p><button class="btn primary" id="craveRetry" data-text="${esc(text)}">${t('Retry 🔄')}</button><a class="btn ghost" href="#crave">${t('Crave it')}</a>`; return; }
   renderCompare();
 }
 function renderCompare() {
@@ -508,8 +517,9 @@ document.addEventListener('click', e => {
   const am = t.closest('[data-addmiss]'); if (am) { const k = am.dataset.addmiss; if (k === 'all') (state.recipes?.more || []).forEach(addMissing); else addMissing(k === 'cur' ? state.recipe : pick(k)); }
   const rc = t.closest('[data-rec]'); if (rc) { state.recipe = pick(rc.dataset.rec); state.from = rc.dataset.rec === 'crave' ? 'crave' : rc.dataset.rec === 'x' ? (state.extFrom || 'lib') : rc.dataset.rec.startsWith('fav:') ? 'favs' : 'recipes'; }
   const ci = t.closest('[data-craveit]'); if (ci) { el('craveInput').value = ci.dataset.craveit; try { el('craveInput').select(); } catch {} }
-  const hc = t.closest('[data-crave]'); if (hc) { const ci2 = el('craveInput'); ci2.value = hc.dataset.crave; setTimeout(() => { try { ci2.focus({ preventScroll: true }); ci2.select(); } catch {} }, 60); } /* selected, so typing replaces the chip text instead of appending */
+  const hc = t.closest('[data-crave]'); if (hc) { e.preventDefault(); el('craveInput').value = hc.dataset.crave; return crave(hc.dataset.crave); } /* popular chip = run the comparison at once */ /* selected, so typing replaces the chip text instead of appending */
   if (t.closest('#craveGo')) return crave(el('craveInput').value);
+  const cr2 = t.closest('#craveRetry'); if (cr2) return crave(cr2.dataset.text);
   const d = t.closest('[data-gdone]'); if (d) { const g = glist[+d.dataset.gdone]; g.done = !g.done; LS.set('glist', glist); return renderList(); }
   const q = t.closest('[data-gq]'); if (q) { const g = glist[+q.dataset.gq]; g.qty = Math.max(0, g.qty + +q.dataset.d); LS.set('glist', glist); return renderList(); }
   if (t.closest('#listAddBtn')) { addToList(el('listAdd').value, 'manual', 0); el('listAdd').value = ''; return; }
@@ -527,6 +537,7 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('input', e => { if (e.target.id === 'dietOther') { diet.other = e.target.value; saveDiet(); } else if (e.target.id === 'dietMood') { diet.mood = e.target.value; saveDiet(); } });
 el('listAdd').addEventListener('keydown', e => { if (e.key === 'Enter') el('listAddBtn').click(); });
+el('craveInput').addEventListener('focus', e => { const i = e.target; setTimeout(() => { try { i.select(); } catch {} }, 0); }); /* new typing replaces the old craving instead of appending (sushipizza) */
 el('craveInput').addEventListener('keydown', e => { if (e.key === 'Enter') crave(el('craveInput').value); });
 ['snapCam', 'snapLib'].forEach(id => el(id).addEventListener('change', e => { onPhotos(e.target.files); e.target.value = ''; }));
 
@@ -562,11 +573,11 @@ function popular() {
 setTimeout(popular, 600);
 if (!new URLSearchParams(location.search).get('country')) { let g = null; try { g = sessionStorage.getItem('sc.geo'); } catch {} if (!g) fetch('/api/geo').then(r => r.json()).then(j => { if (j.country) { try { sessionStorage.setItem('sc.geo', j.country); } catch {} const before = HOLI.cur?.id; applyHoliday(); if (HOLI.cur?.id !== before) route(); } }).catch(() => {}); } setTimeout(cleanGlist, 2500);
 /* INSTALL */
-const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const standalone = () => ['standalone', 'fullscreen', 'minimal-ui'].some(m => matchMedia(`(display-mode: ${m})`).matches) || navigator.standalone === true;
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 let deferredInstall = null;
 // Android app (TWA from Play): already installed, so never offer Install. Same check as grow.js isTWA; safe in any load order.
-const inTWA = () => { try { if (document.referrer.startsWith('android-app://app.snapcravings.twa')) LS.set('twa', 1); } catch {} try { return !!LS.get('twa', 0) || (typeof inPlay === 'function' && inPlay()) || (typeof window.isTWA === 'function' && !!window.isTWA()); } catch { return false; } };
+const inTWA = () => { try { if (document.referrer.startsWith('android-app://app.snapcravings.twa')) LS.set('twa', 1); } catch {} try { if ('getDigitalGoodsService' in window) LS.set('twa', 1); /* only the Play TWA exposes Digital Goods; works at any screen size, no referrer needed */ return !!LS.get('twa', 0) || (typeof inPlay === 'function' && inPlay()) || (typeof window.isTWA === 'function' && !!window.isTWA()); } catch { return false; } };
 function showInstall(sub, btn) { const c = el('installCard'); if (!c) return; if (standalone() || inTWA()) { c.hidden = true; c.style.display = 'none'; return; } c.hidden = false; c.style.display = 'flex'; if (sub) el('installSub').textContent = t(sub); el('installBtn').style.display = btn === false ? 'none' : ''; }
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; showInstall(null, true); });
 window.addEventListener('appinstalled', () => { track('install', 'home'); deferredInstall = null; el('installCard').style.display = 'none'; toast(t('Installed! Find SnapCravings on your home screen.')); });
