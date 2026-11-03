@@ -53,7 +53,7 @@ test('new copy exists in all 9 non-English languages with US$ amounts and placeh
 test('holiday planner off-season names the next holiday for the country', () => {
   const H = globalThis.SC_HOLIDAY; const n = H.next(new Date(2026, 0, 20), 'US'); assert.equal(n.id, 'valentines'); assert.equal(n.day.getDate(), 14);
   assert.equal(H.next(new Date(2026, 0, 20), 'IN').id, 'holi');
-  const s = rd('web/hplan.js'); assert.match(s, /SC_HOLIDAY\.next\(/); assert.match(s, /Back to recipes/);
+  const s = rd('web/hplan.js'); assert.match(s, /\.upcoming\(/); /* planner works any time now (feat.test.mjs) */
 });
 test('privacy policy lists every AI processor, hashed IP, country and free-tier retention; Play data safety doc exists', () => {
   const p = rd('web/privacy.html');

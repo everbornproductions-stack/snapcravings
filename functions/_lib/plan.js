@@ -29,7 +29,7 @@ export function planInput(b, { pro = false } = {}) {
   const meals = SLOTS[b.meals] ? b.meals : 'dinner';
   const servings = clampInt(b.servings, 1, 8, 2);
   const budget = Number(b.budget) > 0 ? Math.min(10000000, Math.round(Number(b.budget))) /* local currency (IDR/INR budgets are big numbers) */ : 0;
-  const diet = dietOf(b.prefs);
+  const diet = dietOf({ ...(b.prefs || {}), serves: 0 }); // servings come from the planner's own setting
   const fridge = (Array.isArray(b.fridge) ? b.fridge : []).map(s => String(s).slice(0, 60).trim()).filter(Boolean).slice(0, 60).filter(x => !bad(diet, x));
   const GOALS = ['high_protein', 'cut', 'bulk', 'maintain', 'low_carb'];
   const f = b.fit && typeof b.fit === 'object' ? b.fit : {};

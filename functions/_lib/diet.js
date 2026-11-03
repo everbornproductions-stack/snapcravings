@@ -3,7 +3,7 @@
 // text contains a banned term, looking at ingredient names, missing items, the recipe name AND the steps (optional garnishes).
 // The check works per PHRASE (text split on commas, "and", "with", "or"), so "gluten-free pasta" passes but
 // "cheese and rice" does not borrow the safe word "rice" from the other half.
-export const DIET_TAGS = ['Gluten-free', 'Dairy-free', 'Vegetarian', 'Vegan', 'Nut allergy', 'Shellfish allergy', 'Egg-free', 'Soy allergy', 'Keto/low-carb', 'Halal'];
+export const DIET_TAGS = ['Gluten-free', 'Dairy-free', 'Vegetarian', 'Vegan', 'Nut allergy', 'Shellfish allergy', 'Egg-free', 'Soy allergy', 'Keto/low-carb', 'Low-carb', 'Diabetic-friendly', 'Halal'];
 const HIDDEN = 'Hidden sources count: soy sauce (wheat AND soy), teriyaki/hoisin/ponzu/stir-fry sauce (soy, wheat), pesto (pine nuts, parmesan), Worcestershire (anchovies, sometimes malt), Caesar dressing (anchovies, egg), oyster sauce (shellfish), store broth and bouillon (may hold meat, gluten, dairy, soy), mayo (egg), breadcrumbs and panko (wheat), curry pastes (shrimp paste), kimchi (fish sauce), marinades and seasoning blends.';
 export const NOTE = {
   'Gluten-free': 'GLUTEN-FREE (treat like celiac). ONLY gluten-free dishes: no wheat, flour, bread, breadcrumbs, panko, regular pasta or noodles, couscous, barley, rye, spelt, semolina, regular oats, soy sauce, teriyaki, hoisin, beer, malt, batter or crackers. Use named swaps such as gluten-free pasta, rice noodles, corn tortillas, gluten-free tamari, cornstarch or rice flour.',
@@ -15,6 +15,8 @@ export const NOTE = {
   'Egg-free': 'EGG-FREE. ONLY egg-free dishes: no eggs, yolks, whites, mayonnaise, aioli, meringue, custard, hollandaise, egg noodles, batter or egg wash, brioche, pancakes, cakes. Use egg-free swaps and name them as such.',
   'Soy allergy': 'SOY ALLERGY - a safety rule. Completely cut out: soy sauce, tamari, shoyu, tofu, tempeh, edamame, miso, natto, soy milk, soy lecithin, textured vegetable protein, teriyaki, hoisin, ponzu, stir-fry sauces, soybean oil and anything made with soy. Never as an ingredient, garnish, "optional" topping or in the steps. Use salt, coconut aminos or a soy-free marinade instead.',
   'Keto/low-carb': 'KETO / LOW-CARB. ONLY low-carb dishes: keep each serving under about 10 g net carbs. No sugar, honey, syrup, flour, bread, pasta, noodles, rice, potatoes, corn, oats, beans, lentils, chickpeas, sweet sauces (ketchup, BBQ, teriyaki, hoisin), banana, mango or grapes. Lean on meat, fish, eggs, cheese, leafy greens, cauliflower, zucchini, avocado and healthy fats; swap in cauliflower rice or zucchini noodles and name them.',
+  'Low-carb': 'LOW-CARB (moderate, not keto). Keep each serving under about 30 g carbs. No sugar-sweetened drinks, candy or sugary desserts, white bread, regular pasta or big portions of rice or potatoes. Build on non-starchy vegetables, lean protein, eggs, dairy, healthy fats and SMALL portions of whole grains, beans or lentils. Fill carbs_g honestly per serving and list the lowest-carb recipe first.',
+  'Diabetic-friendly': 'DIABETIC-FRIENDLY (low glycemic). Keep each serving at about 45 g carbs or less, from low-glycemic sources: non-starchy vegetables, beans, lentils, intact whole grains (steel-cut oats, barley, quinoa, brown rice in small portions), lean protein and healthy fats, with fiber in every meal. No sugary drinks at all (soda, juice, sweet tea, lemonade, sweetened coffee drinks, juice smoothies; offer water, sparkling water, unsweetened tea or coffee instead), no added sugar, honey, syrup or candy, no white bread, refined-flour sweets or large portions of white rice or potatoes. Desserts only if naturally low in sugar (berries, unsweetened yogurt, a little dark chocolate). Fill carbs_g honestly per serving and list the lowest-carb recipe first.',
   'Halal': 'HALAL. ONLY halal dishes: no pork or pork products (bacon, ham, lard, gelatin, pepperoni, sausage unless halal), and no alcohol (wine, beer, spirits, mirin, sake, cooking wine) in any dish. Name meat as halal (for example "halal chicken").'
 };
 // Each rule: [risky, safe, strip]. `strip` removes known-safe compounds first (so "butternut squash" cannot hide "peanut" in the same
@@ -52,13 +54,16 @@ const ES = {
   HALAL: [W('cerdo|puerco|tocino|jamon|manteca de cerdo|manteca|gelatina|salchichas?|longaniza|carnitas|chicharron|vino|vinos|cerveza|ron|tequila|mezcal|licor|alcohol|brandy|jerez|al pastor|cochinita'), /halal|sin alcohol/i, /vinagre de (?:vino|manzana|arroz)|(?:salchichas?|chorizo|jamon|tocino) de (?:pollo|pavo|res|cordero)|extracto de vainilla/gi]
 };
 // Pair each English rule with its Spanish twin so safe labels and safe compounds work in both languages
+// Low-carb / diabetic-friendly: sugary drinks and added sugars are hard rules (portions of grains are left to the prompt + carbs_g).
+const SWEET = [/\b(sodas?|soft drinks?|cola|lemonade|sweet tea|fruit juices?|orange juice|apple juice|grape juice|juices?|fruit punch|milkshakes?|frappuccinos?|energy drinks?|sports drinks?|sugar|brown sugar|powdered sugar|icing sugar|cane sugar|corn syrup|maple syrup|golden syrup|syrups?|honey|agave|molasses|candy|candies|marshmallows?|frosting|icing|sweetened condensed milk|caramel|jam|jelly|white bread)\b/i, /sugar[- ]?free|no[- ]sugar|unsweetened|zero[- ]sugar|\bdiet\b|stevia|monk ?fruit|erythritol|allulose/i, /sugar snap peas?|sugar pumpkins?|(?:lemon|lime|yuzu) juices?|juice of (?:a |half a |\d )?(?:lemon|lime)s?|pan juices|meat juices|cooking juices|juices? (?:from|of) the (?:pan|roast|meat)/gi];
+const SWEET_ES = [/\b(refrescos?|gaseosas?|sodas?|jugos?|zumos?|limonadas?|te dulce|batidos?|bebidas energeticas|azucar|azucar morena|piloncillo|jarabes?|almibar|miel|dulces|caramelo|cajeta|mermelada|leche condensada|pan blanco)\b/i, /sin azucar|sin endulzar|stevia|eritritol/i, /jugo de (?:limon|lima)|zumo de (?:limon|lima)/gi];
 // ("tortillas de maiz" clears the English "tortillas"; "gluten-free" clears the Spanish "pasta").
 const orRe = (a, b, f) => a && b ? new RegExp(a.source + '|' + b.source, f) : (a || b);
 const pair = (en, es) => [[en[0], orRe(en[1], es[1], 'i'), orRe(en[2], es[2], 'gi')], [es[0], orRe(es[1], en[1], 'i'), orRe(es[2], en[2], 'gi')]];
 export const RULES = {
   'Gluten-free': pair(GLUTEN, ES.GLUTEN), 'Dairy-free': pair(DAIRY, ES.DAIRY), 'Vegetarian': [...pair(MEAT, ES.MEAT), ...pair(MEAT2, ES.MEAT2)],
   'Vegan': [...pair(MEAT, ES.MEAT), ...pair(MEAT2, ES.MEAT2), ...pair(DAIRY, ES.DAIRY), ...pair(EGG, ES.EGG), ...pair([/\b(honey|beeswax|royal jelly)\b/i, /vegan|agave|maple/i, null], ES.HONEY)],
-  'Nut allergy': pair(NUT, ES.NUT), 'Shellfish allergy': pair(SHELL, ES.SHELL), 'Egg-free': pair(EGG, ES.EGG), 'Soy allergy': pair(SOY, ES.SOY), 'Keto/low-carb': pair(KETO, ES.KETO), 'Halal': pair(HALAL, ES.HALAL)
+  'Nut allergy': pair(NUT, ES.NUT), 'Shellfish allergy': pair(SHELL, ES.SHELL), 'Egg-free': pair(EGG, ES.EGG), 'Soy allergy': pair(SOY, ES.SOY), 'Keto/low-carb': pair(KETO, ES.KETO), 'Low-carb': pair(SWEET, SWEET_ES), 'Diabetic-friendly': pair(SWEET, SWEET_ES), 'Halal': pair(HALAL, ES.HALAL)
 };
 const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const SPLIT = /[,;\/&+]|\s(?:and|with|or|plus|over|on top of|y|con|o|u|mas|sobre|encima de)\s/;
@@ -79,7 +84,8 @@ export function dietOf(p) {
     if (m) { const w = m[1].trim(); if (w.length > 2 && !/^(allerg\w*|alergi\w*|foods?|anything|nothing|none|n\/a|na|other|nada|ninguna?|otros?|comida)$/.test(w)) terms.push(w); }
   }
   if (terms.length) rules.push([new RegExp('\\b(' + terms.map(t => escRe(t.replace(/(es|s)$/, '')) + '(?:es|s)?').join('|') + ')\\b', 'i'), /\b[a-z]*-?free\b|\bsin [a-z]+/i, null]);
-  return { tags, other, mood, rules, terms, active: !!(tags.length || other || mood), hard: !!(tags.length || terms.length) };
+  const sv = Math.round(Number(p.serves)), serves = Number.isFinite(sv) && sv >= 1 ? Math.min(12, sv) : 0; // household size (0 = not set)
+  return { tags, other, mood, rules, terms, serves, active: !!(tags.length || other || mood || serves), hard: !!(tags.length || terms.length) };
 }
 
 // Terms in `text` that break the user's rules (empty list = fine). Per phrase, so a safe word only excuses its own phrase.
@@ -123,9 +129,12 @@ export function dietPrompt(d) {
     out.push(HIDDEN);
     out.push('Check every ingredient and every step of every recipe against these rules before answering, including sauces, stocks, seasoning blends, condiments, garnishes and "to taste" or "optional" extras. Where a dish normally uses a forbidden ingredient, swap in a compliant one AND name the swap in the ingredient name (for example "gluten-free pasta", "rice noodles", "dairy-free butter"). Any on-hand pantry item that breaks a rule is NOT available: do not use it. A dish that cannot be made to fit must be replaced by a different dish, even if it matches the craving.');
   }
+  if (d.tags.some(t => t === 'Low-carb' || t === 'Diabetic-friendly' || t === 'Keto/low-carb')) out.push('Rank by carbs: put the recipe with the fewest carbs per serving first, and keep carbs_g accurate.');
+  if (d.serves) out.push(d.serves === 1 ? 'HOUSEHOLD: cooking for ONE person. Every recipe makes 1 serving (servings = 1) with amounts scaled down to one person. If a dish only works in a bigger batch, make 2 servings and end the steps with how to store and reheat the second one for tomorrow (cook once, eat twice).'
+    : `HOUSEHOLD: cooking for ${d.serves} people. Every recipe makes ${d.serves} servings (servings = ${d.serves}) with ingredient amounts scaled to that.`);
   if (d.mood) out.push(`Foods the user is in the mood for (cuisines or styles, favor these when they fit; never at the expense of the rules above): "${d.mood}".`);
   return out.join('\n');
 }
-export const staplesFor = (d, STAPLES) => STAPLES.split(', ').filter(s => !(s === 'flour' && d.tags.some(t => ['Gluten-free', 'Keto/low-carb'].includes(t))) && !(s === 'butter' && d.tags.some(t => ['Dairy-free', 'Vegan'].includes(t))) && !(s === 'sugar' && d.tags.includes('Keto/low-carb'))).join(', ');
+export const staplesFor = (d, STAPLES) => STAPLES.split(', ').filter(s => !(s === 'flour' && d.tags.some(t => ['Gluten-free', 'Keto/low-carb'].includes(t))) && !(s === 'butter' && d.tags.some(t => ['Dairy-free', 'Vegan'].includes(t))) && !(s === 'sugar' && d.tags.some(t => ['Keto/low-carb', 'Low-carb', 'Diabetic-friendly'].includes(t)))).join(', ');
 // Scan results: mark items that break the user's rules (client skips them in recipes and the restock list).
 export const flagScan = (d, diet) => diet.hard ? { ...d, ingredients: (d.ingredients || []).map(i => bad(diet, i.name || '') || bad(diet, i.en || '') ? { ...i, conflict: true } : i) } : d;

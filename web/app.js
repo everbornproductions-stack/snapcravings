@@ -231,11 +231,11 @@ async function shrink(file) {
 const loading = (msg) => `<div class="card" style="text-align:center;padding:26px"><span class="spin"></span><div style="margin-top:10px;font-weight:700">${esc(t(msg))}</div></div>`;
 
 /* MY DIET + SETTINGS */
-const DIET_TAGS = ['Gluten-free', 'Dairy-free', 'Vegetarian', 'Vegan', 'Nut allergy', 'Shellfish allergy', 'Egg-free', 'Soy allergy', 'Keto/low-carb', 'Halal'];
+const DIET_TAGS = ['Gluten-free', 'Dairy-free', 'Vegetarian', 'Vegan', 'Nut allergy', 'Shellfish allergy', 'Egg-free', 'Soy allergy', 'Keto/low-carb', 'Low-carb', 'Diabetic-friendly', 'Halal'];
 const MOODS = ['Mexican', 'Asian', 'Italian', 'Southern', 'Comfort food', 'Mediterranean', 'Indian', 'Quick 15-min', 'High-protein', 'Budget', 'Kid-friendly'];
 let diet = Object.assign({ tags: [], other: '', mood: '' }, LS.get('diet', {}));
 const dietOn = () => !!(diet.tags.length || diet.other.trim() || diet.mood.trim());
-const prefs = () => ({ tags: diet.tags, other: diet.other.trim(), mood: diet.mood.trim() });
+const prefs = () => ({ tags: diet.tags, other: diet.other.trim(), mood: diet.mood.trim(), serves: LS.get('household', 0) || undefined }); /* serves = household size (web/feat.js) */
 const dietLine = () => [...diet.tags.map(x => t(x)), diet.other.trim()].filter(Boolean).join(', ');
 function renderDietCount() { if (el('dietCount')) el('dietCount').textContent = dietOn() ? (dietLine() || t('Mood: ') + diet.mood.trim()) : t('Gluten-free, vegan, allergies and more'); }
 function saveDiet() { // changing the diet makes old recipes stale (they may not fit), so clear them

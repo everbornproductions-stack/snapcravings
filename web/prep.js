@@ -29,6 +29,7 @@
     hi: 'फ्रिज स्कैन नहीं है, इसलिए यह प्लान आपकी पसंद और खरीदी जाने वाली चीज़ों से बना है, आपके फ्रिज से नहीं।', ar: 'لا يوجد مسح للثلاجة، لذا الخطة مبنية على تفضيلاتك ومشتريات ستشتريها، وليس على ثلاجتك.' };
   const noFridge = () => esc(NOFR[I18N.lang] || NOFR.en);
   const opts = Object.assign({ goal: '', kcal: '', p: '', c: '', f: '', wt: '', days: 7, meals: 'dinner', servings: 2, budget: '', fridge: true }, LS.get('prepOpts', {}));
+  if (!LS.get('prepOpts', {}).servings && LS.get('household', 0)) opts.servings = Math.min(8, LS.get('household', 0)); window.PREP_OPTS = opts; /* household default (web/feat.js) */
   let plan = LS.get('plan', null), busy = false;
   const save = () => { LS.set('prepOpts', opts); };
   const seg = (k, list) => `<div class="seg">${list.map(([v, l]) => `<button data-po="${k}" data-v="${v}" class="${String(opts[k]) === String(v) ? 'on' : ''}">${esc(t(l))}</button>`).join('')}</div>`;

@@ -16,10 +16,11 @@ export const unitsFor = c => ['US', 'LR', 'MM'].includes(c) ? 'US units (lb, oz,
 const clamp = (v, lo, hi, d) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
 export function hpInput(b = {}) {
   const S = globalThis.SC_HOLIDAY; b = b && typeof b === 'object' ? b : {};
-  const holiday = S.H[b.holiday] ? b.holiday : null, country = /^[A-Z]{2}$/.test(String(b.country || '').toUpperCase()) ? String(b.country).toUpperCase() : 'US';
+  const country = /^[A-Z]{2}$/.test(String(b.country || '').toUpperCase()) ? String(b.country).toUpperCase() : 'US';
+  const holiday = S.H[b.holiday] && S.setFor(country).includes(b.holiday) ? b.holiday : null; // each country plans only its own holidays
   const time = /^([01]\d|2[0-3]):00$/.test(b.time) ? b.time : '18:00';
   const fridge = (Array.isArray(b.fridge) ? b.fridge : []).map(x => String(x).slice(0, 60)).filter(Boolean).slice(0, 60);
-  return { holiday, country, guests: clamp(b.guests, 2, 30, 8), time, fridge, diet: dietOf(b.prefs) };
+  return { holiday, country, guests: clamp(b.guests, 1, 30, 8), time, fridge, diet: dietOf({ ...(b.prefs || {}), serves: 0 }) };
 }
 export function menuPrompt(p, lang) {
   const h = globalThis.SC_HOLIDAY.info(p.holiday, 'en');
