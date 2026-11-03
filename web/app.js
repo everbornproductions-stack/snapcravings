@@ -99,7 +99,32 @@ function renderFavs() {
   el('favsBody').innerHTML = favs.length ? favs.map((r, i) => `<div class="card recipe"><a href="#recipe" data-rec="fav:${i}" style="display:flex;gap:12px;align-items:center;flex:1;color:inherit;text-decoration:none"><div class="thumb" style="background:${THUMBS[i % 4]}">${esc(r.emoji || '🍳')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${t('{n} min · {s} servings', { n: esc(r.minutes), s: esc(r.servings) })}</div>${(r.missing || []).length ? `<span class="pill c">${t('Missing {n}: {items}', { n: r.missing.length, items: esc(r.missing.map(m => m.item).join(', ')) })}</span>` : `<span class="pill g">${t('Pantry power! You have everything')}</span>`}</div></a>${heart('fav:' + i, r)}</div>`).join('')
     : `<div class="card" style="text-align:center;padding:22px"><div style="font-size:30px">♡</div><b>${t('No favorites yet')}</b><p class="sub" style="font-size:13px;margin-top:4px">${t('Tap ♡ on any recipe and it lands here.')}</p><a class="btn primary" href="#scan">${t('📸 Snap it')}</a></div>`;
 }
-const CRAVINGS = ['Anything', 'Noodles', 'Something quick', 'Comfort food', 'Spicy'];
+const CRAVINGS_BASE = ['Anything', 'Noodles', 'Something quick', 'Comfort food', 'Spicy'];
+/* HOLIDAY MODE (web/holiday.js): ~7 days before a country's major holiday through the day itself. Accent colors,
+   a header emoji, a small home banner and a 'Holiday foods' craving chip (craving 'holiday:<id>'). Dev: ?holiday=<id>&country=XX */
+const HOLI = { cur: null, country: '' };
+function holidayNow() {
+  const S = window.SC_HOLIDAY; if (!S) return null; const q = new URLSearchParams(location.search);
+  const qc = (q.get('country') || '').toUpperCase().slice(0, 2); let geo = ''; try { geo = sessionStorage.getItem('sc.geo') || ''; } catch {}
+  HOLI.country = qc || geo || S.countryFromLocale((navigator.languages || [])[0] || navigator.language, I18N.lang);
+  const force = (q.get('holiday') || '').toLowerCase(); if (force === 'off' || force === 'none') return null;
+  return S.H[force] ? { id: force } : S.active(new Date(), HOLI.country);
+}
+const holInfo = () => HOLI.cur && window.SC_HOLIDAY.info(HOLI.cur.id, I18N.lang);
+const cravLabel = c => { const h = window.SC_HOLIDAY; return h && h.isHoliday(c) ? (h.info(c.slice(8), I18N.lang).emoji + ' ' + h.info(c.slice(8), I18N.lang).name) : t(c); };
+function applyHoliday() {
+  HOLI.cur = holidayNow(); const h = holInfo(), r = document.documentElement.style, brand = document.querySelector('#home .brand b');
+  if (h) { r.setProperty('--coral', h.accent); r.setProperty('--coral-soft', h.soft); } else { r.removeProperty('--coral'); r.removeProperty('--coral-soft'); }
+  document.documentElement.toggleAttribute('data-holiday', !!h); if (h) document.documentElement.dataset.holiday = h.id;
+  let tag = document.getElementById('holEmoji'); if (brand && !tag) { tag = document.createElement('span'); tag.id = 'holEmoji'; tag.style.marginLeft = '6px'; brand.after(tag); }
+  if (tag) tag.textContent = h ? h.emoji : '';
+  let ban = document.getElementById('holBanner'); const kick = document.querySelector('#home .kick');
+  if (h && !ban && kick) { ban = document.createElement('a'); ban.id = 'holBanner'; ban.className = 'card'; ban.href = '#scan'; ban.style.cssText = 'display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);background:var(--coral-soft);border-color:var(--coral);margin:0 0 12px'; kick.before(ban); }
+  if (ban) { ban.hidden = !h; ban.style.display = h ? 'flex' : 'none'; if (h) ban.innerHTML = `<div style="font-size:22px">${h.emoji}</div><div style="flex:1;font-size:13px"><b>${esc(h.ui[1].replace('{h}', h.name))}</b><br><span class="sub" style="font-size:12px">${esc(h.ui[2].replace('{h}', h.name))}</span></div><span>›</span>`; }
+  if (!h && window.SC_HOLIDAY?.isHoliday(state.craving)) state.craving = 'Anything';
+}
+Object.defineProperty(window, 'CRAVINGS_LIST', { get: () => HOLI.cur ? ['holiday:' + HOLI.cur.id, ...CRAVINGS_BASE] : CRAVINGS_BASE });
+
 const MAX_PHOTOS = 10;
 const STEPS = [
   { area: 'fridge', kick: 'Your fridge has ideas!', h: 'Snap your fridge', d: 'Open it wide. Every shelf counts!' },
@@ -279,7 +304,7 @@ function renderScan() {
   const n = state.ingredients.length;
   if (rs) rs.innerHTML = `<button class="chip" data-rescan aria-label="${t('🔄 Start over with new photos')}" title="${t('🔄 Start over with new photos')}" style="cursor:pointer;margin:0;white-space:nowrap">${t('🔄 Start over')}</button>`;
   el('scanBody').innerHTML = `<h3 style="margin-top:6px">${t('What are you craving?')}</h3>
-    <div class="chips">${CRAVINGS.map(c => `<span class="chip" data-cr="${esc(c)}" style="cursor:pointer;${c === state.craving ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : ''}">${esc(t(c))}</span>`).join('')}</div>
+    <div class="chips">${CRAVINGS_LIST.map(c => { const hc = c.startsWith('holiday:'); return `<span class="chip" data-cr="${esc(c)}" style="cursor:pointer;${c === state.craving ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : hc ? 'background:var(--coral);color:#fff;border-color:var(--coral)' : ''}">${esc(hc ? holInfo().emoji + ' ' + holInfo().ui[0] : t(c))}</span>`; }).join('')}</div>
     <button class="btn primary" id="goRecipes" ${n ? '' : 'disabled style="opacity:.5"'}>${t("Let's get cooking! Show recipes →")}</button>
     <div style="height:14px"></div>
     <div class="kick">${t('Fridge to fabulous!')}</div>
@@ -333,7 +358,7 @@ function renderRecipes() {
   if (!R) { el('recipesBody').innerHTML = `<div class="kick">${t('Craving unlocked!')}</div><h2>${t('No recipes yet')}</h2><p class="sub">${t("Snap your fridge first and we'll match recipes to what you have.")}</p><a class="btn primary" href="#scan">${t('📸 Snap it')}</a>`; return; }
   const ready = (R.ready || []).map((r, i) => `<a class="card recipe" href="#recipe" data-rec="ready:${i}"><div class="thumb" style="background:${THUMBS[i % 4]}">${esc(r.emoji || '🍳')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${t('{n} min · {s} servings', { n: esc(r.minutes), s: esc(r.servings) })}</div><span class="pill g">${t('Pantry power! You have everything')}</span>${LEVEL_PILL(r.level)}</div>${heart('ready:' + i, r)}</a>`).join('') || (state.recipesLoading ? loading('Cooking up ideas…') : `<p class="sub">${t('Nothing makes the cut with only what you have. Check the ideas below!')}</p>`);
   const more = (R.more || []).map((r, i) => `<div class="card recipe"><a href="#recipe" data-rec="more:${i}" style="display:flex;gap:12px;align-items:center;flex:1;color:inherit;text-decoration:none"><div class="thumb" style="background:${THUMBS[(i + 1) % 4]}">${esc(r.emoji || '🍜')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${t('{n} min · {s} servings', { n: esc(r.minutes), s: esc(r.servings) })}</div><span class="pill c">${t('Missing {n}: {items}', { n: r.missing.length, items: esc(r.missing.map(m => m.item).join(', ')) })}</span>${LEVEL_PILL(r.level)}</div></a><span style="display:flex;flex-direction:column;align-items:center;gap:4px">${heart('more:' + i, r)}<a class="chip" href="#list" data-addmiss="more:${i}" style="white-space:nowrap">${t('🛒 + List')}</a></span></div>`).join('');
-  el('recipesBody').innerHTML = `<div class="kick">${t('Craving unlocked!')}</div><h2>${t('Matched to “{c}”', { c: esc(t(R.craving || state.craving)) })}</h2>${dietOn() && dietLine() ? `<p class="fine" style="margin-top:2px">${t('🥗 Cooking for: {d} · ', { d: esc(dietLine()) })}<a href="#settings" style="color:var(--coral);font-weight:700">${t('Change')}</a></p>` : ''}
+  el('recipesBody').innerHTML = `<div class="kick">${t('Craving unlocked!')}</div><h2>${t('Matched to “{c}”', { c: esc(cravLabel(R.craving || state.craving)) })}</h2>${dietOn() && dietLine() ? `<p class="fine" style="margin-top:2px">${t('🥗 Cooking for: {d} · ', { d: esc(dietLine()) })}<a href="#settings" style="color:var(--coral);font-weight:700">${t('Change')}</a></p>` : ''}
     <h3>${t("Ready now: let's get cooking!")}</h3><p class="sub">${t('You already have everything for these. Pantry power!')}</p><div style="height:8px"></div>${ready}
     ${more || state.recipesLoading ? `<h3>${t('Make it with a few more things')}</h3><p class="sub">${t('Just a few items away. Add them to your grocery list and restock time is done!')}</p><div style="height:8px"></div>${more || loading('Cooking up ideas…')}${state.recipesLoading ? '' : `<a class="btn ghost" href="#list" data-addmiss="all">${t('🛒 Restock time! Build my grocery list')}</a>`}` : ''}
     <button class="btn primary" id="moreIdeas" ${state.moreBusy || state.recipesLoading ? 'disabled style="opacity:.7"' : ''}>${state.moreBusy ? '<span class="spin" style="border-top-color:#fff"></span> ' + t('Cooking up more…') : t('Hungry for more? Tap for more ideas!')}</button>`;
@@ -487,9 +512,10 @@ function route() {
 }
 window.addEventListener('hashchange', () => { route(); const a = document.querySelector('.screen.active'); a.classList.remove('anim'); void a.offsetWidth; a.classList.add('anim'); });
 function setLang(l) { if (l === I18N.lang) return; I18N.load(l, () => setLang2(l)); }
-function setLang2(l) { I18N.set(l); I18N.applyStatic(document.querySelector('.phone')); renderLeft(); renderPro(); renderFavCount(); renderDietCount(); route(); toast(I18N.t('Done: the app is in English.'), 1800); }
-I18N.applyStatic(document.querySelector('.phone')); renderLeft();
-route(); setTimeout(cleanGlist, 2500);
+function setLang2(l) { I18N.set(l); I18N.applyStatic(document.querySelector('.phone')); renderLeft(); renderPro(); renderFavCount(); renderDietCount(); applyHoliday(); route(); toast(I18N.t('Done: the app is in English.'), 1800); }
+I18N.applyStatic(document.querySelector('.phone')); renderLeft(); applyHoliday();
+route();
+if (!new URLSearchParams(location.search).get('country')) { let g = null; try { g = sessionStorage.getItem('sc.geo'); } catch {} if (!g) fetch('/api/geo').then(r => r.json()).then(j => { if (j.country) { try { sessionStorage.setItem('sc.geo', j.country); } catch {} const before = HOLI.cur?.id; applyHoliday(); if (HOLI.cur?.id !== before) route(); } }).catch(() => {}); } setTimeout(cleanGlist, 2500);
 /* INSTALL */
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);

@@ -3,6 +3,7 @@
 // GET /api/health. Set MOCK_AI=1 (local only) to return canned results without a key.
 import { libFind, libSave, libCount, libStats, pick as libPick, prefKey as libPrefKey } from '../_lib/recipelib.js';
 import { verifyToken, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
+import '../../web/holiday.js'; // sets globalThis.SC_HOLIDAY (holiday mode, shared with the web app)
 import { INTL, langCode, intlNote, intlScanNote } from '../_lib/lang.js';
 import { dietOf, dietPrompt, bad, hits, recipeBad, recipeHits, flagScan, staplesFor as dietStaples } from '../_lib/diet.js';
 const FREE_SCANS_PER_WEEK = 3; const IP_SCANS_PER_WEEK = 30;
@@ -269,6 +270,7 @@ export async function onRequest(ctx) {
 async function handle({ request, env, params, waitUntil }) { // env may be wrapped below for the fallback test hook
   const route = (params.path || [])[0];
   if (route === 'health') return json({ ok: true, library: await Promise.race([libStats(env).catch(() => null), new Promise(r => setTimeout(() => r({ timeout: true }), 2500))]), model: env.GEMINI_MODEL || MODEL, ai: !!env.GEMINI_API_KEY || env.MOCK_AI === '1' ? 'ready' : 'missing GEMINI_API_KEY' });
+  if (route === 'geo') return json({ country: String(request.cf?.country || '').toUpperCase().slice(0, 2) || null }); // holiday mode: country from Cloudflare
   if (route === 'dietcheck' && request.method === 'POST') { // no AI: which of these names break the user's diet (used to clean the grocery list)
     let b = {}; try { b = await request.json(); } catch {}
     const d = dietOf(b.prefs); const items = clean(b.items, 200);
@@ -313,7 +315,10 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
     const ask = section === 'ready'
       ? 'Use ONLY on-hand items plus staples: missing is empty and every ingredient has have=true.' + (diet.hard ? ' Diet swaps must also come from on-hand items or staples, else pick another dish.' : '')
       : 'Each needs 1 to 4 extra items: list them in missing (est_price = rough US price in USD for the smallest package) and mark them have=false.';
-    parts = [{ text: `On hand ([spice] = spices the user owns, use them for flavor): ${ing.join('; ')}.\nStaples: ${staplesFor(diet)}.\nCraving: ${craving}.\n${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}Give exactly 5 clearly different recipes, 2 servings unless the dish needs more, in this order: 1 Easy (max 8 ingredients, 5 short steps), 1 Medium (max 10 ingredients, 7 steps), 1 Chef mode showstopper built around ${section === 'more' ? 'a special ingredient from missing (premium protein, seafood or specialty item, not chicken)' : 'an on-hand protein or vegetable'} (layered flavors, a pan sauce, glaze, marinade or crispy element, plating tip in the last step; max 14 ingredients, 10 steps), then 2 more (Easy, Medium or a 2nd Chef mode). ${ask} Use a handful of on-hand items per recipe. Steps are one or two sentences. One food emoji each.${avoid.length ? ' Do NOT repeat or closely copy these already-shown recipes; use different main ingredients and techniques: ' + avoid.join('; ') + '.' : ''}${LN}` }];
+    // Holiday mode: craving 'holiday:<id>' (keeps cache + library buckets separate from normal cravings).
+    const HOL = globalThis.SC_HOLIDAY, hol = HOL.isHoliday(craving) ? HOL.info(craving.slice(8), 'en') : null;
+    const holNote = hol ? `HOLIDAY MODE: all 5 recipes are festive ${hol.nameEn} dishes. Mix classic ${hol.nameEn} dishes (${hol.dishes}) adapted to what is on hand with creative holiday-themed dishes from the on-hand items. Put the holiday feel in the names.\n` : '';
+    parts = [{ text: `On hand ([spice] = spices the user owns, use them for flavor): ${ing.join('; ')}.\nStaples: ${staplesFor(diet)}.\nCraving: ${hol ? hol.nameEn + ' holiday food' : craving}.\n${holNote}${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}Give exactly 5 clearly different recipes, 2 servings unless the dish needs more, in this order: 1 Easy (max 8 ingredients, 5 short steps), 1 Medium (max 10 ingredients, 7 steps), 1 Chef mode showstopper built around ${section === 'more' ? 'a special ingredient from missing (premium protein, seafood or specialty item, not chicken)' : 'an on-hand protein or vegetable'} (layered flavors, a pan sauce, glaze, marinade or crispy element, plating tip in the last step; max 14 ingredients, 10 steps), then 2 more (Easy, Medium or a 2nd Chef mode). ${ask} Use a handful of on-hand items per recipe. Steps are one or two sentences. One food emoji each.${avoid.length ? ' Do NOT repeat or closely copy these already-shown recipes; use different main ingredients and techniques: ' + avoid.join('; ') + '.' : ''}${LN}` }];
     rkey = !avoid.length && await recipeKey({ ing, craving, section, lang, prefs: body.prefs });
     lib = { ing, craving, section, lang, avoid, diet };
   } else {

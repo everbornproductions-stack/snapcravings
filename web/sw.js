@@ -1,6 +1,6 @@
 // Network-first for everything (HTML/JS/CSS always fresh when online); cache only as offline fallback.
-const VERSION = 'sc-2026-11-02-ui32';
-const SHELL = ['./', './index.html', './config.js?v=ui32', './i18n.js?v=ui32', './app.js?v=ui32', './grow.js?v=ui32', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+const VERSION = 'sc-2026-11-02b-ui33';
+const SHELL = ['./', './index.html', './config.js?v=ui33', './i18n.js?v=ui33', './app.js?v=ui33', './grow.js?v=ui33', './holiday.js?v=ui33', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).catch(() => {})); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
