@@ -1,0 +1,8 @@
+# Google Play assets (built Nov 2, 2026 from the live site; nothing uploaded)
+- `screenshots/<lang>/phone/` 1080x1920 (9:16), 8 per language: 1-home, 2-scan (fridge scan result), 3-recipes (streamed recipes), 4-dish (plate scan macros), 5-prep (meal prep), 6-hplan (Thanksgiving holiday planner), 7-christmas (holiday mode), 8-crave (make vs buy). Languages: en es pt hi id fr de ar ru tr.
+- `screenshots/<lang>/tablet-7in/` 1200x1920 and `tablet-10in/` 1600x2560: same captures centered (the app has no tablet layout; Play accepts these sizes, but editors may notice).
+- `feature-graphic-1024x500.png`, `promo-draft.mp4` (+ PROMO_VIDEO.md), `captions.json` (caption text per language, Gemini-drafted, not native-reviewed).
+- Contact sheets: `contact-sheet-phone-all-languages.jpg`, `contact-sheet-tablet-7in-en.jpg`, `contact-sheet-tablet-10in-en.jpg`.
+How they were made: puppeteer-core on the live site at 390x760 @3x with `sc.lang` set per language, an owner-code Pro token (so no free limits show), `?country=US` (plus `&holiday=thanksgiving` / `&holiday=christmas`), real AI results from test-photos (story/fridge.jpg, dishes/bolognese.jpg). Captions are drawn by an HTML template in brand colors (cream #FBF6EF, coral #E8613A, ink #1C1A17, Poppins/Noto). Scripts: /tmp/pp/cap.mjs, comp.mjs, fg.mjs, vid.mjs on the box (not in the repo).
+Upload map (Play Console > Main store listing, per language): Phone screenshots = phone/1..8; 7-inch = tablet-7in; 10-inch = tablet-10in; Feature graphic = feature-graphic-1024x500.png; Video = YouTube link after Chris approves the cut.
+Note: screenshots show US dollars and US holidays in every language (country=US). For local markets, re-shoot with ?country=BR/IN/ID/FR/DE/SA/RU/TR if Chris wants local currency and holidays.

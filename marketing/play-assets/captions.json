@@ -1,0 +1,382 @@
+{
+ "en": {
+  "1-home": [
+   "Snap your fridge. Get dinner.",
+   "Recipes for what you have and what you crave"
+  ],
+  "2-scan": [
+   "Every ingredient, spotted",
+   "One photo of your fridge or pantry is enough"
+  ],
+  "3-recipes": [
+   "Recipes stream in, one by one",
+   "Fitted to your diet and allergies"
+  ],
+  "4-dish": [
+   "Snap your plate, see the macros",
+   "Calories, protein, carbs and fat in seconds"
+  ],
+  "5-prep": [
+   "A week of meal prep",
+   "One grocery list, calorie and protein targets"
+  ],
+  "6-hplan": [
+   "Your Thanksgiving menu, planned",
+   "Menu, shopping list and cooking timeline"
+  ],
+  "7-christmas": [
+   "Holiday mode for every season",
+   "Your country’s holidays, holiday foods and colors"
+  ],
+  "8-crave": [
+   "Cook it or order it?",
+   "See what making it at home really costs"
+  ],
+  "fg": [
+   "Snap your fridge. Get dinner.",
+   "Recipes, macros and meal prep in 10 languages"
+  ]
+ },
+ "es": {
+  "1-home": [
+   "Foto a tu refri, cena lista",
+   "Recetas con lo que tienes y se te antoja"
+  ],
+  "2-scan": [
+   "Detecta cada ingrediente",
+   "Una foto de tu refri o alacena basta"
+  ],
+  "3-recipes": [
+   "Recetas a tu medida",
+   "Adaptadas a tu dieta y alergias"
+  ],
+  "4-dish": [
+   "Foto a tu plato, mira tus macros",
+   "Calorías, proteína y grasas en segundos"
+  ],
+  "5-prep": [
+   "Meal prep para toda la semana",
+   "Lista de súper y metas nutricionales"
+  ],
+  "6-hplan": [
+   "Tu menú de Thanksgiving, listo",
+   "Menú, lista de compras y tiempos"
+  ],
+  "7-christmas": [
+   "Modo festivo todo el año",
+   "Tus tradiciones, platos y colores"
+  ],
+  "8-crave": [
+   "¿Cocinar o pedir comida?",
+   "Compara costos al instante con SnapCravings"
+  ],
+  "fg": [
+   "Foto a tu refri, cena lista",
+   "Recetas, macros y meal prep en 10 idiomas"
+  ]
+ },
+ "pt": {
+  "1-home": [
+   "Foto na geladeira, jantar pronto",
+   "Receitas com o que você já tem"
+  ],
+  "2-scan": [
+   "Ingredientes detectados",
+   "Uma foto da sua despensa basta"
+  ],
+  "3-recipes": [
+   "Receitas sob medida",
+   "Personalizadas para sua dieta e alergias"
+  ],
+  "4-dish": [
+   "Macros em um clique",
+   "Calorias, proteínas e carboidratos na hora"
+  ],
+  "5-prep": [
+   "Planeje sua semana",
+   "Lista de compras e metas nutricionais"
+  ],
+  "6-hplan": [
+   "Seu Thanksgiving, organizado",
+   "Menu, lista e cronograma de preparo"
+  ],
+  "7-christmas": [
+   "Clima festivo o ano todo",
+   "Pratos e cores para cada celebração"
+  ],
+  "8-crave": [
+   "Cozinhar ou pedir?",
+   "Compare o custo real de cada opção"
+  ],
+  "fg": [
+   "Foto na geladeira, jantar pronto",
+   "Receitas, macros e planejamento em 10 idiomas"
+  ]
+ },
+ "hi": {
+  "1-home": [
+   "फ्रिज की फोटो, झटपट डिनर",
+   "जो सामान है, उसी से बनाएं लजीज रेसिपी"
+  ],
+  "2-scan": [
+   "हर सामग्री की पहचान",
+   "फ्रिज या पैंट्री की बस एक फोटो काफी है"
+  ],
+  "3-recipes": [
+   "आपकी पसंद की रेसिपी",
+   "आपकी डाइट और एलर्जी के अनुसार"
+  ],
+  "4-dish": [
+   "फोटो खींचें, मैक्रोज़ जानें",
+   "कैलोरी, प्रोटीन और फैट की तुरंत जानकारी"
+  ],
+  "5-prep": [
+   "पूरे हफ्ते का मील प्लान",
+   "ग्रोसरी लिस्ट और कैलोरी का सटीक हिसाब"
+  ],
+  "6-hplan": [
+   "थैंक्सगिविंग की पूरी तैयारी",
+   "मेन्यू, शॉपिंग लिस्ट और कुकिंग टाइमलाइन"
+  ],
+  "7-christmas": [
+   "हर त्योहार के लिए खास",
+   "त्योहारों के पकवान और रंग, SnapCravings के संग"
+  ],
+  "8-crave": [
+   "घर पर बनाएं या ऑर्डर करें?",
+   "जानें घर पर बनाने की असली लागत"
+  ],
+  "fg": [
+   "फ्रिज की फोटो, झटपट डिनर",
+   "10 भाषाओं में रेसिपी, मैक्रोज़ और मील प्लान"
+  ]
+ },
+ "id": {
+  "1-home": [
+   "Foto isi kulkas, siap masak!",
+   "Resep instan sesuai bahan yang ada"
+  ],
+  "2-scan": [
+   "Deteksi bahan otomatis",
+   "Cukup satu foto kulkas atau dapurmu"
+  ],
+  "3-recipes": [
+   "Resep pilihan untukmu",
+   "Disesuaikan dengan diet dan alergi"
+  ],
+  "4-dish": [
+   "Cek nutrisi dalam sekejap",
+   "Kalori, protein, dan lemak di piringmu"
+  ],
+  "5-prep": [
+   "Meal prep seminggu beres",
+   "Daftar belanja dan target nutrisi"
+  ],
+  "6-hplan": [
+   "Menu Thanksgiving praktis",
+   "Jadwal masak dan daftar belanja lengkap"
+  ],
+  "7-christmas": [
+   "Spesial untuk tiap musim",
+   "Resep liburan dan nuansa khasnya"
+  ],
+  "8-crave": [
+   "Masak sendiri atau pesan?",
+   "Bandingkan biaya masak di rumah"
+  ],
+  "fg": [
+   "Foto isi kulkas, siap masak!",
+   "Resep, nutrisi, dan meal prep dalam 10 bahasa"
+  ]
+ },
+ "fr": {
+  "1-home": [
+   "SnapCravings : scan, cuisinez",
+   "Des recettes selon votre frigo"
+  ],
+  "2-scan": [
+   "Un scan, tout est là",
+   "Une photo de votre frigo suffit"
+  ],
+  "3-recipes": [
+   "Recettes sur mesure",
+   "Adaptées à votre régime et allergies"
+  ],
+  "4-dish": [
+   "Analysez vos macros",
+   "Calories et nutriments en un clin d'œil"
+  ],
+  "5-prep": [
+   "Meal prep simplifié",
+   "Liste de courses et objectifs nutritionnels"
+  ],
+  "6-hplan": [
+   "Votre menu de Thanksgiving",
+   "Menu, liste et planning de cuisson"
+  ],
+  "7-christmas": [
+   "Esprit de fête toute l'année",
+   "Recettes et thèmes selon la saison"
+  ],
+  "8-crave": [
+   "Cuisiner ou commander ?",
+   "Comparez le coût réel de vos plats"
+  ],
+  "fg": [
+   "SnapCravings : scan, cuisinez",
+   "Recettes, macros et meal prep en 10 langues"
+  ]
+ },
+ "de": {
+  "1-home": [
+   "Foto machen, Abendessen haben",
+   "Rezepte passend zu deinem Vorrat"
+  ],
+  "2-scan": [
+   "Jede Zutat im Blick",
+   "Ein Foto von Kühlschrank oder Vorrat reicht"
+  ],
+  "3-recipes": [
+   "Rezepte, die zu dir passen",
+   "Individuell für deine Diät und Allergien"
+  ],
+  "4-dish": [
+   "Dein Teller, deine Makros",
+   "Kalorien, Protein und Fette in Sekunden"
+  ],
+  "5-prep": [
+   "Meal Prep für die ganze Woche",
+   "Einkaufsliste und Nährwerte im Griff"
+  ],
+  "6-hplan": [
+   "Dein Thanksgiving-Menü",
+   "Planung, Einkauf und Zeitplan in einem"
+  ],
+  "7-christmas": [
+   "Festtags-Modus für jedes Jahr",
+   "Saisonale Rezepte und festliche Farben"
+  ],
+  "8-crave": [
+   "Selbst kochen oder bestellen?",
+   "Vergleiche die Kosten direkt in SnapCravings"
+  ],
+  "fg": [
+   "Foto machen, Abendessen haben",
+   "Rezepte, Makros und Meal Prep in 10 Sprachen"
+  ]
+ },
+ "ar": {
+  "1-home": [
+   "صوّر ثلاجتك، جهّز عشاءك",
+   "وصفات مبتكرة لما تملكه في مطبخك"
+  ],
+  "2-scan": [
+   "كل مكوّن، في لمح البصر",
+   "صورة واحدة لثلاجتك تكفي"
+  ],
+  "3-recipes": [
+   "وصفات مخصصة لك",
+   "تتناسب مع حميتك وحساسيتك الغذائية"
+  ],
+  "4-dish": [
+   "صوّر طبقك، اعرف سعراتك",
+   "بروتين، كربوهيدرات ودهون في ثوانٍ"
+  ],
+  "5-prep": [
+   "خطط لوجبات أسبوعك",
+   "قائمة تسوق وأهداف غذائية دقيقة"
+  ],
+  "6-hplan": [
+   "قائمة Thanksgiving جاهزة",
+   "جدول الطبخ وقائمة المشتريات بضغطة زر"
+  ],
+  "7-christmas": [
+   "أجواء الأعياد في مطبخك",
+   "وصفات ومناسبات عالمية بلمسة SnapCravings"
+  ],
+  "8-crave": [
+   "اطبخها أم اطلبها؟",
+   "قارن تكلفة الطبخ المنزلي بالطلب الجاهز"
+  ],
+  "fg": [
+   "صوّر ثلاجتك، جهّز عشاءك",
+   "وصفات، سعرات، وتخطيط وجبات بـ 10 لغات"
+  ]
+ },
+ "ru": {
+  "1-home": [
+   "Фото холодильника — и ужин готов",
+   "Рецепты из того, что есть под рукой"
+  ],
+  "2-scan": [
+   "Распознаем каждый продукт",
+   "Достаточно одного фото холодильника"
+  ],
+  "3-recipes": [
+   "Рецепты под ваш вкус",
+   "С учетом диеты и аллергий"
+  ],
+  "4-dish": [
+   "Фото блюда — и все КБЖУ",
+   "Калории, белки, жиры и углеводы за секунды"
+  ],
+  "5-prep": [
+   "Меню на неделю в SnapCravings",
+   "Список покупок и контроль калорий"
+  ],
+  "6-hplan": [
+   "Ваш идеальный Thanksgiving",
+   "Меню, список продуктов и тайминг"
+  ],
+  "7-christmas": [
+   "Праздничное меню для любого дня",
+   "Традиционные блюда и тематическое оформление"
+  ],
+  "8-crave": [
+   "Готовить или заказать?",
+   "Сравните стоимость домашнего ужина"
+  ],
+  "fg": [
+   "Фото холодильника — и ужин готов",
+   "Рецепты, КБЖУ и планирование на 10 языках"
+  ]
+ },
+ "tr": {
+  "1-home": [
+   "Buzdolabını çek, yemeğin hazır",
+   "Eldeki malzemelerle nefis tarifler"
+  ],
+  "2-scan": [
+   "Malzemeleri anında tanı",
+   "Buzdolabının tek bir fotoğrafı yeterli"
+  ],
+  "3-recipes": [
+   "Sana özel tarif akışı",
+   "Diyetine ve alerjilerine uygun seçimler"
+  ],
+  "4-dish": [
+   "Tabağını çek, makroları gör",
+   "Kalori, protein ve karbonhidrat analizi"
+  ],
+  "5-prep": [
+   "Haftalık yemek planı",
+   "Tek liste, tam hedef, sağlıklı öğünler"
+  ],
+  "6-hplan": [
+   "Thanksgiving menün hazır",
+   "Alışveriş listesi ve pişirme rehberi"
+  ],
+  "7-christmas": [
+   "Her mevsime özel tatlar",
+   "Yerel bayramlar ve özel gün menüleri"
+  ],
+  "8-crave": [
+   "Yap mı, sipariş ver mi?",
+   "Evde pişirmenin maliyetini hemen gör"
+  ],
+  "fg": [
+   "Buzdolabını çek, yemeğin hazır",
+   "10 dilde tarifler, makrolar ve yemek planı"
+  ]
+ }
+}

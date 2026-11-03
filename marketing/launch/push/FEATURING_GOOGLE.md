@@ -1,14 +1,53 @@
-# Google Play featuring nomination: SnapCravings (filled in, NOT submitted)
+# Google Play featuring pitch: SnapCravings (READY TO SUBMIT, NOT submitted; Chris clicks Submit)
+Updated Nov 2, 2026, 7 PM PT for the featuring push Chris approved. Assets: marketing/play-assets/ (screenshots in 10 languages, phone + 7" + 10" tablet, 1024x500 feature graphic, promo-draft.mp4 + PROMO_VIDEO.md).
 
-**Form URL (opened Nov 2, 2026, 1:55 AM PT):** https://support.google.com/googleplay/contact/featuring_review?hl=en
-(Page title "Featuring Nomination - Google Play Help". Sign in as everbornproductions@gmail.com first so the form attaches to the right account.)
+## The pitch in one paragraph (use for "more info", emails to Google contacts, the deck cover)
+SnapCravings is made by Chris Magee, a one-person founder in Sacramento, California, under his small studio Everborn. He built it to fix the nightly "there's nothing to eat" moment that ends in another $30 delivery order and a fridge of food that goes to waste. Snap your fridge or pantry and SnapCravings spots what you have, then streams recipes that fit what you are craving, your diet and your allergies (allergies are hard rules, checked in every recipe, step and tip). It shows whether cooking or ordering is the better deal, plans a week of meal prep with one grocery list, scans a plated meal for estimated calories and macros, and plans a full holiday menu for your guests. It speaks 10 languages (English, Spanish, Portuguese, Hindi, Indonesian, French, German, Arabic, Russian, Turkish) and runs on free-tier AI with a free fallback, so the free plan stays genuinely useful: waste less food, save money, eat better.
+
+## Key features (all live in the app on Nov 2, 2026; checked in code)
+- Fridge or pantry photo scan to recipes; recipes stream in one by one (first recipe in about 2 s), plus a growing recipe library for instant matches.
+- Diet and allergy settings as hard rules (gluten-free, vegan, nut/shellfish/egg/soy allergies, keto, halal and more).
+- Crave it: cook-vs-order cost check (grocery cost for the dish; delivery-app prices shown as "coming soon", never invented).
+- Scan my plate (Pro; 1 free a week): dish name + estimated calories, protein, carbs, fat, fiber, sugar, sodium, with portion and servings controls and a daily total against meal-prep targets. Labeled "AI estimate, not medical advice."
+- Meal prep: a week of meals, one grocery list, a prep-day guide, optional calorie and protein targets.
+- Holiday mode per country (themed colors, a short animation, Holiday foods) and the Holiday planner: full menu for 2-30 guests, scaled shopping list, cooking timeline.
+- Favorites, grocery list, Library with seasonal collections, family recipes adapted to your diet.
+- 10 languages including right-to-left Arabic; the app follows the phone's language.
+- Free: 3 fridge scans a week. Pro (Google Play Billing): unlimited scans and plate scans, full meal-prep week and holiday plan. $3.99/month founders price, then $4.99, or $39.99/year.
+
+## Seasonal angles and when to submit
+| Angle | What we show | Submit | Honest note |
+|---|---|---|---|
+| **Thanksgiving + holiday cooking** (Thanksgiving Nov 26; Christmas, Hanukkah, New Year's Eve) | Holiday planner menu + timeline, Holiday foods, Christmas theme, "use the leftovers" fridge scans | **The day Play approves the app** (main form + Apps Innovation Corner once rated 4.0+) | Google asks for 8 weeks' lead for new apps, so a November or December placement is unlikely; submit anyway so the app is in the editors' queue, and push the holiday angle hard in our own channels. |
+| **New Year healthy eating** (Jan 1-31, 2027) | Scan my plate macros, meal prep with calorie/protein targets, cook-vs-order savings | **By about Dec 1, 2026** with desired feature date Mon Jan 4, 2027 (fallback Jan 11 or 18) | Dec 1 meets the 3-week rule but not the 8-week new-app rule for Jan 4; if the app is approved by Nov 9, submit then for Jan 4. Either way, the latest is Dec 1. |
+| Spring "waste less food" (Earth Day Apr 22) | Fridge scan, leftovers, grocery list | Feb 2027 (via Promotional Content once eligible) | Optional. |
+
+## Accessibility and quality notes (verify on a real phone before submitting)
+- Large tap targets, readable text, high contrast: every holiday color pair passes WCAG AA (automated test test/holiday.test.mjs). Animations are short, never block taps and respect "reduce motion".
+- Screen reader labels on icon buttons (aria-label), photos have alt text; Arabic is fully right-to-left.
+- Allergy-first design: hard rules, double-checked steps and tips, plus a "check labels yourself" note. Nutrition and costs are always labeled as estimates.
+- Speed: Lighthouse performance 99-100 on the web build; recipes start streaming in ~2 s; plate scan ~2 s.
+- Reliability: hedged AI chain with a free Workers AI fallback, fail-open limits, 90+ automated tests run on every change.
+- Privacy: no account needed; diet settings, favorites and the daily log stay on the device; see web/privacy.html for what photos and requests are used for (Chris: re-read it before quoting).
+- Known gaps an editor may see: Android app is a Trusted Web Activity (web app inside Chrome), tablet layout is the phone layout centered, no iOS App Store app yet.
+
+## Metrics to cite once we have them (fill in; never estimate)
+| Metric | Where to get it | Value |
+|---|---|---|
+| Average rating and count | Play Console > Ratings | ___ (need 4.0+ for Apps Innovation Corner) |
+| Installs, first 14 days | Play Console > Statistics | ___ |
+| Day-1 / day-7 retention | Play Console > Retention | ___ |
+| Crash rate / ANR | Android vitals | ___ (keep under 1.09% / 0.47%) |
+| Scans and recipes per active user per week | /api/stats (STATS_KEY) | ___ |
+| Share of users outside the US / using a non-English language | /api/stats by lang | ___ |
+| Food-waste or savings story from a real user (with permission) | Email replies, reviews | ___ |
 
 ## Rules printed on the form (read before submitting)
 - Submit **at least 3 weeks ahead, 8 weeks for newly launched apps**, of the desired featuring date. **APK/AAB must be available in Play Console.**
 - App minimums: policy + launch checklist + design guidelines + core app quality; "Simultaneously launch your app across key mobile platforms"; **rating 3.0 or higher**; launched within 4 months of the featuring date; device optimization; platform parity; localize where you want featuring; Material Design UI. Meeting them "does not guarantee promotion".
 - The form is for **new launches** only. Updates go through Promotional Content, which new apps cannot access.
 
-## What this means for timing (honest)
+## What this means for timing (older notes; the table above wins)
 - Holidays now (Thanksgiving Nov 26, December): too close. 8 weeks from today is Dec 28, 2026, and we have no rating yet. Use holiday cooking in our own posts and videos instead (VIDEO_PLAN.md), not in the form.
 - **Target: New Year meal prep, desired feature date Mon Jan 4, 2027** (or the week of Jan 11 as a fallback). Submit on **launch day or within 2 days of Play approval** (Nov 9 at the latest keeps the 8-week lead for Jan 4). Wait until the app has at least a few ratings if possible, but do not miss the lead time: the form does not say the rating must exist at submission.
 - Weak spots an editor will see: no iOS store app yet (we answer "No: Android-First" truthfully), web-wrapped app (TWA), very new account. Strengths: Spanish built in, allergy-safe rules, real meal-prep feature that fits January.
@@ -29,9 +68,9 @@
 | Package ID | app.snapcravings.twa |
 | Channel for review | **Production** |
 | Version Code | **2** (from android/twa-manifest.json, versionName 1.0.1; recheck in Console > Release > App bundle explorer before submitting) |
-| Desired feature date | **2027-01-04** |
-| Devices | **Phone** (also Chrome OS only if you test it there; tablet layout is the phone layout, so leave Tablet unticked) |
-| Regions | **Americas: US** (add Mexico and Rest of Latin America because the app is fully in Spanish; the Play listing must be localized to es-419 first, see below) |
+| Desired feature date | **Thanksgiving/holiday submission:** earliest date the form allows; **New Year submission (by Dec 1):** **2027-01-04** |
+| Devices | **Phone** (7\" and 10\" tablet screenshots now exist in marketing/play-assets, but the tablet layout is the phone layout centered, so leave Tablet unticked unless Chris wants to try) |
+| Regions | **Americas: US** first; add Latin America, Brazil, India, Indonesia, France, Germany, Middle East, Turkey only where the localized Play listing is uploaded (drafts in marketing/play-listings/; es-419 still needs a listing) |
 | Languages your App supports | **English**, **Spanish / LatAm Spanish**, Portuguese (Brazil), Hindi, Indonesian, French, German, Arabic, Russian, Turkish |
 | New launch, major update or minor update? | New launch |
 | Launch Date and time | The real approval date/time, e.g. "Nov 9, 2026, 9:00 AM PST" |
@@ -47,25 +86,26 @@
 | Soft launch metrics (only shown for some paths) | "No soft launch; internal and closed testing only since Nov 1, 2026. Retention data not yet available." (Do not invent numbers.) |
 
 ### Text A: Why featuring matters now (paste)
-January is when people reset how they eat: they meal-prep, track protein, cut takeout spending and try to waste less food. SnapCravings was built for exactly that moment. You snap your fridge and get recipes that fit what you are craving, your diet and your allergies (allergies are hard rules, never suggestions). A weekly meal-prep planner with a fitness and macros mode turns one grocery list into a week of meals, and "Cook it or order it" shows how much you save versus delivery. We are a small independent studio launching Android first, and a New Year meal-prep collection is the one moment where editorial placement would put the app in front of the people it was made for.
+Holiday cooking and New Year resolutions are the two moments when people most want help in the kitchen. SnapCravings, built by Sacramento founder Chris Magee at his small studio Everborn, turns a photo of your fridge into recipes that fit your diet and allergies, shows whether cooking beats ordering, plans a full holiday menu for your guests with a timeline, and in January helps people meal-prep and track macros by snapping their plate. It speaks 10 languages and runs on free-tier AI, so the free plan stays useful. We are launching Android first, and editorial placement in a holiday-cooking or New Year healthy-eating collection would put it in front of exactly the people it was made for.
 
 ### Text B: Prioritized markets
 United States, with English and full Spanish (US Hispanic and Latin America). The app switches to the phone's language automatically (10 languages) and its allergy checks work in each of them.
 
 ### Text C: Why these markets
-Our launch audience and email list are in the US. Spanish is built into the app (not machine-swapped labels: recipes, diet rules and allergy checks all run in Spanish), and Spanish-speaking home cooks are poorly served by recipe apps in this category.
+Our launch audience and email list are in the US. The app runs in 10 languages end to end (recipes, diet rules and allergy checks run in each language, with local food names), and home cooks who don't use English are poorly served by recipe apps in this category.
 
 ### Text D: Marketing / UA plan
 Launch week: email announcement to our own opt-in contacts in English and Spanish, short-form videos (TikTok, Reels, Shorts) 4-5 per week for 4 weeks produced in-house, maker posts in communities that allow them (Product Hunt, r/SideProject, r/androidapps), free app directories. January: a "New Year meal prep" video series and seasonal collections inside the app (holiday cooking now, meal prep in January). Paid: an optional small test of $5-10 per day only after organic results are in. In-app: a gentle Google Play rating link after a user saves a recipe, and a "Share this recipe" button.
 
 ### Text E: Why this launch could succeed
-1) Clear daily use: "what can I make with what I have?" every evening. 2) Real differentiation: allergy-safe hard rules, a cook-vs-delivery price comparison, a macro-aware meal-prep planner and built-in Spanish, at $3.99/month founders price versus $7.99 for the closest competitor. 3) Free tier that is actually useful (3 fridge scans a week, unlimited cravings and library). 4) Seasonal content in the app (collections) gives editors a fresh angle every month.
+1) Clear daily use: "what can I make with what I have?" every evening. 2) Real differentiation: allergy-safe hard rules, a cook-vs-delivery cost check, plate scans for macros, a macro-aware meal-prep planner, a holiday menu planner and 10 built-in languages, at $3.99/month founders price versus $7.99 for the closest competitor. 3) Free tier that is actually useful (3 fridge scans a week, unlimited cravings and library). 4) Seasonal content in the app (collections) gives editors a fresh angle every month.
 
 ## Before you submit (checklist)
 - [ ] App is live in Production (approval email received).
 - [ ] Store listing localized: add **Spanish (Latin America) es-419** listing in Console (copy in LISTING_ASO.md, translate the short and full description; the bot can draft it on request).
 - [ ] Store settings > "External marketing" left ON.
-- [ ] 4+ screenshots at 1080px+ and the 1024x500 feature graphic are uploaded (already done for 1082x2163 shots).
+- [ ] Upload the NEW screenshots (marketing/play-assets/screenshots/<lang>/phone, 8 per language) and feature-graphic-1024x500.png; optional tablet sets in tablet-7in / tablet-10in.
+- [ ] Promo video: Chris approves promo-draft.mp4 (or the re-cut), uploads to YouTube (unlisted, ads off) and pastes the link in the listing.
 - [ ] Pitch deck in Drive, sharing "anyone with the link can view" (needs Chris's OK to share).
 - [ ] Chris clicks Submit. (Bot does not submit.)
 
