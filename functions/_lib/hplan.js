@@ -12,6 +12,7 @@ const STEP = { type: 'object', properties: { before_min: { type: 'integer' }, wh
 export const TIMELINE_SCHEMA = { type: 'object', properties: { timeline: { type: 'array', items: STEP } }, required: ['timeline'] };
 export const SHAPE = { menu: '{"menu":[{"course":"Main|Side|Dessert|Drink","name":"","emoji":"","minutes":90,"serves":8,"note":"","ingredients":[{"item":"","qty":"","aisle":"Produce","have":false}]}]}',
   timeline: '{"timeline":[{"before_min":2880,"when":"2 days before","task":"","dish":""}]}' };
+export const unitsFor = c => ['US', 'LR', 'MM'].includes(c) ? 'US units (lb, oz, cups, tablespoons) and oven temperatures in °F' : 'metric units (g, kg, ml, L) and oven temperatures in °C';
 const clamp = (v, lo, hi, d) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
 export function hpInput(b = {}) {
   const S = globalThis.SC_HOLIDAY; b = b && typeof b === 'object' ? b : {};
@@ -23,13 +24,13 @@ export function hpInput(b = {}) {
 export function menuPrompt(p, lang) {
   const h = globalThis.SC_HOLIDAY.info(p.holiday, 'en');
   return `Plan a complete ${h.nameEn} meal for ${p.guests} guests in country ${p.country}, served at ${p.time}. Use dishes people in that country really make for ${h.nameEn} (classics like ${h.dishes}).
-Return 8 to 10 dishes: 2 Main, 3 or 4 Side, 2 Dessert, 1 or 2 Drink (at least one non-alcoholic). Every ingredient qty is the TOTAL amount for ${p.guests} guests (scale it), with local units. serves = ${p.guests}. note = one short serving or make-ahead tip.
+Return 8 to 10 dishes: 2 Main, 3 or 4 Side, 2 Dessert, 1 or 2 Drink (at least one non-alcoholic). Every ingredient qty is the TOTAL amount for ${p.guests} guests (scale it), in ${unitsFor(p.country)}. serves = ${p.guests}. note = one short serving or make-ahead tip.
 ${p.fridge.length ? `The user already has: ${p.fridge.join('; ')}. Use some of them and mark those ingredients have=true.\n` : ''}${dietPrompt(p.diet) ? dietPrompt(p.diet) + ' Every dish must follow these rules (swap and say so in the note).\n' : ''}${INTL[lang] ? intlNote(lang) : lang === 'es' ? '\nWrite every user-facing text in Latin American Spanish.' : ''}`;
 }
 export function timelinePrompt(p, menu, lang) {
   const h = globalThis.SC_HOLIDAY.info(p.holiday, 'en');
   return `Write a cooking timeline for this ${h.nameEn} meal for ${p.guests} guests, served at ${p.time}: ${menu.map(d => `${d.name} (${d.minutes} min)`).join('; ')}.
-Count back from the meal time. 10 to 16 steps, earliest first: shopping and make-ahead days before (thawing big frozen roasts in the fridge, about 1 day per 2 kg), the day before, the morning of, then T-3h, T-2h, T-1h, T-30m, serve. before_min = minutes before the meal (2 days = 2880). when = short label like "2 days before", "Morning of", "T-1h". task = one or two specific sentences with oven temps and food-safety notes. dish = the dish name or "All".${INTL[lang] ? intlNote(lang) : lang === 'es' ? '\nWrite when and task in Latin American Spanish.' : ''}`;
+Count back from the meal time. 10 to 16 steps, earliest first: shopping and make-ahead days before (thawing big frozen roasts in the fridge, about 1 day per 2 kg), the day before, the morning of, then T-3h, T-2h, T-1h, T-30m, serve. before_min = minutes before the meal (2 days = 2880). when = short label like "2 days before", "Morning of", "T-1h". task = one or two specific sentences in ${unitsFor(p.country)}, with oven temps and food-safety notes. dish = the dish name or "All".${INTL[lang] ? intlNote(lang) : lang === 'es' ? '\nWrite when and task in Latin American Spanish.' : ''}`;
 }
 export function checkMenu(p, menu) {
   const good = [], banned = new Set();

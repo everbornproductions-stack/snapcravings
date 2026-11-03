@@ -40,7 +40,7 @@ export async function onRequest({ request, env, waitUntil }) {
   if (hourly(ip, 20)) return json({ error: 'Whoa, hungry! You hit the hourly limit. Try again soon.' }, 429);
   const tok = env.__pro !== undefined ? env.__pro : await verifyToken(env, request.headers.get('x-sc-token')); const pro = !!tok;
   const lang = langCode(b.lang || request.headers.get('x-sc-lang'));
-  const key = 'hp1:' + await sha(JSON.stringify([p.holiday, p.country, p.guests, p.time, lang, p.diet.tags, p.diet.other || '', [...p.fridge].map(s => s.toLowerCase()).sort()]));
+  const key = 'hp2:' + await sha(JSON.stringify([p.holiday, p.country, p.guests, p.time, lang, p.diet.tags, p.diet.other || '', [...p.fridge].map(s => s.toLowerCase()).sort()]));
   const stream = b.stream === true;
   const bg = x => { try { waitUntil ? waitUntil(x) : null; } catch {} };
   const build = async send => {

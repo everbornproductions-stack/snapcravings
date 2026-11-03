@@ -10,7 +10,7 @@ test('input: holiday must exist, guests 2-30, time on the hour', () => {
   assert.equal(hpInput({ holiday: 'nope' }).holiday, null);
   const p = hpInput({ holiday: 'thanksgiving', guests: 99, time: '18:30', country: 'us' }); assert.equal(p.guests, 30); assert.equal(p.time, '18:00'); assert.equal(p.country, 'US');
   assert.equal(hpInput({ holiday: 'thanksgiving', guests: 1 }).guests, 2);
-  assert.match(menuPrompt(hpInput({ holiday: 'thanksgiving', guests: 8 }), 'en'), /Thanksgiving meal for 8 guests in country US.*turkey/s);
+  assert.match(menuPrompt(hpInput({ holiday: 'thanksgiving', guests: 8 }), 'en'), /Thanksgiving meal for 8 guests in country US.*turkey/s); assert.match(menuPrompt(hpInput({ holiday: 'thanksgiving', guests: 8 }), 'en'), /°F/); assert.match(menuPrompt(hpInput({ holiday: 'christmas', country: 'DE' }), 'de'), /°C/);
 });
 test('menu: sorted by course, diet offenders dropped, serves = guests', () => {
   const p = hpInput({ holiday: 'thanksgiving', guests: 8, prefs: { tags: ['Nut allergy'] } });
