@@ -43,4 +43,7 @@ test('thaw step is moved early enough for the bird size (1 day per 4 lb)', async
   const f = thawFix({ before_min: 2880, when: '2 days before', task: 'Thaw your frozen 16 lb turkey in the fridge.', dish: 'Turkey' }); assert.equal(f.before_min, 5760); assert.equal(f.when, '4 days before');
   assert.equal(thawFix({ before_min: 4320, when: '3 days before', task: 'Thaw the turkey.' }, [{ ingredients: [{ item: 'Whole turkey', qty: '5 kg' }] }]).before_min, 4320);
   assert.equal(thawFix({ before_min: 60, when: 'T-1h', task: 'Rest the turkey.' }).before_min, 60);
+  const menu = [{ name: 'Roast turkey', ingredients: [{ item: 'Whole turkey', qty: '16 lb' }] }, { name: 'Pumpkin pie', ingredients: [{ item: 'Pumpkin', qty: '2 lb' }] }];
+  assert.equal(thawFix({ before_min: 2880, when: '2 days before', task: 'Thaw the ham if needed and bake the pies.', dish: 'Pumpkin pie' }, menu).before_min, 2880);
+  assert.equal(thawFix({ before_min: 2880, when: '2 days before', task: 'Thaw the turkey in the fridge.', dish: 'Roast turkey' }, menu).before_min, 5760);
 });

@@ -47,7 +47,9 @@ export function checkMenu(p, menu) {
 // Food safety: fridge-thawing needs about 1 day per 4 lb (1.8 kg). Models often schedule it too late, so fix the start time from the weight.
 export function thawFix(s, menu = []) {
   if (!/thaw|descongel|décongel|auftau|разморо|çöz|cair|डीफ्रॉस्ट|पिघला|إذابة/i.test(s.task)) return s;
-  const txt = s.task + ' ' + menu.map(d => d.ingredients.map(i => i.item + ' ' + i.qty).join(' ')).join(' ');
+  // Weight from the step itself, else from its own dish (never from other dishes, and never when the step also does other work).
+  const own = menu.find(d => d.name && s.dish && d.name.toLowerCase() === s.dish.toLowerCase());
+  const txt = /\d\s*(lb|pound|kg|kilo)/i.test(s.task) ? s.task : own ? own.ingredients.filter(i => /turkey|ham|roast|goose|duck|lamb|beef|pork|pavo|peru|dinde|pute|индейк|hindi|kalkun|ديك|टर्की/i.test(i.item)).map(i => i.item + ' ' + i.qty).join(' ') : '';
   const lb = +(/(\d+(?:\.\d+)?)\s*(?:lb|pound)/i.exec(txt) || [])[1] || 0, kg = +(/(\d+(?:\.\d+)?)\s*(?:kg|kilo)/i.exec(txt) || [])[1] || 0;
   const days = lb ? Math.ceil(lb / 4) : kg ? Math.ceil(kg / 1.8) : 0; if (!days || s.before_min >= days * 1440) return s;
   return { ...s, before_min: days * 1440, when: days + (days === 1 ? ' day before' : ' days before'), fixed: true };

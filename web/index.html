@@ -10,7 +10,7 @@
 <title>SnapCravings</title>
 <script>
 // Language pick (EN/ES built in; others load web/i18n/<code>.js before the deferred app scripts). Arabic is right-to-left.
-window.SC_IV = 'ui39';
+window.SC_IV = 'ui40';
 window.SC_LANGS = [['en', 'English'], ['es', 'Español'], ['pt', 'Português (BR)'], ['hi', 'हिन्दी'], ['id', 'Bahasa Indonesia'], ['fr', 'Français'], ['de', 'Deutsch'], ['ar', 'العربية'], ['ru', 'Русский'], ['tr', 'Türkçe']];
 (function () { var ok = function (l) { return SC_LANGS.some(function (x) { return x[0] === l; }); }, l = null;
   try { var s = localStorage.getItem('sc.lang'); if (s) { var v = JSON.parse(s); if (ok(v)) l = v; } } catch (e) {}
@@ -360,6 +360,11 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
   </section>
 
   <!-- MEAL PREP -->
+  <section class="screen" id="dish">
+    <div class="topbar"><a class="back" href="#scan">‹</a><span class="t">Scan my plate</span></div>
+    <div id="dishBody"></div>
+  </section>
+
   <section class="screen" id="hplan">
     <div class="topbar"><a class="back" href="#home">‹</a><span class="t">Holiday planner</span></div>
     <div id="hplanBody"></div>
@@ -392,7 +397,8 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
     </div>
     <div class="feat"><span class="ck">✓</span><span><b>Unlimited photo scans</b><br><span class="sub" style="font-size:12.5px">Free plan: a few scans a week</span></span></div>
     <div class="feat"><span class="ck">✓</span><span><b>Meal prep</b><br><span class="sub" style="font-size:12.5px">A week of meals, one grocery list and a prep-day guide.</span></span></div>
-    <table class="cmp"><tr><th></th><th>Free</th><th>Pro</th></tr><tr><td>Photo scans</td><td>Limited</td><td>Unlimited</td></tr><tr><td>Recipes</td><td>Limited</td><td>Unlimited</td></tr><tr><td>Meal prep</td><td>Limited</td><td>✓</td></tr><tr><td>Make vs. buy</td><td>✓</td><td>✓</td></tr><tr><td>Saved favorites</td><td>✓</td><td>✓</td></tr></table>
+    <div class="feat"><span class="ck">✓</span><span><b>Dish scans for macros</b><br><span class="sub" style="font-size:12.5px">Unlimited dish scans with estimated calories and macros</span></span></div>
+    <table class="cmp"><tr><th></th><th>Free</th><th>Pro</th></tr><tr><td>Photo scans</td><td>Limited</td><td>Unlimited</td></tr><tr><td>Recipes</td><td>Limited</td><td>Unlimited</td></tr><tr><td>Meal prep</td><td>Limited</td><td>✓</td></tr><tr><td>Dish scans</td><td>1/week</td><td>Unlimited</td></tr><tr><td>Make vs. buy</td><td>✓</td><td>✓</td></tr><tr><td>Saved favorites</td><td>✓</td><td>✓</td></tr></table>
     <div style="height:14px"></div>
     <div class="plan" data-plan="yr"><span class="rd"></span><span class="p"><b>Yearly <span class="save">SAVE 33%</span></b><span id="proYrSub">Coming soon · about $3.33/mo</span></span><span class="pr">$39.99</span></div>
     <div class="plan on" data-plan="mo"><span class="rd"></span><span class="p"><b>Monthly</b><span>Founders price, first 100 members, locked in</span></span><span class="pr" id="proPrice">$3.99</span></div>
@@ -419,14 +425,17 @@ html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
 <input type="file" id="snapCam" accept="image/*" capture="environment" multiple hidden>
 <input type="file" id="snapLib" accept="image/*" multiple hidden>
 <div id="toast" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
-<script defer src="holiday.js?v=ui39"></script>
-<script defer src="config.js?v=ui39"></script>
-<script defer src="i18n.js?v=ui39"></script>
-<script defer src="app.js?v=ui39"></script>
-<script defer src="prep.js?v=ui39"></script>
-<script defer src="more.js?v=ui39"></script>
-<script defer src="grow.js?v=ui39"></script>
-<script defer src="hplan-i18n.js?v=ui39"></script>
-<script defer src="hplan.js?v=ui39"></script>
+<script defer src="holiday.js?v=ui40"></script>
+<script defer src="config.js?v=ui40"></script>
+<script defer src="i18n.js?v=ui40"></script>
+<script defer src="app.js?v=ui40"></script>
+<script defer src="prep.js?v=ui40"></script>
+<script defer src="more.js?v=ui40"></script>
+<script defer src="grow.js?v=ui40"></script>
+<script defer src="hplan-i18n.js?v=ui40"></script>
+<script defer src="hplan.js?v=ui40"></script>
+<script defer src="dishcore.js?v=ui40"></script>
+<script defer src="dish-i18n.js?v=ui40"></script>
+<script defer src="dish.js?v=ui40"></script>
 </body>
 </html>
