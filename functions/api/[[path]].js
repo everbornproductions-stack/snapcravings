@@ -6,6 +6,7 @@ import { verifyToken, safeEq, signScan, verifyScan, SUPABASE_URL, SUPABASE_PUBLI
 import { hourly } from '../_lib/limit.js';
 import '../../web/holiday.js';
 import '../../web/money.js';
+import { realPrices } from '../_lib/prices.js';
 import { costRecipe, costKey, costGet, costPut, linePrice } from '../_lib/cost.js'; // sets globalThis.SC_MONEY (local currency + price levels, shared with the web app) // sets globalThis.SC_HOLIDAY (holiday mode, shared with the web app)
 import { trendHit } from '../_lib/trending.js';
 import { INTL, langCode, intlNote, intlScanNote } from '../_lib/lang.js';
@@ -412,6 +413,7 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
       if (h.length) return json({ error: "Couldn't make that one fit your diet. Try a different craving!", why: h.slice(0, 12) }, 502);
     }
     if (route === 'crave' && data?.recipe) data = await steadyCost(env, data, body.craving, cc, dd, bg);
+    if (route === 'crave' && data?.recipe && cc === 'US') { const g = request.cf || {}; const us = g.country === 'US'; data = await realPrices(env, data, { cc, state: us ? g.regionCode : '', zip: us ? g.postalCode : '', lat: us ? g.latitude : '', lon: us ? g.longitude : '' }).catch(() => data); } // BLS regional / Kroger store prices (functions/_lib/prices.js)
     if (route === 'crave' && data?.recipe?.name) bg(trendHit(env, { country: request.cf?.country, kind: 'crave', label: data.recipe.name, lang, device: String(request.headers.get('x-sc-dev') || '').replace(/[^\w-]/g, '').slice(0, 64) })); // trending Popular cravings
     return json({ ...data, ...(route === 'scan' ? {} : { cur: CUR, country: cc }), craving: body.craving, usage: publicUsage(usage), ...(scanTicket ? { scanTicket } : {}) });
   } catch (e) { return json({ error: e.message || 'Something went sideways. Try again!', tries: publicTries(e.tries), ...(scanTicket ? { scanTicket } : {}), ...(e.why?.length ? { why: e.why } : {}) }, e.why ? 502 : 502); }
