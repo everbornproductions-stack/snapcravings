@@ -7,7 +7,7 @@ SnapCravings: Receitas com IA
 == Short description (74/80) ==
 Tire foto da geladeira e receba receitas com IA. Mais barato que delivery.
 
-== Full description (2081/4000) ==
+== Full description (2713/4000) ==
 Nao sabe o que cozinhar? Tire uma foto da sua geladeira ou despensa e o SnapCravings usa IA para identificar os ingredientes e transformá-los em receitas para o seu jantar. E a maneira mais rapida de encontrar o que cozinhar, aproveitar sobras e evitar gastos desnecessarios com delivery.
 
 TIRE FOTO DA GELADEIRA E RECEBA RECEITAS
@@ -28,8 +28,20 @@ Marque as refeicoes que voce mais gosta e acesse quando quiser.
 MENOS DESPERDICIO, MAIS PRATICIDADE
 Pare de se perguntar o que fazer para o jantar. Use o que tem na geladeira antes que estrague, economize dinheiro e receba ideias de refeicoes em menos de um minuto.
 
+PLANO DE MARMITAS DA SEMANA
+Monte uma semana de refeições com uma única lista de compras e um guia para o dia de preparo, com metas opcionais de calorias e proteína.
+
+RECEITAS EM SEGUNDOS
+As receitas aparecem uma a uma, e uma biblioteca de receitas que não para de crescer traz resultados instantâneos para ingredientes comuns.
+
+MODO FERIADO
+Nos feriados do seu país, o app ganha cores temáticas, uma animação curta e um botão de comidas típicas do feriado.
+
+10 IDIOMAS
+Português (Brasil), English, Español, हिन्दी, Bahasa Indonesia, Français, Deutsch, العربية, Русский e Türkçe.
+
 GRATUITO PARA TESTAR
-3 scans de geladeira gratuitos por semana. Assine o SnapCravings Pro para scans ilimitados. Cancele quando quiser.
+3 scans de geladeira gratuitos por semana. Assine o SnapCravings Pro para scans ilimitados. O Pro também libera a semana completa de marmitas. Cancele quando quiser.
 
 IDEAL PARA
 - Ideias rapidas para o jantar durante a semana

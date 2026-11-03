@@ -47,3 +47,7 @@ Catchphrases: "Let's get cooking!" · "Fridge to fabulous!" · "Craving unlocked
 3. Check the Instacart partner program terms and MealMe API licensing and pricing.
 4. Get a legal review of the screenshot price-check flow and the app-store wording.
 5. Build Phase 1, then test Pro pricing with a small beta.
+
+## Roadmap (NOT live; never list these as current features in store, site or launch copy)
+- **Holiday planner** (part of the meal planner): builds a full holiday menu for X guests, with one shopping list and a cooking timeline for the day. Today's live holiday mode only themes the app and offers a "Holiday foods" craving; it does not plan a menu.
+- **Dish scanning for macros**: snap a plated dish to estimate calories and macros. Today only recipe and meal-prep estimates show macros.

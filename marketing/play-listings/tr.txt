@@ -7,7 +7,7 @@ SnapCravings: Yapay Zeka Yemek
 == Short description (77/80) ==
 Buzdolabını çek, yapay zeka ile yemek tarifleri bul. Evde pişir, tasarruf et.
 
-== Full description (2151/4000) ==
+== Full description (2778/4000) ==
 Ne pişirsem diye düşünmeyin. Buzdolabınızın veya kilerinizin fotoğrafını çekin, SnapCravings yapay zeka ile malzemelerinizi tanısın ve size uygun tariflere dönüştürsün. Fotoğraftan tarif almanın, artan malzemeleri değerlendirmenin ve dışarıdan yemek sipariş etme masrafından kurtulmanın en hızlı yolu.
 
 BUZDOLABINI ÇEK, TARİFLERİ GÖR
@@ -28,8 +28,20 @@ Sevdiğiniz yemekleri kaydedin ve dilediğiniz zaman tekrar yapın.
 DAHA AZ GIDA İSRAFI, DAHA AZ KARARSIZLIK
 Akşam yemeğinde ne yapsam sorusuna son verin. Buzdolabınızdaki malzemeleri bozulmadan değerlendirin, tasarruf edin ve bir dakikadan kısa sürede pratik yemek fikirleri bulun.
 
+HAFTALIK YEMEK HAZIRLIĞI
+Tek bir alışveriş listesi ve hazırlık günü rehberiyle bir haftalık yemek planı yapın; isterseniz kalori ve protein hedefleri ekleyin.
+
+SANİYELER İÇİNDE TARİFLER
+Tarifler tek tek gelir; sürekli büyüyen tarif kütüphanesi yaygın malzemeler için anında sonuç verir.
+
+BAYRAM MODU
+Ülkenizdeki bayram ve özel günlerde uygulama temalı renklere bürünür, kısa bir animasyon gösterir ve geleneksel bayram yemekleri için bir düğme sunar.
+
+10 DİL
+Türkçe, English, Español, Português (Brasil), हिन्दी, Bahasa Indonesia, Français, Deutsch, العربية ve Русский.
+
 ÜCRETSİZ DENEYİN
-Her hafta 3 ücretsiz buzdolabı taraması hakkınız var. Sınırsız tarama için SnapCravings Pro sürümüne geçin. İstediğiniz zaman iptal edebilirsiniz.
+Her hafta 3 ücretsiz buzdolabı taraması hakkınız var. Sınırsız tarama için SnapCravings Pro sürümüne geçin. Pro ayrıca haftanın tamamı için yemek hazırlığını açar. İstediğiniz zaman iptal edebilirsiniz.
 
 KULLANIM ALANLARI
 - Hızlı akşam yemeği fikirleri
