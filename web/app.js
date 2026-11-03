@@ -125,6 +125,7 @@ function applyHoliday() {
   if (h && !ban && kick) { ban = document.createElement('a'); ban.id = 'holBanner'; ban.className = 'card'; ban.href = '#scan'; ban.style.cssText = 'display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);background:var(--coral-soft);border-color:var(--coral);margin:0 0 12px'; kick.before(ban); }
   if (ban) { ban.hidden = !h; ban.style.display = h ? 'flex' : 'none'; if (h) ban.innerHTML = `<div style="font-size:22px">${h.emoji}</div><div style="flex:1;font-size:13px"><b>${esc(h.ui[1].replace('{h}', h.name))}</b><br><span class="sub" style="font-size:12px">${esc(h.ui[2].replace('{h}', h.name))}</span></div><span>›</span>`; }
   if (!h && window.SC_HOLIDAY?.isHoliday(state.craving)) state.craving = 'Anything';
+  window.hplanCard?.(); // Holiday planner card (web/hplan.js)
 }
 // One short holiday animation (~4.5 s, pointer-events none, skipped for reduced motion). Once per session on home; ?holianim=1 replays.
 function holidayAnim(force) {
@@ -517,8 +518,8 @@ el('craveInput').addEventListener('keydown', e => { if (e.key === 'Enter') crave
 
 function renderLeft() { if (unlimited()) { el('scanLeft').textContent = t("Unlimited scans. Let's get cooking!"); return; } const n = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5).length; el('scanLeft').textContent = n < 3 ? t('{n} of 3 free scans left this week', { n: 3 - n }) : t('Free scans used up. Beta bonus: keep snapping!'); }
 renderLeft();
-const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'favs', 'pro', 'settings', 'prep', 'lib', 'family'];
-const RENDER = { scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, favs: renderFavs, home: () => { renderFavCount(); renderDietCount(); }, settings: renderSettings, pro: renderPro, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList, prep: () => window.renderPrep?.(), lib: () => window.renderLib?.(), family: () => window.renderFamily?.() };
+const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'favs', 'pro', 'settings', 'prep', 'lib', 'family', 'hplan'];
+const RENDER = { hplan: () => window.renderHplan?.(), scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, favs: renderFavs, home: () => { renderFavCount(); renderDietCount(); }, settings: renderSettings, pro: renderPro, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList, prep: () => window.renderPrep?.(), lib: () => window.renderLib?.(), family: () => window.renderFamily?.() };
 let lastView = '', hiddenAt = 0;
 document.addEventListener('visibilitychange', () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 30 * 60 * 1000) { hiddenAt = 0; track('page_view', lastView || 'home'); } }); // reopened installed app = a new visit
 function route() {
