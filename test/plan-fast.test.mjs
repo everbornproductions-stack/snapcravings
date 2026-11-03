@@ -50,3 +50,16 @@ test('HTTP: stream=true gives NDJSON meta, days, done; plain JSON unchanged (moc
   assert.ok(L[0].meta); assert.equal(L[0].meta.genDays, 2); const done = L.at(-1); assert.ok(done.done); assert.equal(done.meals.length, 4); assert.ok(done.grocery);
   const j = await (await onRequest({ request: req({ days: 7 }), env, waitUntil: () => {} })).json(); assert.equal(j.meals.length, 2); assert.ok(j.mock);
 });
+test('Pro gate: owner code, Stripe and Play tokens (all signed sub tokens) get the full week; none/forged get the preview', async () => {
+  const { signToken } = await import('../functions/_lib/sub.js');
+  const env = { MOCK_AI: '1', ENFORCE_FREE: '0', SUB_SECRET: 'test-secret' };
+  const go = async tok => (await (await onRequest({ request: new Request('http://x/api/plan', { method: 'POST', headers: { 'content-type': 'application/json', 'cf-connecting-ip': '8.8.8.' + Math.floor(Math.random() * 200), 'x-sc-token': tok }, body: JSON.stringify({ days: 7 }) }), env, waitUntil: () => {} })).json());
+  for (const who of ['Code unlocked', 'chris@example.com', 'Google Play']) { const j = await go(await signToken(env, who)); assert.equal(j.preview, false, who); assert.equal(j.genDays, 7, who); assert.equal(j.meals.length, 7, who); }
+  const none = await go(''); assert.equal(none.preview, true); assert.equal(none.genDays, 2);
+  const forged = await go('eyJlIjoieCIsIngiOjk5OTk5OTk5OTk5OTl9.bad'); assert.equal(forged.preview, true);
+});
+test('meal prep UI explains a plan with no fridge scan in all 10 languages, and drops a stale preview after going Pro', async () => {
+  const src = (await import('node:fs')).readFileSync(new URL('../web/prep.js', import.meta.url), 'utf8');
+  for (const l of ['en', 'es', 'fr', 'de', 'pt', 'id', 'tr', 'ru', 'hi', 'ar']) assert.match(src, new RegExp(`\\b${l}: '`), l);
+  assert.match(src, /plan\.preview && typeof unlimited === 'function' && unlimited\(\)/);
+});

@@ -21,6 +21,13 @@
     '{k} kcal · {p}g protein · {c}g carbs · {f}g fat per serving (estimate)': '{k} kcal · {p}g proteína · {c}g carbohidratos · {f}g grasa por porción (estimado)',
     'Day total (1 serving each): {k} kcal · P {p}g · C {c}g · F {f}g': 'Total del día (1 porción c/u): {k} kcal · P {p}g · C {c}g · G {f}g', 'vs target {k} kcal (meals share {s}%)': 'vs meta {k} kcal (estas comidas = {s}%)', 'Nutrition is an AI estimate.': 'La nutrición es una estimación de IA.', 'Southern': 'Sureña', 'Quick 15-min': 'Rápida (15 min)', 'High-protein': 'Alta en proteína', 'Budget': 'Económica', 'Kid-friendly': 'Para niños', 'Style': 'Estilo', '· optional, applies to snaps, cravings and plans': '· opcional, aplica a fotos, antojos y planes', 'Edit': 'Editar', 'Tap Retry': 'Reintentar'
   });
+  // No fridge scan (or toggle off): say plainly what the plan is built from. All 10 languages.
+  const NOFR = { en: 'No fridge scan, so this plan is built from your preferences and groceries you would buy, not from your fridge.', es: 'Sin escaneo del refri: este plan se arma con tus preferencias y lo que comprarías, no con tu refri.',
+    fr: 'Pas de scan du frigo : ce plan est fait selon tes préférences et des courses à acheter, pas selon ton frigo.', de: 'Kein Kühlschrank-Scan: Dieser Plan basiert auf deinen Vorlieben und Einkäufen, nicht auf deinem Kühlschrank.',
+    pt: 'Sem leitura da geladeira: este plano usa suas preferências e compras que você faria, não a sua geladeira.', id: 'Tanpa pindaian kulkas: rencana ini dibuat dari preferensimu dan bahan yang akan kamu beli, bukan dari kulkasmu.',
+    tr: 'Buzdolabı taraması yok: bu plan buzdolabına göre değil, tercihlerine ve alacağın malzemelere göre hazırlanır.', ru: 'Без скана холодильника: план составлен по вашим предпочтениям и продуктам для покупки, а не по холодильнику.',
+    hi: 'फ्रिज स्कैन नहीं है, इसलिए यह प्लान आपकी पसंद और खरीदी जाने वाली चीज़ों से बना है, आपके फ्रिज से नहीं।', ar: 'لا يوجد مسح للثلاجة، لذا الخطة مبنية على تفضيلاتك ومشتريات ستشتريها، وليس على ثلاجتك.' };
+  const noFridge = () => esc(NOFR[I18N.lang] || NOFR.en);
   const opts = Object.assign({ goal: '', kcal: '', p: '', c: '', f: '', wt: '', days: 7, meals: 'dinner', servings: 2, budget: '', fridge: true }, LS.get('prepOpts', {}));
   let plan = LS.get('plan', null), busy = false;
   const save = () => { LS.set('prepOpts', opts); };
@@ -39,7 +46,7 @@
       ${opts.goal ? `<div class="fine" style="font-weight:700;color:var(--ink)">${t('Daily targets (one person)')}</div>${[['kcal', 'Calories'], ['p', 'Protein g'], ['c', 'Carbs g'], ['f', 'Fat g']].map(([k, l]) => `<div class="input"><span style="min-width:120px;font-size:13px">${t(l)}</span><input data-pfit="${k}" inputmode="numeric" value="${esc(opts[k])}" aria-label="${esc(t(l))}"></div>`).join('')}
       <div class="input"><span style="min-width:120px;font-size:13px">${t('Your weight (lb)')}</span><input data-pfit="wt" inputmode="numeric" value="${esc(opts.wt)}" aria-label="${esc(t('Your weight (lb)'))}"><button class="chip" id="prepSuggest" style="cursor:pointer">${t('Suggest targets')}</button></div>
       <div class="fine">${t('Rough starting point from your weight and goal, not medical advice.')}</div>` : ''}</div></details>
-    <div class="card">${n ? `<div class="toggle">${t('Use my fridge scan ({n} items)', { n })}<button class="sw ${opts.fridge ? 'on' : ''}" id="prepFridge" aria-label="${esc(t('Use my fridge scan ({n} items)', { n }))}"></button></div>` : `<div class="fine" style="margin:0">${t('No fridge scan yet. Snap it first to use what you have.')}</div>`}
+    <div class="card">${n ? `<div class="toggle">${t('Use my fridge scan ({n} items)', { n })}<button class="sw ${opts.fridge ? 'on' : ''}" id="prepFridge" aria-label="${esc(t('Use my fridge scan ({n} items)', { n }))}"></button></div>${opts.fridge ? '' : `<div class="fine">${noFridge()}</div>`}` : `<div class="fine" style="margin:0">${t('No fridge scan yet. Snap it first to use what you have.')}</div><div class="fine">${noFridge()}</div>`}
     ${dietOn() && dietLine() ? `<div class="fine">${t('🥗 Cooking for: {d} · ', { d: esc(dietLine()) })}<a href="#settings" style="color:var(--coral);font-weight:700">${t('Edit')}</a></div>` : ''}</div>
     <button class="btn primary" id="prepGo">${t('Build my week')}</button>`;
   }
@@ -76,7 +83,7 @@
     h += `<p class="fine">${t('Nutrition is an AI estimate.')} ${t('Costs are AI estimates of grocery prices, not quotes. We never invent restaurant prices.')} ${t('AI-generated plan. Check doneness, storage and allergens yourself.')}</p><button class="btn ghost" id="prepNew">${t('New plan')}</button>`;
     return h;
   }
-  function render() { const b = el('prepBody'); if (!b || busy) return; b.innerHTML = plan && plan.meals ? result() : form(); }
+  function render() { const b = el('prepBody'); if (!b || busy) return; if (plan && plan.preview && typeof unlimited === 'function' && unlimited()) { plan = null; LS.set('plan', null); } b.innerHTML = plan && plan.meals ? result() : form(); }
   const fitBody = () => opts.goal ? { goal: opts.goal, kcal: +opts.kcal || 0, p: +opts.p || 0, c: +opts.c || 0, f: +opts.f || 0 } : null;
   const keepInputs = () => { opts.budget = el('prepBudget')?.value ?? opts.budget; document.querySelectorAll('[data-pfit]').forEach(i => opts[i.dataset.pfit] = i.value.replace(/[^\d]/g, '')); save(); };
   function suggest() { keepInputs(); const w = +opts.wt; if (!w) return toast(t('Pop in your weight first!'));
