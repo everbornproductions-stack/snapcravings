@@ -35,3 +35,7 @@ test('new money copy translated in all 9 languages with placeholders kept', () =
   for (const k of ['Budget in {cur}, like {n}', 'Order it delivered', 'Estimate, not a quote. Check the app.', 'Delivery usually ~{lo}-{hi} with fees', 'Cooking saves about {s} vs delivery (estimate).', 'Costs are AI estimates of local grocery prices, not quotes.'])
     for (const l of ['es', 'pt', 'hi', 'id', 'fr', 'de', 'ar', 'ru', 'tr']) { assert.ok(fix[l][k], l + k); (k.match(/\{\w+\}/g) || []).forEach(p => assert.ok(fix[l][k].includes(p), l + p)); }
 });
+test('crave input selects on focus synchronously (no deferred select eating the first letter); budget example is a round number', () => {
+  const a = rd('web/app.js'); assert.doesNotMatch(a, /setTimeout\(\(\) => \{ try \{ i\.select\(\)/); assert.match(a, /ci\.addEventListener\('focus', \(\) => \{ if \(ci\.value\) \{ try \{ ci\.select\(\)/);
+  assert.match(rd('web/prep.js'), /Math\.round\(SC_MONEY\.fromUS\(80, scCountry\(\)\) \/ 5\) \* 5/);
+});

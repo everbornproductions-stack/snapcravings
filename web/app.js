@@ -543,7 +543,9 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('input', e => { if (e.target.id === 'dietOther') { diet.other = e.target.value; saveDiet(); } else if (e.target.id === 'dietMood') { diet.mood = e.target.value; saveDiet(); } });
 el('listAdd').addEventListener('keydown', e => { if (e.key === 'Enter') el('listAddBtn').click(); });
-el('craveInput').addEventListener('focus', e => { const i = e.target; setTimeout(() => { try { i.select(); } catch {} }, 0); }); /* new typing replaces the old craving instead of appending (sushipizza) */
+{ let justFocused = false; const ci = el('craveInput'); /* select synchronously: a deferred select() ate the first typed letter ('ad thai') */
+  ci.addEventListener('focus', () => { if (ci.value) { try { ci.select(); } catch {} justFocused = true; } });
+  ci.addEventListener('mouseup', e => { if (justFocused) { e.preventDefault(); justFocused = false; } }); ci.addEventListener('keydown', () => { justFocused = false; }); } /* new typing replaces the old craving instead of appending (sushipizza) */
 el('craveInput').addEventListener('keydown', e => { if (e.key === 'Enter') crave(el('craveInput').value); });
 ['snapCam', 'snapLib'].forEach(id => el(id).addEventListener('change', e => { onPhotos(e.target.files); e.target.value = ''; }));
 
