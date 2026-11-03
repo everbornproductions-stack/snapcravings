@@ -16,6 +16,9 @@ export const PLAN_SCHEMA = { type: 'object', properties: {
   prep: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, detail: { type: 'string' }, minutes: { type: 'integer' } }, required: ['title', 'detail', 'minutes'] } },
   storage: { type: 'array', items: { type: 'string' } } }, required: ['meals', 'prep', 'storage'] };
 export const MEALS_SCHEMA = { type: 'object', properties: { meals: { type: 'array', items: MEAL } }, required: ['meals'] };
+// Fast path: a tiny menu call (names only), then one call per day + one prep/storage call, all in parallel.
+export const MENU_SCHEMA = { type: 'object', properties: { menu: { type: 'array', items: { type: 'object', properties: { day: { type: 'integer' }, slot: { type: 'string', enum: ['Breakfast', 'Lunch', 'Dinner'] }, name: { type: 'string' }, protein: { type: 'string' } }, required: ['day', 'slot', 'name', 'protein'] } } }, required: ['menu'] };
+export const PREP_SCHEMA = { type: 'object', properties: { prep: PLAN_SCHEMA.properties.prep, storage: PLAN_SCHEMA.properties.storage }, required: ['prep', 'storage'] };
 
 const clampInt = (v, lo, hi, d) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
 // Normalize the request. Free users get only the first FREE_PREVIEW_DAYS days generated (preview); pro/owner get all.
@@ -50,6 +53,12 @@ ${p.budget ? `Grocery budget for the whole plan: about $${p.budget} USD. Keep th
 prep: 5 to 9 batch steps for ONE prep day, in order (cook grains, roast or cook proteins, chop vegetables, marinate, make sauces, cool and portion into containers), each with a short title, a specific detail (amounts, times, temperatures) and minutes.
 storage: 3 to 6 short tips on how long each prepped item keeps in the fridge or freezer and what to freeze for the later days.${LANG[lang] || ''}`;
 }
+// Menu only (no ingredients/steps), so it comes back in a second or two. Same planning rules as planPrompt.
+export const menuPrompt = (p, lang = 'en') => planPrompt(p, lang).replace(/ For each meal: day, slot[\s\S]*$/, '') + `\nRight now return ONLY the menu: for each day 1 to ${p.genDays} and each slot (${p.slots.join(', ')}), the meal name and its main protein. Names only, no ingredients or steps.${LANG[lang] ? ' Meal names in the user language (see below).' + LANG[lang] : ''}`;
+const menuTxt = menu => menu.map(m => `day ${m.day} ${m.slot}: ${m.name}`).join('; ');
+// Full meals for ONE day of an agreed menu.
+export const dayPrompt = (p, day, menu, lang = 'en') => `${planPrompt(p, lang)}\n\nThe week's menu is already decided: ${menuTxt(menu)}.\nNow return ONLY the meals for day ${day} (${p.slots.join(', ')}), exactly these dishes, with every field filled. Keep the shared bulk ingredients consistent with the rest of the menu.`;
+export const prepPrompt = (p, menu, lang = 'en') => `${planPrompt(p, lang)}\n\nThe week's menu is already decided: ${menuTxt(menu)}.\nNow return ONLY prep (the batch prep-day steps for this exact menu) and storage tips.`;
 export const swapPrompt = (p, day, slot, avoid, lang = 'en') => `Give ONE replacement meal for a meal-prep plan: day ${day}, slot ${slot}, ${p.servings} serving(s). Ingredients the user has: ${p.fridge.length ? p.fridge.join('; ') : 'none known'}. Staples: ${dietStaples(p.diet, STAPLES)}.
 ${dietPrompt(p.diet) ? dietPrompt(p.diet) + '\n' : ''}${fitNote(p)}It must be different from these meals already in the plan: ${avoid.slice(0, 30).join('; ') || 'none'}. Make it prep-friendly (keeps and reheats well). Same fields as before (kcal, protein_g, carbs_g, fat_g per serving estimates too): day, slot, name, emoji, minutes, servings, ingredients (item, qty, aisle from ${AISLES.join(', ')}, have), 3 to 5 steps, est_cook_cost (USD estimate of ingredients used), keeps_days. Return {"meals":[that one meal]}.${LANG[lang] || ''}`;
 
@@ -58,7 +67,7 @@ export const mealHits = (d, m) => recipeHits(d, { name: m?.name, ingredients: m?
 // Models sometimes send the code point as text ("1f95f" or "U+1F35D"): turn it into the emoji, else a bento box.
 export function emojiOf(e) { const s = String(e || '').trim(); const h = /^(?:u\+)?([0-9a-f]{4,6})$/i.exec(s); if (h) { try { return String.fromCodePoint(parseInt(h[1], 16)); } catch {} } return s && !/[A-Za-z0-9]/.test(s) ? s.slice(0, 8) : '🍱'; }
 export function cleanMeal(m, p) {
-  const day = clampInt(m?.day, 1, p.genDays, 1); const slot = p.slots.includes(m?.slot) ? m.slot : p.slots[p.slots.length - 1];
+  const day = p.onlyDay || clampInt(m?.day, 1, p.genDays, 1); const slot = p.slots.includes(m?.slot) ? m.slot : p.slots[p.slots.length - 1];
   return { day, slot, name: String(m?.name || '').slice(0, 90), emoji: emojiOf(m?.emoji), minutes: clampInt(m?.minutes, 1, 240, 20), servings: clampInt(m?.servings, 1, 12, p.servings),
     ingredients: (m?.ingredients || []).slice(0, 20).map(i => ({ item: String(i?.item || '').slice(0, 80), qty: String(i?.qty || '').slice(0, 40), aisle: AISLES.includes(i?.aisle) ? i.aisle : 'Other', have: !!i?.have })).filter(i => i.item),
     steps: (m?.steps || []).slice(0, 8).map(s => String(s).slice(0, 300)), est_cook_cost: Math.max(0, Math.round(Number(m?.est_cook_cost || 0) * 100) / 100), keeps_days: clampInt(m?.keeps_days, 0, 30, 3), kcal: clampInt(m?.kcal, 0, 3000, 0), protein_g: clampInt(m?.protein_g, 0, 300, 0), carbs_g: clampInt(m?.carbs_g, 0, 400, 0), fat_g: clampInt(m?.fat_g, 0, 300, 0) };
@@ -73,7 +82,7 @@ export function checkPlan(p, meals) {
     if (h.length) badOnes.push({ ...m, why: h }); else { good.push(m); seen.add(key); }
   }
   const missing = [];
-  for (let d = 1; d <= p.genDays; d++) for (const s of p.slots) if (!seen.has(d + '|' + s)) missing.push({ day: d, slot: s });
+  for (let d = p.onlyDay || 1; d <= (p.onlyDay || p.genDays); d++) for (const s of p.slots) if (!seen.has(d + '|' + s)) missing.push({ day: d, slot: s });
   return { good, bad: badOnes, missing };
 }
 const STAPLE_RE = /^(salt|pepper|black pepper|salt and pepper|water|ice|cooking oil|oil|vegetable oil|sal|pimienta|agua|aceite)$/i;

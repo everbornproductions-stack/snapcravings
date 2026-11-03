@@ -1,6 +1,6 @@
 // Network-first for everything (HTML/JS/CSS always fresh when online); cache only as offline fallback.
-const VERSION = 'sc-2026-11-02n-ui45';
-const SHELL = ['./', './index.html', './config.js?v=ui45', './i18n.js?v=ui45', './app.js?v=ui45', './grow.js?v=ui45', './holiday.js?v=ui45', './hplan-i18n.js?v=ui45', './hplan.js?v=ui45', './dishcore.js?v=ui45', './dish-i18n.js?v=ui45', './dish.js?v=ui45', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+const VERSION = 'sc-2026-11-02o-ui46';
+const SHELL = ['./', './index.html', './config.js?v=ui46', './i18n.js?v=ui46', './app.js?v=ui46', './grow.js?v=ui46', './holiday.js?v=ui46', './hplan-i18n.js?v=ui46', './hplan.js?v=ui46', './dishcore.js?v=ui46', './dish-i18n.js?v=ui46', './dish.js?v=ui46', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).catch(() => {})); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {

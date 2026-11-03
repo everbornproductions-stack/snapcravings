@@ -66,7 +66,8 @@
     const p = plan, n = p.meals.length, serv = p.meals.reduce((s, m) => s + (m.servings || 0), 0);
     let h = `<div class="kick">${t('Cook once, eat all week.')}</div><h2>${t('Your week, prepped')}</h2>
       <div class="stats"><div class="stat"><b>${n}</b><span>${t('Meals')}</span></div><div class="stat"><b>~${$(p.total)}</b><span>${t('Est. cook cost')}</span></div><div class="stat"><b>~${$(p.total / Math.max(1, serv))}</b><span>${t('Per serving')}</span></div></div>`;
-    for (let d = 1; d <= p.genDays; d++) { const ms = p.meals.map((m, i) => [m, i]).filter(([m]) => m.day === d); h += `<h3>${t('Day {n}', { n: d })}</h3>` + dayBar(ms.map(([m]) => m)) + ms.map(([m, i]) => mealCard(m, i)).join(''); }
+    for (let d = 1; d <= p.genDays; d++) { const ms = p.meals.map((m, i) => [m, i]).filter(([m]) => m.day === d); if (p.building && !ms.length) continue; h += `<h3>${t('Day {n}', { n: d })}</h3>` + dayBar(ms.map(([m]) => m)) + ms.map(([m, i]) => mealCard(m, i)).join(''); }
+    if (p.building) return h + loading('Building your week…');
     if (p.preview && p.days > p.genDays) h += `<div class="card" style="background:var(--dark);color:#fff;border:0;margin-top:14px"><div class="kick dk" style="margin:0 0 2px">Pro</div><b>${t('Unlock days {a} to {b}', { a: p.genDays + 1, b: p.days })}</b><p style="font-size:13px;opacity:.8;margin-top:3px">${t('Free preview shows the first {n} days. Go Pro for the full week, grocery list and prep guide for every day.', { n: p.genDays })}</p><a class="btn primary" href="#pro" style="padding:11px">${t('Go Pro')}</a></div>`;
     h += `<h3>${t('Grocery list for the week')} <span style="color:var(--coral)">${t('· minus what is in your fridge')}</span></h3><div class="card">${p.grocery.length ? p.grocery.map(g => `<div class="fine" style="margin:6px 0 2px;font-weight:700;color:var(--ink)">${esc(t(g.aisle))}</div>` + g.items.map(i => `<div class="row"><span>○ ${esc(i.item)}</span><span class="fine" style="margin:0">${esc(i.qty)}${i.meals > 1 ? ' · ' + t('used in {n} meals', { n: i.meals }) : ''}</span></div>`).join('')).join('') : `<b>${t('Nothing to buy. Pantry power!')}</b>`}
       <button class="btn ghost" id="prepCopy" style="padding:11px">📋 ${t('Copy list')}</button>${navigator.share ? `<button class="btn ghost" id="prepShare" style="padding:11px">📤 ${t('Share list')}</button>` : ''}<button class="btn insta" id="prepAdd" style="padding:12px">🛒 ${t('Add to my grocery list')}</button></div>`;
@@ -83,11 +84,34 @@
     Object.assign(opts, { kcal: kc, p: pr, f: fat, c: Math.max(0, Math.round((kc - pr * 4 - fat * 9) / 4)) }); save(); render(); }
   async function build() {
     keepInputs(); opts.budget = String(opts.budget || '').replace(/[^\d.]/g, ''); save(); busy = true; el('prepBody').innerHTML = loading('Building your week…');
-    try { const j = await api('plan', { days: opts.days, meals: opts.meals, servings: opts.servings, budget: +opts.budget || 0, fridge: opts.fridge ? fridge() : [], prefs: prefs(), fit: fitBody(), lang: I18N.lang }, 150000); plan = j; LS.set('plan', plan); track('plan_built', 'prep', { days: j.genDays, n: j.meals.length }); busy = false; render(); }
-    catch (e) { busy = false; el('prepBody').innerHTML = `<p class="sub">${esc(e.message)}</p>${e.paywall ? `<a class="btn primary" href="#pro">${t('Go Pro')}</a>` : ''}<button class="btn ghost" id="prepRetry">${t('Tap Retry')}</button>`; }
+    const body = { days: opts.days, meals: opts.meals, servings: opts.servings, budget: +opts.budget || 0, fridge: opts.fridge ? fridge() : [], prefs: prefs(), fit: fitBody(), lang: I18N.lang };
+    // Streamed: days show up as soon as each one is ready (same cards), the spinner stays below until the whole week is in.
+    const show = () => { const b = el('prepBody'); if (b && plan && plan.building) b.innerHTML = result(); };
+    try { const j = await planStream(body, m => { plan = { ...m, meals: [], grocery: [], prep: [], storage: [], total: 0, building: true }; },
+        d => { if (!plan || !plan.building) return; plan.meals = plan.meals.concat(d.meals).sort((x, y) => x.day - y.day || ['Breakfast', 'Lunch', 'Dinner'].indexOf(x.slot) - ['Breakfast', 'Lunch', 'Dinner'].indexOf(y.slot)); plan.total = Math.round(plan.meals.reduce((s, x) => s + (x.est_cook_cost || 0), 0) * 100) / 100; show(); });
+      plan = j; LS.set('plan', plan); track('plan_built', 'prep', { days: j.genDays, n: j.meals.length }); busy = false; render(); }
+    catch (e) { plan = null; busy = false; el('prepBody').innerHTML = `<p class="sub">${esc(e.message)}</p>${e.paywall ? `<a class="btn primary" href="#pro">${t('Go Pro')}</a>` : ''}<button class="btn ghost" id="prepRetry">${t('Tap Retry')}</button>`; }
+  }
+  // NDJSON reader for /api/plan: {meta}, {day, meals} per finished day, then {done, ...full plan}. Plain JSON answers still work.
+  async function planStream(body, onMeta, onDay, ms = 150000) {
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), ms);
+    const fail = e => new Error(e && e.name === 'AbortError' ? t('That took too long. Check your signal and tap Retry!') : t('Lost the connection for a sec. Tap Retry!'));
+    try {
+      let r; try { r = await fetch('/api/plan', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/x-ndjson', 'x-sc-lang': I18N.lang, 'x-sc-token': sub.token || '', 'x-sc-dev': DEV }, body: JSON.stringify({ ...body, stream: true }), signal: ctl.signal }); } catch (e) { throw fail(e); }
+      if (!r.ok || !/ndjson/.test(r.headers.get('content-type') || '') || !r.body) {
+        const j = await r.json().catch(() => ({ error: 'Something went sideways. Try again!' }));
+        if (!r.ok || j.error) { const er = new Error(t(j.error || 'Something went sideways. Try again!')); er.paywall = !!j.paywall; throw er; } return j;
+      }
+      const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '', fin = null;
+      try { for (;;) { const { value, done } = await rd.read(); if (done) break; buf += dec.decode(value, { stream: true }); let k;
+        while ((k = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, k); buf = buf.slice(k + 1); if (!line.trim()) continue; let j; try { j = JSON.parse(line); } catch { continue; }
+          if (j.meta) onMeta(j.meta); else if (j.day && j.meals) onDay(j); if (j.done) fin = j; } } } catch (e) { throw fail(e); }
+      if (!fin) throw new Error(t('Something went sideways. Try again!'));
+      if (fin.error) throw new Error(t(fin.error)); return fin;
+    } finally { clearTimeout(tm); }
   }
   async function swap(i) {
-    const m = plan.meals[i]; if (!m || plan.swapping != null) return; plan.swapping = i; render();
+    const m = plan.meals[i]; if (!m || plan.swapping != null || plan.building) return; plan.swapping = i; render();
     try { const j = await api('plan', { swap: { day: m.day, slot: m.slot }, avoid: plan.meals.map(x => x.name), days: plan.days, meals: opts.meals, servings: plan.servings, fit: plan.fit, fridge: opts.fridge ? fridge() : [], prefs: prefs(), lang: I18N.lang }, 60000);
       plan.meals[i] = j.meal; plan.grocery = regroup(); plan.total = Math.round(plan.meals.reduce((s, x) => s + (x.est_cook_cost || 0), 0) * 100) / 100; toast(t('Swapped! Grocery list updated.')); }
     catch (e) { toast(e.message); }
