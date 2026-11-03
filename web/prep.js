@@ -39,7 +39,7 @@
     <h3>${t('Days')}</h3>${seg('days', [[5, '5'], [7, '7']])}
     <h3>${t('Meals per day')}</h3>${seg('meals', [['dinner', 'Dinner only'], ['lunch_dinner', 'Lunch + dinner'], ['all', 'All 3']])}
     <h3>${t('Servings per meal')}</h3><div class="card"><div class="row" style="padding:0"><b>${t('Servings per meal')}</b><span class="qty"><button data-psv="-1" aria-label="${t('Less')}">−</button>${opts.servings}<button data-psv="1" aria-label="${t('More')}">+</button></span></div></div>
-    <h3>${t('Budget for the week (optional)')}</h3><div class="input"><span>${I18N.lang === 'en' ? '$' : 'US$'}</span><input id="prepBudget" inputmode="numeric" placeholder="${esc(t('Budget in USD, like 80'))}" value="${esc(opts.budget)}" aria-label="${esc(t('Budget for the week (optional)'))}"></div>
+    <h3>${t('Budget for the week (optional)')}</h3><div class="input"><span>${esc(curSym())}</span><input id="prepBudget" inputmode="numeric" placeholder="${esc(t('Budget in {cur}, like {n}', { cur: curNow(), n: SC_MONEY.fromUS(80, scCountry()) }))}" value="${esc(opts.budget)}" aria-label="${esc(t('Budget for the week (optional)'))}"></div>
     <h3>${t('Style')} <span style="color:var(--muted);font-weight:600;font-size:12px">${t('· optional, applies to snaps, cravings and plans')}</span></h3><div class="chips">${MOODS.map(m0 => { const m = t(m0); const on = diet.mood.split(/[,;]/).map(x => x.trim().toLowerCase()).includes(m.toLowerCase()); return `<button class="chip" data-dmood="${esc(m)}" style="cursor:pointer;font-family:var(--font);${on ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : ''}">${esc(m)}</button>`; }).join('')}</div>
     <details class="opt" ${opts.goal ? 'open' : ''}><summary><span class="badge" style="background:var(--dark)">💪</span><span class="nm">${t('Fitness goals')} <small>${t('· optional')}</small></span></summary><div class="bd" style="padding-left:14px">
       <div class="chips">${[['', 'None'], ['high_protein', 'High protein'], ['cut', 'Cut / lose weight'], ['bulk', 'Bulk / gain muscle'], ['maintain', 'Maintain'], ['low_carb', 'Low-carb']].map(([v, l]) => `<button class="chip" data-pgoal="${v}" aria-pressed="${opts.goal === v}" aria-label="${esc(t('Fitness goals') + ': ' + t(l))}" style="cursor:pointer;font-family:var(--font);${opts.goal === v ? 'background:var(--dark);color:#fff;border-color:var(--dark)' : ''}">${esc(t(l))}</button>`).join('')}</div>
@@ -52,13 +52,15 @@
     <button class="btn primary" id="prepGo">${t('Build my week')}</button>`;
   }
   const slotT = s => t(s);
+  const pc = () => (plan && plan.cur) || 'USD'; /* plans saved before local currency were priced in US$ */
+  const curSym = () => { try { return SC_MONEY.fmt(0, curNow(), I18N.lang).replace(/[\d.,\s\u00a0\u202f]/g, '') || curNow(); } catch { return '$'; } };
   function mealCard(m, i) {
     const per = m.est_cook_cost / Math.max(1, m.servings || 1);
-    return `<details class="opt"><summary><span class="badge" style="background:var(--green-soft);font-size:18px">${esc(m.emoji)}</span><span class="nm">${esc(m.name)}<small>${esc(slotT(m.slot))} · ${t('{m} min · keeps {k} days', { m: m.minutes, k: m.keeps_days })}${m.portion ? ' · ' + t('Portion ×{x} to fit your goal', { x: m.portion }) : ''}${m.kcal ? ' · ' + m.kcal + ' kcal · P' + m.protein_g + ' C' + m.carbs_g + ' F' + m.fat_g : ''}</small></span><span class="amt">~${$(m.est_cook_cost)}</span></summary>
+    return `<details class="opt"><summary><span class="badge" style="background:var(--green-soft);font-size:18px">${esc(m.emoji)}</span><span class="nm">${esc(m.name)}<small>${esc(slotT(m.slot))} · ${t('{m} min · keeps {k} days', { m: m.minutes, k: m.keeps_days })}${m.portion ? ' · ' + t('Portion ×{x} to fit your goal', { x: m.portion }) : ''}${m.kcal ? ' · ' + m.kcal + ' kcal · P' + m.protein_g + ' C' + m.carbs_g + ' F' + m.fat_g : ''}</small></span><span class="amt">~${$(m.est_cook_cost, pc())}</span></summary>
       <div class="bd" style="padding-left:14px"><div class="chips">${m.ingredients.map(g => `<span class="chip ${g.have ? 'have' : ''}">${g.have ? '✓ ' : ''}${esc(g.item)}${g.qty ? ', ' + esc(g.qty) : ''}</span>`).join('')}</div>
       <ol class="steps">${m.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>
       ${m.kcal ? `<div class="fine">${t('{k} kcal · {p}g protein · {c}g carbs · {f}g fat per serving (estimate)', { k: m.kcal, p: m.protein_g, c: m.carbs_g, f: m.fat_g })}</div>` : ''}
-      <div class="row"><span>${t('Make it: ~{a} (~{b} per serving, estimate)', { a: $(m.est_cook_cost), b: $(per) })}</span></div>
+      <div class="row"><span>${t('Make it: ~{a} (~{b} per serving, estimate)', { a: $(m.est_cook_cost, pc()), b: $(per, pc()) })}</span></div>
       <div class="row"><span class="m">${t('Order it out: comparison coming soon')}</span><span class="pill c" style="margin:0">${t('Coming soon')}</span></div>
       <button class="btn ghost" data-pswap="${i}" style="padding:10px">${plan.swapping === i ? '<span class="spin"></span> ' + t('Swapping…') : '🔄 ' + t('Swap this meal')}</button></div></details>`;
   }
@@ -73,7 +75,7 @@
   function result() {
     const p = plan, n = p.meals.length, serv = p.meals.reduce((s, m) => s + (m.servings || 0), 0);
     let h = `<div class="kick">${t('Cook once, eat all week.')}</div><h2>${t('Your week, prepped')}</h2>
-      <div class="stats"><div class="stat"><b>${n}</b><span>${t('Meals')}</span></div><div class="stat"><b>~${$(p.total)}</b><span>${t('Est. cook cost')}</span></div><div class="stat"><b>~${$(p.total / Math.max(1, serv))}</b><span>${t('Per serving')}</span></div></div>`;
+      <div class="stats"><div class="stat"><b>${n}</b><span>${t('Meals')}</span></div><div class="stat"><b>~${$(p.total, p.cur)}</b><span>${t('Est. cook cost')}</span></div><div class="stat"><b>~${$(p.total / Math.max(1, serv), p.cur)}</b><span>${t('Per serving')}</span></div></div>`;
     for (let d = 1; d <= p.genDays; d++) { const ms = p.meals.map((m, i) => [m, i]).filter(([m]) => m.day === d); if (p.building && !ms.length) continue; h += `<h3>${t('Day {n}', { n: d })}</h3>` + dayBar(ms.map(([m]) => m)) + ms.map(([m, i]) => mealCard(m, i)).join(''); }
     if (p.building) return h + loading('Building your week…');
     if (p.preview && p.days > p.genDays) h += `<div class="card" style="background:var(--dark);color:#fff;border:0;margin-top:14px"><div class="kick dk" style="margin:0 0 2px">Pro</div><b>${t('Unlock days {a} to {b}', { a: p.genDays + 1, b: p.days })}</b><p style="font-size:13px;opacity:.8;margin-top:3px">${t('Free preview shows the first {n} days. Go Pro for the full week, grocery list and prep guide for every day.', { n: p.genDays })}</p><a class="btn primary" href="#pro" style="padding:11px">${t('Go Pro')}</a></div>`;
@@ -81,7 +83,7 @@
       <button class="btn ghost" id="prepCopy" style="padding:11px">📋 ${t('Copy list')}</button>${navigator.share ? `<button class="btn ghost" id="prepShare" style="padding:11px">📤 ${t('Share list')}</button>` : ''}<button class="btn insta" id="prepAdd" style="padding:12px">🛒 ${t('Add to my grocery list')}</button></div>`;
     if (p.prep.length) h += `<h3>${t('Prep day guide')} <span style="color:var(--coral)">${t('· batch it all at once')}</span></h3><ol class="steps">${p.prep.map(s => `<li><b>${esc(s.title)}</b> (${esc(s.minutes)} min). ${esc(s.detail)}</li>`).join('')}</ol>`;
     if (p.storage.length) h += `<h3>${t('Storage times')}</h3><div class="card">${p.storage.map(s => `<div class="row"><span>🧊 ${esc(s)}</span></div>`).join('')}</div>`;
-    h += `<p class="fine">${t('Nutrition is an AI estimate.')} ${t('Costs are AI estimates of grocery prices, not quotes. We never invent restaurant prices.')} ${t('AI-generated plan. Check doneness, storage and allergens yourself.')}</p><button class="btn ghost" id="prepNew">${t('New plan')}</button>`;
+    h += `<p class="fine">${t('Nutrition is an AI estimate.')} ${t('Costs are AI estimates of local grocery prices, not quotes.')} ${t('AI-generated plan. Check doneness, storage and allergens yourself.')}</p><button class="btn ghost" id="prepNew">${t('New plan')}</button>`;
     return h;
   }
   function render() { const b = el('prepBody'); if (!b || busy) return; if (plan && plan.preview && typeof unlimited === 'function' && unlimited()) { plan = null; LS.set('plan', null); } b.innerHTML = plan && plan.meals ? result() : form(); }
@@ -106,7 +108,7 @@
     const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), ms);
     const fail = e => new Error(e && e.name === 'AbortError' ? t('That took too long. Check your signal and tap Retry!') : t('Lost the connection for a sec. Tap Retry!'));
     try {
-      let r; try { r = await fetch('/api/plan', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/x-ndjson', 'x-sc-lang': I18N.lang, 'x-sc-token': sub.token || '', 'x-sc-dev': DEV }, body: JSON.stringify({ ...body, stream: true }), signal: ctl.signal }); } catch (e) { throw fail(e); }
+      let r; try { r = await fetch('/api/plan', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/x-ndjson', 'x-sc-lang': I18N.lang, 'x-sc-country': scCountry(), 'x-sc-token': sub.token || '', 'x-sc-dev': DEV }, body: JSON.stringify({ ...body, stream: true }), signal: ctl.signal }); } catch (e) { throw fail(e); }
       if (!r.ok || !/ndjson/.test(r.headers.get('content-type') || '') || !r.body) {
         const j = await r.json().catch(() => ({ error: 'Something went sideways. Try again!' }));
         if (!r.ok || j.error) { const er = new Error(t(j.error || 'Something went sideways. Try again!')); er.paywall = !!j.paywall; throw er; } return j;

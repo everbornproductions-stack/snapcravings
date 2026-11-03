@@ -145,7 +145,7 @@ async function handle(ctx) {
   if (await rl(env, 'plan', ip, 40)) return json({ error: 'Whoa, hungry! You hit the hourly limit. Try again soon.' }, 429);
   if (!env.GEMINI_API_KEY && env.MOCK_AI !== '1') return json({ error: 'AI is not set up yet (missing GEMINI_API_KEY).' }, 503);
   const tok = await verifyToken(env, request.headers.get('x-sc-token')); const pro = !!tok; const owner = tok?.e === 'Code unlocked';
-  const p = planInput(b, { pro }); const lang = langCode(b.lang || request.headers.get('x-sc-lang'));
+  const p = planInput({ ...b, country: (globalThis.SC_MONEY && SC_MONEY.cc2(request.headers.get('x-sc-country'))) || b.country || request.cf?.country }, { pro }); const lang = langCode(b.lang || request.headers.get('x-sc-lang'));
   const ask = env.MOCK_AI === '1' ? mockAsk : gemini;
   try {
     if (b.swap) { // one-meal swap: hourly limit only
@@ -162,7 +162,7 @@ async function handle(ctx) {
       return json({ error: "Couldn't find a swap that fits your diet. Try again!", why: banned }, 502);
     }
     if (!(await fairUse(env, request, ip, pro, owner)).allowed) return json({ error: "You've used this week's meal plans. Try again in a few days!", paywall: !pro }, 402);
-    const meta = { fit: p.fit, days: p.days, genDays: p.genDays, preview: p.preview, slots: p.slots, servings: p.servings, budget: p.budget, lang };
+    const meta = { cur: p.cur, country: p.cc, fit: p.fit, days: p.days, genDays: p.genDays, preview: p.preview, slots: p.slots, servings: p.servings, budget: p.budget, lang };
     const stream = b.stream === true || /ndjson/.test(request.headers.get('accept') || '');
     if (!stream) { const out = await buildPlan(env, p, lang, ask, () => {}); return json(out.error ? { error: out.error, why: out.why, ...(out.busy ? { busy: true, retryAfter: 60 } : {}) } : out, out.error ? (out.busy ? 503 : 502) : 200); }
     const ts = new TransformStream(), w = ts.writable.getWriter(), enc = new TextEncoder(); const send = o => w.write(enc.encode(JSON.stringify(o) + '\n')).catch(() => {});
@@ -223,7 +223,7 @@ export async function buildPlan(env, p, lang, ask0 = gemini, send = () => {}) {
   console.log('plan', menu ? 'fast' : 'single', p.genDays, 'x', p.slots.length, 'ok', meals.length, 'ms', Date.now() - t0, 'banned', [...new Set(banned)].join('|'));
   if (!meals.length) return lastErr && !okCalls ? { error: lastErr.message || BUSY, busy: !!lastErr.busy } : lastErr?.busy && !banned.length ? { error: BUSY, busy: true } : { error: "We couldn't build a plan that fits your diet. Tap Retry!", why: [...new Set(banned)] };
   meals.sort((x, y) => x.day - y.day || slotSort(x, y)); open.sort((x, y) => x.day - y.day || slotSort(x, y));
-  return { fit: p.fit, days: p.days, genDays: p.genDays, preview: p.preview, slots: p.slots, servings: p.servings, budget: p.budget, meals, open,
+  return { cur: p.cur, country: p.cc, fit: p.fit, days: p.days, genDays: p.genDays, preview: p.preview, slots: p.slots, servings: p.servings, budget: p.budget, meals, open,
     grocery: groceryList(meals, p.fridge, p.diet), prep: cleanTexts(p.diet, (prepOut.prep || []).slice(0, 10), x => (x?.title || '') + '. ' + (x?.detail || '')), storage: cleanTexts(p.diet, (prepOut.storage || []).slice(0, 8).map(String)), total: planCost(meals), lowProtein: proteinShort(p, meals), lang, ...(env.MOCK_AI === '1' ? { mock: true } : {}) };
 }
 const slotSort = (x, y) => SLOT_ORDER.indexOf(x.slot) - SLOT_ORDER.indexOf(y.slot);

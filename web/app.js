@@ -1,5 +1,7 @@
 // SnapCravings web app. All AI calls go to /api/* (Cloudflare Pages Function); no keys in the client.
-const $ = n => '$' + (Number(n) || 0).toFixed(2);
+// Money in the user's local currency (web/money.js). c = the currency a saved result was priced in (old saves: US$).
+const curNow = () => window.SC_MONEY ? SC_MONEY.cur(scCountry()) : 'USD';
+const $ = (n, c) => window.SC_MONEY ? SC_MONEY.fmt(n, c || curNow(), I18N.lang) : '$' + (Number(n) || 0).toFixed(2);
 const r2 = n => Math.round(n * 100) / 100;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const el = id => document.getElementById(id);
@@ -167,7 +169,7 @@ function toast(msg, ms = 3500) { const b = el('toast'); b.textContent = msg; b.s
 async function api(path, body, ms = 60000) {
   const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), ms);
   let r;
-  try { r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-sc-lang': I18N.lang, 'x-sc-token': sub.token || '', 'x-sc-scan': state.scanId || '', 'x-sc-dev': DEV }, body: JSON.stringify(path === 'scan' || path === 'recipes' || path === 'crave' ? { ...body, prefs: prefs(), lang: I18N.lang } : body), signal: ctl.signal }); }
+  try { r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-sc-lang': I18N.lang, 'x-sc-country': scCountry(), 'x-sc-token': sub.token || '', 'x-sc-scan': state.scanId || '', 'x-sc-dev': DEV }, body: JSON.stringify(path === 'scan' || path === 'recipes' || path === 'crave' ? { ...body, prefs: prefs(), lang: I18N.lang } : body), signal: ctl.signal }); }
   catch (e) { throw new Error(e.name === 'AbortError' ? t('That took too long. Check your signal and tap Retry!') : t('Lost the connection for a sec. Tap Retry!')); }
   finally { clearTimeout(tm); }
   const j = await r.json().catch(() => ({ error: 'Something went sideways. Try again!' }));
@@ -180,7 +182,7 @@ async function apiStream(path, body, onRecipe, ms = 65000) {
   const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), ms);
   try {
     let r;
-    try { r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/x-ndjson', 'x-sc-lang': I18N.lang, 'x-sc-token': sub.token || '', 'x-sc-scan': state.scanId || '', 'x-sc-dev': DEV }, body: JSON.stringify({ ...body, prefs: prefs(), lang: I18N.lang, stream: true }), signal: ctl.signal }); }
+    try { r = await fetch('/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/x-ndjson', 'x-sc-lang': I18N.lang, 'x-sc-country': scCountry(), 'x-sc-token': sub.token || '', 'x-sc-scan': state.scanId || '', 'x-sc-dev': DEV }, body: JSON.stringify({ ...body, prefs: prefs(), lang: I18N.lang, stream: true }), signal: ctl.signal }); }
     catch (e) { throw new Error(e.name === 'AbortError' ? t('That took too long. Check your signal and tap Retry!') : t('Lost the connection for a sec. Tap Retry!')); }
     if (!r.ok || !/ndjson/.test(r.headers.get('content-type') || '') || !r.body) {
       const j = await r.json().catch(() => ({ error: 'Something went sideways. Try again!' }));
@@ -440,14 +442,18 @@ async function crave(text) {
 function renderCompare() {
   const c = state.crave; if (!c) { el('compareBody').innerHTML = `<p class="sub">${t("Tell us what you're craving first!")}</p><a class="btn primary" href="#crave">${t('Crave it')}</a>`; return; }
   const r = c.recipe; const miss = r.missing || []; const groc = r2(miss.reduce((s, m) => s + (+m.est_price || 0), 0));
-  const apps = [['DoorDash', '#EB1700'], ['Uber Eats', '#06C167'], ['Grubhub', '#FF8000'], ['Restaurant direct', '#1E1B18']];
+  const cu = c.cur || (c.recipe && c.cur) || 'USD', cc = c.country || scCountry(), serv = Math.max(1, +r.servings || 1);
+  /* Delivery = ESTIMATE range (typical local menu price x servings + app markup + delivery, service fee, tip). Never a quote, never app data. */
+  const M = window.SC_MONEY, menu = +c.est_menu_price > 0 ? +c.est_menu_price : M.menuGuess((+c.est_cook_cost || 0) / serv, cc), dl = M.delivery(menu, serv, cc);
+  const homeAll = r2(+groc + 0), save = dl ? Math.max(0, r2(dl.lo - Math.max(homeAll, +c.est_cook_cost || 0))) : 0;
   el('compareBody').innerHTML = `<span class="example">${t('⚠ Cook cost is an estimate')}</span><div class="kick">${t('Make it or take it?')}</div><h2>${esc(c.craving)}</h2>
     <p class="sub" style="font-size:13px">${t('{s} servings · {name}', { s: esc(r.servings), name: esc(r.name) })}</p>
-    <div class="verdict"><div class="k">${t('Make it at home')}</div><div class="v">${miss.length ? t('~{p} at the store', { p: $(groc) }) : t('You have everything!')}</div><div class="s">${miss.length ? t(miss.length === 1 ? '{n} item to buy (full packages). ' : '{n} items to buy (full packages). ', { n: miss.length }) : ''}${t('What this meal uses: ~{a}, about ~{b} per serving.', { a: $(c.est_cook_cost), b: $(c.est_cook_cost / Math.max(1, +r.servings || 1)) })}</div></div>
-    <details class="opt best" open><summary><span class="badge" style="background:#2F8F5B">M</span><span class="nm">${t('Make it')} <small>${t('{n} min cook · estimate', { n: esc(r.minutes) })}</small></span><span class="amt">~${$(groc)}</span></summary>
-      <div class="bd">${miss.map(m => `<div class="row"><span class="m">${esc(m.item)}${m.qty ? ', ' + esc(m.qty) : ''}</span><span>~${$(m.est_price)}</span></div>`).join('') || `<div class="row"><span class="m">${t('Nothing to buy')}</span><span>$0.00</span></div>`}</div></details>
-    ${apps.map(([n, col]) => `<details class="opt"><summary><span class="badge" style="background:${col}">${n[0]}</span><span class="nm">${t(n)}<small>${t('Live all-in prices')}</small></span><span class="pill c" style="margin:0">${t('Coming soon')}</span></summary></details>`).join('')}
-    <p class="fine"><b>${t("Fees? We see 'em.")}</b> ${t('Soon. Ordering totals (menu markups, delivery, service and small-order fees, tax, tip) are coming. We never scrape delivery apps. Cook cost is an AI estimate of grocery prices, not a quote.')}</p>
+    <div class="verdict"><div class="k">${t('Make it at home')}</div><div class="v">${miss.length ? t('~{p} at the store', { p: $(groc, cu) }) : t('You have everything!')}</div><div class="s">${miss.length ? t(miss.length === 1 ? '{n} item to buy (full packages). ' : '{n} items to buy (full packages). ', { n: miss.length }) : ''}${t('What this meal uses: ~{a}, about ~{b} per serving.', { a: $(c.est_cook_cost, cu), b: $(c.est_cook_cost / serv, cu) })}${dl && save > 0 ? ' <b>' + t('Cooking saves about {s} vs delivery (estimate).', { s: $(save, cu) }) + '</b>' : ''}</div></div>
+    <details class="opt best" open><summary><span class="badge" style="background:#2F8F5B">M</span><span class="nm">${t('Make it')} <small>${t('{n} min cook · estimate', { n: esc(r.minutes) })}</small></span><span class="amt">~${$(groc, cu)}</span></summary>
+      <div class="bd">${miss.map(m => `<div class="row"><span class="m">${esc(m.item)}${m.qty ? ', ' + esc(m.qty) : ''}</span><span>~${$(m.est_price, cu)}</span></div>`).join('') || `<div class="row"><span class="m">${t('Nothing to buy')}</span><span>${$(0, cu)}</span></div>`}</div></details>
+    ${dl ? `<details class="opt" id="dlEst"><summary><span class="badge" style="background:#1E1B18">🛵</span><span class="nm">${t('Order it delivered')}<small>${t('Estimate, not a quote. Check the app.')}</small></span><span class="amt">~${$(dl.lo, cu)}–${$(dl.hi, cu)}</span></summary>
+      <div class="bd"><div class="row"><span class="m">${t('Delivery usually ~{lo}-{hi} with fees', { lo: $(dl.lo, cu), hi: $(dl.hi, cu) })}</span></div><div class="row"><span class="m">${t('Typical menu price ~{p} per serving × {n}, plus delivery, service fee and tip', { p: $(menu, cu), n: serv })}</span></div></div></details>` : ''}
+    <p class="fine"><b>${t("Fees? We see 'em.")}</b> ${t('The delivery range is our rough estimate from typical local menu prices plus usual delivery, service fees and tip. It is not a quote and not from any delivery app; check the app for the real price. Cook cost is an AI estimate of local grocery prices.')}</p>
     <a class="btn primary" href="#recipe" data-rec="crave">${t("Let's get cooking! See the recipe →")}</a>
     ${miss.length ? `<a class="btn ghost" href="#list" data-addmiss="crave">${t('🛒 Restock time! Add missing items to my list')}</a>` : ''}`;
 }

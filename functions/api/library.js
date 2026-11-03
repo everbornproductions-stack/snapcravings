@@ -1,3 +1,4 @@
+import '../../web/money.js';
 // POST /api/library {action:'rate', recipe, vote(1|-1|0)} | {action:'list', q, quick, level, maxKcal, minProtein, prefs, lang}
 // Ratings and the community Library live in Supabase (snap_rate / snap_library RPCs, publishable key). Diet rules filter every list.
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
@@ -12,6 +13,10 @@ async function rpc(fn, body) {
 }
 const ES = { "Ratings are taking a break. Try again soon!": '¡Las calificaciones están en pausa! Intenta pronto.', 'Bad request': 'Solicitud inválida' };
 export async function onRequestPost({ request, env }) {
+  // Stored recipe prices are US-equivalent US$: show them in the reader's local currency (web/money.js).
+  const CC = SC_MONEY.cc2(request.headers.get('x-sc-country')) || SC_MONEY.cc2(request.cf?.country) || 'US';
+  const locR = r => r && Array.isArray(r.missing) ? { ...r, missing: r.missing.map(m => ({ ...m, est_price: SC_MONEY.fromUS(m.est_price, CC) })) } : r;
+  const loc = o => ({ ...o, cur: SC_MONEY.cur(CC), recipes: Array.isArray(o.recipes) ? o.recipes.map(locR) : o.recipes });
   const es = String(request.headers.get('x-sc-lang') || '').startsWith('es'); const E = (m, s) => json({ error: es ? ES[m] || m : m }, s);
   let b; try { b = await request.json(); } catch { return E('Bad request', 400); }
   const lang = langCode(b.lang);
@@ -28,7 +33,7 @@ export async function onRequestPost({ request, env }) {
   if (b.action === 'list') {
     const raw = await rpc('snap_library', { p_lang: lang, p_q: '', p_limit: 300 }); if (!Array.isArray(raw)) return E('Ratings are taking a break. Try again soon!', 502);
     const diet = dietOf(b.prefs); const seen = new Set(); const list = filterLibrary(raw, diet, b).filter(x => { const k = String(x.recipe.name).toLowerCase().trim(); if (seen.has(k)) return false; seen.add(k); return true; });
-    return json({ total: raw.length, hidden: raw.length - filterLibrary(raw, diet, {}).length, recipes: list.slice(0, 60).map(x => ({ ...x.recipe, up: x.up, down: x.down })) });
+    return json({ total: raw.length, hidden: raw.length - filterLibrary(raw, diet, {}).length, recipes: list.slice(0, 60).map(x => locR({ ...x.recipe, up: x.up, down: x.down })), cur: SC_MONEY.cur(CC) });
   }
   return E('Bad request', 400);
 }

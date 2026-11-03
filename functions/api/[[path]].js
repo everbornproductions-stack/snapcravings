@@ -4,7 +4,8 @@
 import { libFind, libSave, libCount, libStats, pick as libPick, prefKey as libPrefKey } from '../_lib/recipelib.js';
 import { verifyToken, safeEq, signScan, verifyScan, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
 import { hourly } from '../_lib/limit.js';
-import '../../web/holiday.js'; // sets globalThis.SC_HOLIDAY (holiday mode, shared with the web app)
+import '../../web/holiday.js';
+import '../../web/money.js'; // sets globalThis.SC_MONEY (local currency + price levels, shared with the web app) // sets globalThis.SC_HOLIDAY (holiday mode, shared with the web app)
 import { trendHit } from '../_lib/trending.js';
 import { INTL, langCode, intlNote, intlScanNote } from '../_lib/lang.js';
 import { dietOf, dietPrompt, bad, hits, recipeBad, recipeHits, flagScan, staplesFor as dietStaples } from '../_lib/diet.js';
@@ -66,7 +67,7 @@ const RECIPE = { type: 'object', properties: {
 const SCHEMAS = {
   scan: { type: 'object', properties: { ingredients: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, qty: { type: 'string' }, category: { type: 'string', enum: ['Produce', 'Proteins', 'Dairy', 'Pantry', 'Spices & Seasonings'] }, low: { type: 'boolean' }, en: { type: 'string' } }, required: ['name', 'qty', 'category', 'low'] } } }, required: ['ingredients'] },
   recipes: { type: 'object', properties: { recipes: { type: 'array', items: RECIPE } }, required: ['recipes'] },
-  crave: { type: 'object', properties: { recipe: RECIPE, est_cook_cost: { type: 'number' } }, required: ['recipe', 'est_cook_cost'] }
+  crave: { type: 'object', properties: { recipe: RECIPE, est_cook_cost: { type: 'number' }, est_menu_price: { type: 'number' } }, required: ['recipe', 'est_cook_cost', 'est_menu_price'] }
 };
 const VOICE = 'You write for SnapCravings, a fun, upbeat cooking app. Plain, friendly words. No em-dashes. Recipe steps are complete, specific (times, temperatures, amounts) and safe (cook meat through). For every recipe fill kcal, protein_g, carbs_g and fat_g as realistic PER SERVING estimates for the listed quantities.';
 
@@ -121,7 +122,7 @@ const SHAPE = { // example values show the types; Qwen misread "int" placeholder
   scan: '{"ingredients":[{"name":"smoked paprika","qty":"half a jar","category":"Spices & Seasonings","low":false}]} (category is one of Produce, Proteins, Dairy, Pantry, Spices & Seasonings)',
   recipe: '{"name":"...","emoji":"🍳","minutes":20,"servings":2,"level":"Easy","ingredients":[{"item":"eggs","qty":"2","have":true}],"missing":[{"item":"...","qty":"...","est_price":2.5}],"steps":["..."],"kcal":450,"protein_g":25,"carbs_g":40,"fat_g":18} (level is Easy, Medium or Chef mode)'
 };
-SHAPE.recipes = `{"recipes":[${SHAPE.recipe}]}`; SHAPE.crave = `{"recipe":${SHAPE.recipe},"est_cook_cost":number}`;
+SHAPE.recipes = `{"recipes":[${SHAPE.recipe}]}`; SHAPE.crave = `{"recipe":${SHAPE.recipe},"est_cook_cost":number,"est_menu_price":number}`;
 const okShape = (route, d) => !!d && typeof d === 'object' && (route === 'scan' ? Array.isArray(d.ingredients) : route === 'recipes' ? Array.isArray(d.recipes) && d.recipes.length > 0 && d.recipes.every(r => r && r.name && Array.isArray(r.steps) && Number.isFinite(+r.minutes)) : !!d.recipe);
 const parseLoose = s => { const t = String(s).replace(/<think>[\s\S]*?<\/think>/g, '').replace(/^```(json)?|```$/g, '').trim(); return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); };
 const sysFor = route => VOICE + ' Reply with ONE JSON object only, no prose, shaped exactly like: ' + SHAPE[route];
@@ -258,7 +259,7 @@ const cravingNote = (d, craving) => { const h = d.hard ? [...new Set(hits(d, cra
 // Language: 'es' gets Spanish output (recipes, steps, ingredient names) and Spanish error messages. Enums stay English.
 // More languages (pt, hi, id, fr, de, ar, ru, tr) come from _lib/lang.js: local names, metric units, plus an English `en` name per item for the diet checks.
 const langOf = (b, request) => langCode(b?.lang || request?.headers.get('x-sc-lang'));
-const LANG_NOTE = { es: '\nLANGUAGE: Write every user-facing text value in natural, friendly Latin American Spanish (Mexico-neutral): recipe names, ingredient item names, quantities (use metric or common Spanish units like taza, cucharada, cucharadita, pieza), missing items and every step. Use common Latin American food words (for example jitomate or tomate, frijoles, elote, camarón, cacahuate, aguacate). Keep the JSON keys and the enum values for level (Easy, Medium, Chef mode) and category exactly in English. Prices stay in USD. The diet and allergy rules above apply exactly the same in Spanish.', en: '' };
+const LANG_NOTE = { es: '\nLANGUAGE: Write every user-facing text value in natural, friendly Latin American Spanish (Mexico-neutral): recipe names, ingredient item names, quantities (use metric or common Spanish units like taza, cucharada, cucharadita, pieza), missing items and every step. Use common Latin American food words (for example jitomate or tomate, frijoles, elote, camarón, cacahuate, aguacate). Keep the JSON keys and the enum values for level (Easy, Medium, Chef mode) and category exactly in English. Prices are plain numbers in the currency named under PRICES (USD if none). The diet and allergy rules above apply exactly the same in Spanish.', en: '' };
 for (const l of Object.keys(INTL)) LANG_NOTE[l] = intlNote(l);
 const ERR = {
   'Not found': 'No encontrado', 'Those photos are too big. Try fewer photos.': 'Esas fotos pesan mucho. Prueba con menos fotos.',
@@ -305,7 +306,10 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
   // Free plan: 3 scans (a scan = one Go, many photo batches share one scan id) per IP per week; Unlimited token skips it.
   if (!env.GEMINI_API_KEY && env.MOCK_AI !== '1') return json({ error: 'AI is not set up yet (missing GEMINI_API_KEY).' }, 503);
 
-  let parts, rkey = null, lib = null, scanTicket = null; const lang = langOf(body, request); const LN = LANG_NOTE[lang];
+  let parts, rkey = null, lib = null, scanTicket = null; const lang = langOf(body, request); const LN0 = LANG_NOTE[lang];
+  // Local currency: ?country / geo from the app (x-sc-country), else Cloudflare's country. All AI prices come back in that currency.
+  const M = globalThis.SC_MONEY, cc = M.cc2(request.headers.get('x-sc-country')) || M.cc2(request.cf?.country) || 'US', CUR = M.cur(cc);
+  const LN = (LN0 || '') + (route === 'scan' ? '' : '\n' + M.note(cc));
   if (route === 'scan') {
     const imgs = Array.isArray(body.images) ? body.images : [];
     if (!imgs.length) return json({ error: 'Add at least one photo!' }, 400);
@@ -332,17 +336,17 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
     // Trimmed prompt (2026-11-02): about 40% fewer prompt words. Still 5 recipes: with 4, de-duplication left 5 cards instead of 6.
     const ask = section === 'ready'
       ? 'Use ONLY on-hand items plus staples: missing is empty and every ingredient has have=true.' + (diet.hard ? ' Diet swaps must also come from on-hand items or staples, else pick another dish.' : '')
-      : 'Each needs 1 to 4 extra items: list them in missing (est_price = rough US price in USD for the smallest package) and mark them have=false.';
+      : 'Each needs 1 to 4 extra items: list them in missing (est_price = local price of the smallest package) and mark them have=false.';
     // Holiday mode: craving 'holiday:<id>' (keeps cache + library buckets separate from normal cravings).
     const HOL = globalThis.SC_HOLIDAY, hol = HOL.isHoliday(craving) ? HOL.info(craving.slice(8), 'en') : null;
     const holNote = hol ? `HOLIDAY MODE: all 5 recipes are festive ${hol.nameEn} dishes. Mix classic ${hol.nameEn} dishes (${hol.dishes}) adapted to what is on hand with creative holiday-themed dishes from the on-hand items. Put the holiday feel in the names.\n` : '';
     parts = [{ text: `On hand ([spice] = spices the user owns, use them for flavor): ${ing.join('; ')}.\nStaples: ${staplesFor(diet)}.\nCraving: ${hol ? hol.nameEn + ' holiday food' : craving}.\n${holNote}${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}Give exactly 5 clearly different recipes, 2 servings unless the dish needs more, in this order: 1 Easy (max 8 ingredients, 5 short steps), 1 Medium (max 10 ingredients, 7 steps), 1 Chef mode showstopper built around ${section === 'more' ? 'a special ingredient from missing (premium protein, seafood or specialty item, not chicken)' : 'an on-hand protein or vegetable'} (layered flavors, a pan sauce, glaze, marinade or crispy element, plating tip in the last step; max 14 ingredients, 10 steps), then 2 more (Easy, Medium or a 2nd Chef mode). ${ask} Use a handful of on-hand items per recipe. Steps are one or two sentences. One food emoji each.${avoid.length ? ' Do NOT repeat or closely copy these already-shown recipes; use different main ingredients and techniques: ' + avoid.join('; ') + '.' : ''}${LN}` }];
-    rkey = !avoid.length && await recipeKey({ ing, craving, section, lang, prefs: body.prefs });
+    rkey = !avoid.length && await recipeKey({ ing, craving, section, lang: lang + ':' + CUR, prefs: body.prefs });
     lib = { ing, craving, section, lang, avoid, diet };
   } else {
     const diet = dietOf(body.prefs); const craving = String(body.craving || '').slice(0, 80).trim(); const ing = clean(body.ingredients).filter(x => !bad(diet, x));
     if (!craving) return json({ error: 'Name a craving first!' }, 400);
-    parts = [{ text: `Craving: ${craving}.\nIngredients the user has: ${ing.length ? ing.join('; ') : 'unknown, assume only staples'}.\nStaples: ${staplesFor(diet)}.\n${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}Give one home recipe for this craving (2 servings)${diet.hard ? ', adapted so it fully follows the rules above (swap forbidden ingredients and name the swaps)' : ''}. Mark have=true for ingredients they have or staples. List everything else in missing with a rough US grocery price estimate in USD for the smallest common package. est_cook_cost = estimated cost of ALL ingredients used in the recipe (portion actually used), USD.${LN}` }];
+    parts = [{ text: `Craving: ${craving}.\nIngredients the user has: ${ing.length ? ing.join('; ') : 'unknown, assume only staples'}.\nStaples: ${staplesFor(diet)}.\n${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}Give one home recipe for this craving (2 servings)${diet.hard ? ', adapted so it fully follows the rules above (swap forbidden ingredients and name the swaps)' : ''}. Mark have=true for ingredients they have or staples. List everything else in missing with a rough local grocery price for the smallest common package. est_cook_cost = estimated cost of ALL ingredients used in the recipe (portion actually used). est_menu_price = typical price of ONE serving of this dish at an ordinary local restaurant (menu price, before delivery fees).${LN}` }];
   }
 
   const dd = route === 'scan' ? null : dietOf(body.prefs); const sd = route === 'scan' ? dietOf(body.prefs) : null;
@@ -359,13 +363,13 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
   if (lib && env.__fetch && !env.__libStore) lib = null; // unit tests with a fake fetch and no store: library off
   if (lib && env.LIB_OFF !== '1' && !(body.nolib && local)) {
     if (!lib.avoid.length) { const f = await Promise.race([libFind(env, lib).catch(() => null), new Promise(r => setTimeout(() => r(null), 1500))]);
-      if (f) { libStore = f.store; libHits = libPick(f.cands, { ing: lib.ing, section: lib.section, diet: lib.diet, pkey: await libPrefKey(lib.diet), want: LIB_WANT }); } }
+      if (f) { libStore = f.store; libHits = libPick(f.cands, { ing: lib.ing, section: lib.section, diet: lib.diet, pkey: await libPrefKey(lib.diet), want: LIB_WANT }).map(h => ({ ...h, recipe: locRecipe(h.recipe, cc, M.fromUS) })); } }
     libMs = Date.now() - T0;
   }
   const bg = p => { try { waitUntil ? waitUntil(p) : p.catch(() => {}); } catch {} };
   const libDone = out => { if (!lib || env.LIB_OFF === '1') return; const ai = out.recipes.filter(r => !r.__lib); out.recipes.forEach(r => delete r.__lib);
     out.usage = { ...(out.usage || {}), library: { served: out.recipes.length - ai.length, ai: ai.length, ms: libMs, store: libStore } };
-    bg(Promise.all([ai.length ? libSave(env, ai, lib) : null, libCount(env, { lib: out.recipes.length - ai.length, ai: ai.length, ids: libHits.map(h => h.id) })]).catch(() => {})); };
+    bg(Promise.all([ai.length ? libSave(env, ai.map(r => locRecipe(r, cc, M.toUS)), lib) : null, /* library keeps US-equivalent US$ */ libCount(env, { lib: out.recipes.length - ai.length, ai: ai.length, ids: libHits.map(h => h.id) })]).catch(() => {})); };
   if (libHits.length >= LIB_WANT) {
     const out = { recipes: libHits.map(h => ({ ...h.recipe, __lib: 1 })), craving: body.craving, usage: { model: 'library', provider: 'library', ms: Date.now() - T0 } };
     if (stream) return ndjson(async send => { out.recipes.forEach(r => { const { __lib, ...x } = r; send({ recipe: x }); }); libDone(out); send({ done: true, ...out }); });
@@ -407,7 +411,7 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
       if (h.length) return json({ error: "Couldn't make that one fit your diet. Try a different craving!", why: h.slice(0, 12) }, 502);
     }
     if (route === 'crave' && data?.recipe?.name) bg(trendHit(env, { country: request.cf?.country, kind: 'crave', label: data.recipe.name, lang, device: String(request.headers.get('x-sc-dev') || '').replace(/[^\w-]/g, '').slice(0, 64) })); // trending Popular cravings
-    return json({ ...data, craving: body.craving, usage: publicUsage(usage), ...(scanTicket ? { scanTicket } : {}) });
+    return json({ ...data, ...(route === 'scan' ? {} : { cur: CUR, country: cc }), craving: body.craving, usage: publicUsage(usage), ...(scanTicket ? { scanTicket } : {}) });
   } catch (e) { return json({ error: e.message || 'Something went sideways. Try again!', tries: publicTries(e.tries), ...(scanTicket ? { scanTicket } : {}), ...(e.why?.length ? { why: e.why } : {}) }, e.why ? 502 : 502); }
 }
 
@@ -420,6 +424,8 @@ function ndjson(run) {
 }
 // Cache key: sorted, de-duplicated, lower-cased ingredient names (quantities in parentheses dropped) + craving + section + diet + lang.
 const normIng = s => String(s).toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[^\p{L}\p{N}\[\] ]+/gu, ' ').replace(/\s+/g, ' ').trim();
+// Library recipes store prices as US-equivalent US$; convert missing-item prices for the reader's country (and back on save).
+export const locRecipe = (r, cc, f) => r && Array.isArray(r.missing) ? { ...r, missing: r.missing.map(m => ({ ...m, est_price: f(m.est_price, cc) })) } : r;
 async function recipeKey({ ing, craving, section, lang, prefs }) {
   const p = prefs || {}; const set = [...new Set(ing.map(normIng).filter(Boolean))].sort();
   return 'rc3:' + await sha(JSON.stringify([set, String(craving).toLowerCase().trim(), section, lang, [...(Array.isArray(p.tags) ? p.tags : [])].map(String).sort(), String(p.other || '').toLowerCase().trim(), String(p.mood || '').toLowerCase().trim()]));

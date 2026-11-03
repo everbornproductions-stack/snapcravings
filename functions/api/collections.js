@@ -1,3 +1,4 @@
+import '../../web/money.js';
 // POST /api/collections {key?, prefs, lang}. No key: list this season's collections. With key: 6 recipes, generated once and cached
 // server-side (Cloudflare Cache API, 7 days) per collection + language + diet; every recipe diet post-checked.
 import { dietOf, dietPrompt, recipeHits } from '../_lib/diet.js';
@@ -6,6 +7,10 @@ import { RECIPES_SCHEMA, cleanRecipe, collectionsFor, sha } from '../_lib/extras
 import { gemini } from './plan.js';
 const json = (o, s = 200, h = {}) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...h } });
 export async function onRequestPost({ request, env, waitUntil }) {
+  // Stored recipe prices are US-equivalent US$: show them in the reader's local currency (web/money.js).
+  const CC = SC_MONEY.cc2(request.headers.get('x-sc-country')) || SC_MONEY.cc2(request.cf?.country) || 'US';
+  const locR = r => r && Array.isArray(r.missing) ? { ...r, missing: r.missing.map(m => ({ ...m, est_price: SC_MONEY.fromUS(m.est_price, CC) })) } : r;
+  const loc = o => ({ ...o, cur: SC_MONEY.cur(CC), recipes: Array.isArray(o.recipes) ? o.recipes.map(locR) : o.recipes });
   let b = {}; try { b = await request.json(); } catch {}
   const lang = langCode(b.lang); const cols = collectionsFor(); const cname = c => colName(c, lang);
   if (!b.key) return json({ collections: cols.map(c => ({ key: c.key, name: cname(c), emoji: c.emoji })) });
@@ -13,7 +18,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const diet = dietOf(b.prefs); const week = Math.floor(Date.now() / 6048e5);
   const ck = new Request(`https://cache.snapcravings/${c.key}/${lang}/${week}/${await sha(JSON.stringify([diet.tags.slice().sort(), diet.terms.slice().sort()]), 16)}`);
   const cache = caches.default; const hit = await cache.match(ck);
-  if (hit) { const j = await hit.json(); return json({ ...j, cached: true }); }
+  if (hit) { const j = await hit.json(); return json(loc({ ...j, cached: true })); }
   if (env.MOCK_AI === '1') return json({ name: c.name, recipes: [cleanRecipe({ name: 'Mock ' + c.key, emoji: c.emoji, steps: ['Mock.'] })] });
   const text = `Create a SnapCravings recipe collection: "${cname(c)}" (${c.brief}). Give exactly 6 different, crowd-pleasing home recipes that fit it. Mix levels (Easy, Medium, one Chef mode). All ingredients have=true, missing is an empty list. ${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}Fill kcal, protein_g, carbs_g, fat_g as per-serving estimates.${lang === 'es' ? ' LANGUAGE: write all text in natural Latin American Spanish with correct accents. Keep level enum values in English.' : intlNote(lang)}`;
   let keep = [], banned = new Set();
@@ -27,5 +32,5 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const body = { name: cname(c), emoji: c.emoji, recipes: keep.slice(0, 6) };
   const put = cache.put(ck, new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=604800' } }));
   if (waitUntil) waitUntil(put); else await put;
-  return json(body);
+  return json(loc(body));
 }
