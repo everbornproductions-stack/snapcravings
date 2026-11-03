@@ -670,7 +670,7 @@ export default {
   }
  },
  "skipped": [
-  "india dca skipped: no files in /workspace/price-data/in (fcainfoweb needs a CAPTCHA, data.gov.in needs a key)",
-  "profeco skipped: datos.gob.mx blocked (403, Akamai Access Denied) and no files in /workspace/price-data/mx"
+  "india skipped: fcainfoweb.nic.in is behind a CAPTCHA; api.data.gov.in needs an API key and is unreachable from the box and Cloudflare",
+  "profeco skipped: datos.gob.mx blocked (403, Akamai Access Denied)"
  ]
 };
