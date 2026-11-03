@@ -10,7 +10,9 @@ const VOICE = 'You write for SnapCravings, a fun, upbeat cooking app. Plain, fri
 // Gemini free quotas are per model (3.8-flash has no free quota on this key, 2.5-flash-lite is closed: 404), so the chain uses the
 // models that answer, then the same free OpenAI-style providers as /api/scan, then Workers AI, then one last Gemini try after a pause.
 const MIN = { thinkingLevel: 'minimal' };
-const CHAIN = [['gemini-3.5-flash-lite', 30000, MIN], ['gemini-3.1-flash-lite', 30000, MIN], ['gemini-3-flash-preview', 35000, MIN]];
+// Measured 2026-11-02 8:10 PM PT on this key (one-day MEALS call): 3.6-flash 3.2-4.6 s, 3.1-flash-lite 3.4-7.8 s, 3.5-flash-lite and
+// 3-flash-preview 429 (quota used up), gemma-4 500/timeout. Order is re-ranked live by recentFail(): a model that just 429'd sinks.
+const CHAIN = [['gemini-3.6-flash', 10000, MIN], ['gemini-3.1-flash-lite', 10000, MIN], ['gemini-3.5-flash-lite', 9000, MIN], ['gemini-3-flash-preview', 10000, MIN]];
 const OAI = {
   cerebras: { key: 'CEREBRAS_API_KEY', url: 'https://api.cerebras.ai/v1/chat/completions', model: 'gpt-oss-120b' },
   groq: { key: 'GROQ_API_KEY', url: 'https://api.groq.com/openai/v1/chat/completions', model: 'openai/gpt-oss-120b' },
@@ -46,8 +48,8 @@ async function geminiCall(env, model, ms, thinking, schema, parts, maxOut) {
     let d; try { d = JSON.parse(text); } catch { throw fail('badjson'); } if (!okPlanShape(schema, d)) throw fail('badjson'); return d;
   } catch (e) { if (e.name === 'AbortError') throw fail('timeout'); throw e; } finally { clearTimeout(timer); }
 }
-async function oaiCall(env, name, schema, parts, maxOut) {
-  const P = OAI[name]; const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 35000);
+async function oaiCall(env, name, schema, parts, maxOut, ms = 12000) {
+  const P = OAI[name]; const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), ms);
   try {
     const model = env[name.toUpperCase() + '_PLAN_MODEL'] || P.model;
     const body = { model, messages: [{ role: 'system', content: sysFor(schema) }, { role: 'user', content: parts.map(p => p.text || '').join('\n') }], response_format: { type: 'json_object' }, temperature: 0.6, max_tokens: Math.min(maxOut, name === 'groq' ? 5000 : 12000) }; // Groq free tier: prompt + max_tokens must fit 8K tokens/min
@@ -58,36 +60,50 @@ async function oaiCall(env, name, schema, parts, maxOut) {
     if (!okPlanShape(schema, d)) throw fail('badjson'); return d;
   } catch (e) { if (e.name === 'AbortError') throw fail('timeout'); throw e; } finally { clearTimeout(timer); }
 }
-async function cfCall(env, schema, parts, maxOut) {
+async function cfCall(env, schema, parts, maxOut, ms = 15000) {
   if (!env.AI) throw fail('nobinding');
   const run = env.AI.run(CF_TEXT, { messages: [{ role: 'system', content: sysFor(schema) + ' /no_think' }, { role: 'user', content: parts.map(p => p.text || '').join('\n') }], response_format: { type: 'json_object' }, max_tokens: Math.min(maxOut, 8000), temperature: 0.6 });
-  let tm; const out = await Promise.race([run, new Promise((_, rej) => { tm = setTimeout(() => rej(fail('timeout')), 40000); })]).finally(() => clearTimeout(tm));
+  let tm; const out = await Promise.race([run, new Promise((_, rej) => { tm = setTimeout(() => rej(fail('timeout')), ms); })]).finally(() => clearTimeout(tm));
   let d = out?.response ?? out?.choices?.[0]?.message?.content; try { if (typeof d === 'string') d = parseLoose(d); } catch { throw fail('badjson'); }
   if (!okPlanShape(schema, d)) throw fail('badjson'); return d;
 }
-// Every step of the plan engine: [kind, name/model, timeout, thinking]. Exported for tests.
+// Per-isolate health: when a model last failed with 429/503/timeout. Sick models drop to the end for 60 s.
+const sick = new Map(); export const recentFail = (name, now = Date.now()) => now - (sick.get(name) || 0) < 60000;
+const HEAD = 2500, DEADLINE = 28000; // next racer starts after HEAD ms (or at once on a failure); whole call gives up at DEADLINE
+// Every step of the plan engine: [kind, name/model, timeout ms, thinking]. Exported for tests.
 export function planChain(env) {
   const L = [];
-  if (env.GEMINI_MODEL) L.push(['gemini', env.GEMINI_MODEL, 30000, null]);
+  if (env.GEMINI_MODEL) L.push(['gemini', env.GEMINI_MODEL, 10000, MIN]);
   if (env.GEMINI_API_KEY) L.push(...CHAIN.map(c => ['gemini', ...c]));
-  for (const n of ['cerebras', 'groq', 'mistral', 'openrouter']) if (env[OAI[n].key]) L.push(['oai', n]);
-  if (env.AI) L.push(['cf']);
-  if (env.GEMINI_API_KEY) L.push(['wait', 2500 + Math.random() * 1500], ['gemini', 'gemini-3.5-flash-lite', 30000, MIN]);
-  return L;
+  for (const n of ['cerebras', 'groq', 'mistral', 'openrouter']) if (env[OAI[n].key]) L.push(['oai', n, 12000]);
+  if (env.AI) L.push(['cf', 'workers-ai', 15000]);
+  const ok = L.filter(x => !recentFail(x[1])), bad = L.filter(x => recentFail(x[1]));
+  return [...ok, ...bad];
 }
+// Hedged race: entry 0 starts, the next one starts after HEAD ms or as soon as one fails; the first valid answer wins and the rest are ignored.
+// Gemini errors with 429 get one quick retry later in the race (per-minute bursts from the parallel day calls).
 export async function gemini(env, schema, parts, maxOut = 16000) {
-  let busy = 0, timeouts = 0, n = 0; const tries = [];
-  for (const [kind, name, ms, thinking] of planChain(env)) {
-    if (kind === 'wait') { await new Promise(r => setTimeout(r, env.__noWait ? 0 : name)); continue; }
-    for (let again = 0; again < 2; again++) { // retry the same Gemini model once after a 429 (parallel day calls burst the per-minute quota)
-      if (again) await new Promise(r => setTimeout(r, env.__noWait ? 0 : 400 + Math.random() * 900));
-      try { n++; return kind === 'gemini' ? await geminiCall(env, name, ms, thinking, schema, parts, maxOut) : kind === 'oai' ? await oaiCall(env, name, schema, parts, maxOut) : await cfCall(env, schema, parts, maxOut); }
-      catch (e) { const st = e.st || 'error'; tries.push([kind === 'cf' ? 'workers-ai' : name, st]); console.log('plan ai fail', kind, name, st);
-        if (e.busy) busy++; else if (st === 'timeout') timeouts++;
-        if (!(e.busy && kind === 'gemini' && !again)) break; }
-    }
-  }
-  const e = new Error(busy ? BUSY : timeouts ? 'That took too long. Tap Retry!' : 'The recipe brain hiccuped. Tap Retry!'); e.tries = tries; e.busy = busy > 0; throw e;
+  const chain = planChain(env); const q = chain.map(c => [...c, false]); const tries = [];
+  let busy = 0, timeouts = 0;
+  const call = ([kind, name, ms, thinking]) => kind === 'gemini' ? geminiCall(env, name, ms, thinking, schema, parts, maxOut) : kind === 'oai' ? oaiCall(env, name, schema, parts, maxOut, ms) : cfCall(env, schema, parts, maxOut, ms);
+  return new Promise((resolve, reject) => {
+    let running = 0, done = false, kick;
+    const dl = setTimeout(() => end(), env.__noWait ? 60000 : DEADLINE);
+    const end = v => { if (done) return; done = true; clearTimeout(kick); clearTimeout(dl);
+      if (v) return resolve(v); const e = new Error(busy ? BUSY : timeouts ? 'That took too long. Tap Retry!' : 'The recipe brain hiccuped. Tap Retry!'); e.tries = tries; e.busy = busy > 0; reject(e); };
+    const next = () => {
+      clearTimeout(kick); if (done) return;
+      if (!q.length) { if (!running) end(); return; }
+      const e = q.shift(); running++;
+      call(e).then(v => { running--; tries.push([e[1], 200]); end(v); }, err => { running--; const st = err.st || 'error'; tries.push([e[1], st]); console.log('plan ai fail', e[0], e[1], st);
+        if (err.busy || st === 'timeout') sick.set(e[1], Date.now());
+        if (err.busy) busy++; else if (st === 'timeout') timeouts++;
+        if (err.busy && e[0] === 'gemini' && !e[4]) q.push([e[0], e[1], e[2], e[3], true]); // one late retry
+        next(); });
+      if (q.length) kick = setTimeout(next, env.__noWait ? 0 : HEAD);
+    };
+    next();
+  });
 }
 async function fairUse(env, request, ip, pro, owner) {
   if (owner || env.ENFORCE_FREE === '0') return { allowed: true };
@@ -110,11 +126,11 @@ export async function onRequest(ctx) {
 export async function repair(env, p, first, lang, ask = gemini, base = planPrompt(p, lang)) {
   let { good, bad, missing } = checkPlan(p, first);
   const banned = new Set(bad.flatMap(b => b.why)); let rounds = 0;
-  while ((bad.length || missing.length) && rounds < 2) {
+  while ((bad.length || missing.length) && rounds < 3) { // refill: only the missing/dropped cells are asked again
     rounds++;
     const cells = missing.map(c => `day ${c.day} ${c.slot}`).join('; ');
     const txt = `${base}\n\nOnly return the meals for these cells: ${cells}. ${banned.size ? `IMPORTANT: earlier meals broke the user's rules by using: ${[...banned].slice(0, 15).join(', ')}. Never use these (or anything made with them), not as an ingredient, garnish, sauce or step.` : ''} Do not repeat these meals: ${good.map(m => m.name).join('; ')}. prep and storage can be empty lists.`;
-    let more; try { more = await ask(env, p.onlyDay ? MEALS_SCHEMA : PLAN_SCHEMA, [{ text: txt }], p.onlyDay ? 6000 : 16000); } catch { break; }
+    let more; try { more = await ask(env, MEALS_SCHEMA, [{ text: txt }], Math.min(16000, 2500 + 1500 * missing.length)); } catch { continue; }
     const c = checkPlan(p, [...good, ...(more.meals || [])]);
     c.bad.forEach(b => b.why.forEach(w => banned.add(w)));
     good = c.good; bad = c.bad; missing = c.missing;
@@ -196,7 +212,7 @@ export async function buildPlan(env, p, lang, ask0 = gemini, send = () => {}) {
     }));
     prepOut = await prepJob;
   } else {
-    const first = await ask(env, PLAN_SCHEMA, [{ text: planPrompt(p, lang) }]);
+    let first; try { first = await ask(env, PLAN_SCHEMA, [{ text: planPrompt(p, lang) }]); } catch { first = { meals: [], prep: [], storage: [] }; } // repair() refills every cell
     const r = await repair(env, p, first.meals || [], lang, ask); banned = r.banned; open = r.missing;
     meals = p.fit ? await fitDay(env, p, r.meals, lang, ask) : r.meals; prepOut = first;
     for (let d = 1; d <= p.genDays; d++) { const dm = meals.filter(m => m.day === d).sort(slotSort); if (dm.length) send({ day: d, meals: dm, ms: Date.now() - t0 }); }
