@@ -43,3 +43,21 @@ test('API: holiday craving uses a holiday prompt; /api/geo returns cf.country', 
   const g = new Request('http://localhost/api/geo'); Object.defineProperty(g, 'cf', { value: { country: 'br' } });
   assert.deepEqual(await (await onRequest({ request: g, env: {}, params: { path: ['geo'] } })).json(), { country: 'BR' });
 });
+// WCAG AA for every text/background pair each holiday palette produces (see the html[data-holiday] CSS in index.html).
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const lum = c => { const [r, g, b] = c.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+const blend = (fg, bg, a) => fg.map((v, i) => Math.round(v * a + bg[i] * (1 - a)));
+export function contrastPairs(p) {
+  const [bg, soft, acc, acc2, dark, dark2, gold] = p.map(hex), W = [255, 255, 255], ink = hex(S.INK), muted = hex(S.MUTED), out = [];
+  const add = (name, fg, b, min = 4.5) => out.push({ name, r: ratio(fg, b), min });
+  for (const [n, b] of [['bg', bg], ['card', W], ['soft', soft]]) { add('ink/' + n, ink, b); add('muted/' + n, muted, b); add('accent/' + n, acc, b); add('gold/' + n, gold, b); }
+  for (const [n, b] of [['accent', acc], ['accent2', acc2], ['dark', dark], ['dark2', dark2]]) { add('white/' + n, W, b); add('white85/' + n, blend(W, b, 0.85), b); add('soft/' + n, soft, b); }
+  return out;
+}
+test('every holiday palette meets WCAG AA contrast (4.5:1 text)', () => {
+  const fails = [];
+  for (const id of S.ids) { assert.equal(S.P[id]?.length, 7, id); for (const c of contrastPairs(S.P[id])) if (c.r < c.min) fails.push(`${id} ${c.name} ${c.r.toFixed(2)}`); }
+  assert.deepEqual(fails, []);
+  for (const id of S.ids) assert.ok(S.A[id] && ['walk', 'fly', 'hop', 'bats', 'float', 'fireworks', 'glow'].includes(S.A[id][0]), id);
+});

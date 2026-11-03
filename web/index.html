@@ -8,7 +8,7 @@
 <title>SnapCravings</title>
 <script>
 // Language pick (EN/ES built in; others load web/i18n/<code>.js before the deferred app scripts). Arabic is right-to-left.
-window.SC_IV = 'ui33';
+window.SC_IV = 'ui34';
 window.SC_LANGS = [['en', 'English'], ['es', 'Español'], ['pt', 'Português (BR)'], ['hi', 'हिन्दी'], ['id', 'Bahasa Indonesia'], ['fr', 'Français'], ['de', 'Deutsch'], ['ar', 'العربية'], ['ru', 'Русский'], ['tr', 'Türkçe']];
 (function () { var ok = function (l) { return SC_LANGS.some(function (x) { return x[0] === l; }); }, l = null;
   try { var s = localStorage.getItem('sc.lang'); if (s) { var v = JSON.parse(s); if (ok(v)) l = v; } } catch (e) {}
@@ -162,6 +162,36 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 [dir=rtl] .save{margin-left:0;margin-right:6px}
 [dir=rtl] .cmp td:first-child,[dir=rtl] .cmp th:first-child{text-align:right}
 [dir=rtl] *{letter-spacing:0!important}
+/* Holiday mode: full palette (vars set by applyHoliday in app.js; contrast checked in test/holiday.test.mjs) + one short animation */
+html[data-holiday]{background:var(--bg)}
+html[data-holiday] body{background:radial-gradient(circle at 30% 10%,var(--h-dark2),var(--dark) 70%)}
+html[data-holiday] .snap,html[data-holiday] .hero{background:linear-gradient(135deg,var(--coral),var(--h-acc2))}
+html[data-holiday] .crave,html[data-holiday] .pro-hero{background:linear-gradient(135deg,var(--dark),var(--h-dark2))}
+html[data-holiday] .kick.dk{color:var(--coral-soft)}
+html[data-holiday] .chip.miss,html[data-holiday] .pill.c{color:var(--coral);border-color:var(--coral)}
+html[data-holiday] .seg,html[data-holiday] .bar{background:var(--coral-soft)}
+#holAnim{position:absolute;inset:0;pointer-events:none;z-index:60;overflow:hidden}
+#holAnim i{position:absolute;font-style:normal;line-height:1;white-space:nowrap;will-change:transform,opacity}
+#holAnim .walk{bottom:96px;left:0;font-size:46px;animation:hWalk 4.6s linear forwards}
+#holAnim .walk b,#holAnim .hop b{display:inline-block;font-weight:400;animation:hBob .32s ease-in-out infinite alternate}
+#holAnim .fly{top:16%;left:0;font-size:34px;animation:hFly 4.4s ease-in-out forwards;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
+#holAnim .fly s{text-decoration:none;font-size:18px;opacity:.9}
+#holAnim .hop{bottom:96px;left:0;font-size:44px;animation:hHopX 4.6s linear forwards}
+#holAnim .hop b{animation:hHop .58s cubic-bezier(.3,0,.7,1) infinite}
+#holAnim .bat{top:12%;left:0;font-size:32px;animation:hBat 4.2s ease-in-out forwards}
+#holAnim .float{bottom:-50px;font-size:30px;animation:hFloat 4s ease-out forwards}
+#holAnim .fw{font-size:40px;opacity:0;animation:hFw 1.3s ease-out forwards}
+#holAnim .glow{bottom:-50px;font-size:34px;animation:hFloat 4.6s ease-in-out forwards,hGlow .9s ease-in-out infinite alternate}
+@keyframes hWalk{from{transform:translateX(440px)}to{transform:translateX(-90px)}}
+@keyframes hBob{from{transform:translateY(0) rotate(-4deg)}to{transform:translateY(-6px) rotate(4deg)}}
+@keyframes hFly{0%{transform:translate(440px,40px) rotate(-6deg)}50%{transform:translate(140px,-10px) rotate(-2deg)}100%{transform:translate(-260px,30px) rotate(-8deg)}}
+@keyframes hHopX{from{transform:translateX(-70px)}to{transform:translateX(440px)}}
+@keyframes hHop{0%,100%{transform:translateY(0) scaleY(.9)}45%{transform:translateY(-46px) scaleY(1.05)}}
+@keyframes hBat{0%{transform:translate(-60px,0)}25%{transform:translate(90px,40px)}50%{transform:translate(200px,-10px)}75%{transform:translate(310px,50px)}100%{transform:translate(460px,0)}}
+@keyframes hFloat{0%{transform:translateY(0) scale(.7);opacity:0}15%{opacity:1}100%{transform:translateY(-760px) scale(1.1);opacity:0}}
+@keyframes hFw{0%{transform:scale(.1);opacity:0}25%{opacity:1}100%{transform:scale(1.6);opacity:0}}
+@keyframes hGlow{from{filter:drop-shadow(0 0 2px #FFD36A)}to{filter:drop-shadow(0 0 12px #FFB800)}}
+@media (prefers-reduced-motion:reduce){#holAnim{display:none}}
 </style>
 <meta name="color-scheme" content="light only">
 <meta name="supported-color-schemes" content="light">
@@ -374,12 +404,12 @@ ol.steps li::before{content:counter(s);flex-shrink:0;width:24px;height:24px;bord
 <input type="file" id="snapCam" accept="image/*" capture="environment" multiple hidden>
 <input type="file" id="snapLib" accept="image/*" multiple hidden>
 <div id="toast" style="position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;display:none;z-index:20;max-width:340px;text-align:center"></div>
-<script defer src="holiday.js?v=ui33"></script>
-<script defer src="config.js?v=ui33"></script>
-<script defer src="i18n.js?v=ui33"></script>
-<script defer src="app.js?v=ui33"></script>
-<script defer src="prep.js?v=ui33"></script>
-<script defer src="more.js?v=ui33"></script>
-<script defer src="grow.js?v=ui33"></script>
+<script defer src="holiday.js?v=ui34"></script>
+<script defer src="config.js?v=ui34"></script>
+<script defer src="i18n.js?v=ui34"></script>
+<script defer src="app.js?v=ui34"></script>
+<script defer src="prep.js?v=ui34"></script>
+<script defer src="more.js?v=ui34"></script>
+<script defer src="grow.js?v=ui34"></script>
 </body>
 </html>

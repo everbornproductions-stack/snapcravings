@@ -114,7 +114,9 @@ const holInfo = () => HOLI.cur && window.SC_HOLIDAY.info(HOLI.cur.id, I18N.lang)
 const cravLabel = c => { const h = window.SC_HOLIDAY; return h && h.isHoliday(c) ? (h.info(c.slice(8), I18N.lang).emoji + ' ' + h.info(c.slice(8), I18N.lang).name) : t(c); };
 function applyHoliday() {
   HOLI.cur = holidayNow(); const h = holInfo(), r = document.documentElement.style, brand = document.querySelector('#home .brand b');
-  if (h) { r.setProperty('--coral', h.accent); r.setProperty('--coral-soft', h.soft); } else { r.removeProperty('--coral'); r.removeProperty('--coral-soft'); }
+  const V = ['--bg', '--coral-soft', '--coral', '--h-acc2', '--dark', '--h-dark2', '--gold'];
+  if (h) { h.pal.forEach((c, i) => r.setProperty(V[i], c)); r.setProperty('--line', h.pal[1]); r.setProperty('--muted', window.SC_HOLIDAY.MUTED); } else [...V, '--line', '--muted'].forEach(v => r.removeProperty(v));
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', h ? h.pal[0] : '#FBF6EF');
   document.documentElement.toggleAttribute('data-holiday', !!h); if (h) document.documentElement.dataset.holiday = h.id;
   let tag = document.getElementById('holEmoji'); if (brand && !tag) { tag = document.createElement('span'); tag.id = 'holEmoji'; tag.style.marginLeft = '6px'; brand.after(tag); }
   if (tag) tag.textContent = h ? h.emoji : '';
@@ -122,6 +124,22 @@ function applyHoliday() {
   if (h && !ban && kick) { ban = document.createElement('a'); ban.id = 'holBanner'; ban.className = 'card'; ban.href = '#scan'; ban.style.cssText = 'display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);background:var(--coral-soft);border-color:var(--coral);margin:0 0 12px'; kick.before(ban); }
   if (ban) { ban.hidden = !h; ban.style.display = h ? 'flex' : 'none'; if (h) ban.innerHTML = `<div style="font-size:22px">${h.emoji}</div><div style="flex:1;font-size:13px"><b>${esc(h.ui[1].replace('{h}', h.name))}</b><br><span class="sub" style="font-size:12px">${esc(h.ui[2].replace('{h}', h.name))}</span></div><span>›</span>`; }
   if (!h && window.SC_HOLIDAY?.isHoliday(state.craving)) state.craving = 'Anything';
+}
+// One short holiday animation (~4.5 s, pointer-events none, skipped for reduced motion). Once per session on home; ?holianim=1 replays.
+function holidayAnim(force) {
+  const h = holInfo(); if (!h || !h.anim || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const k = 'sc.holAnim.' + h.id; let seen = false; try { seen = sessionStorage.getItem(k); sessionStorage.setItem(k, '1'); } catch {}
+  if (seen && !force && !/[?&]holianim=1/.test(location.search)) return;
+  document.getElementById('holAnim')?.remove(); const box = document.createElement('div'); box.id = 'holAnim'; box.setAttribute('aria-hidden', 'true');
+  const [kind, spr] = h.anim, parts = [...new Intl.Segmenter().segment(spr)].map(x => x.segment), R = (a, b) => a + Math.random() * (b - a);
+  const add = (cls, html, style) => { const i = document.createElement('i'); i.className = cls; i.innerHTML = html; if (style) i.style.cssText = style; box.appendChild(i); };
+  if (kind === 'walk') add('walk', `<b>${spr}</b>`);
+  else if (kind === 'hop') add('hop', `<b>${spr}</b>`);
+  else if (kind === 'fly') add('fly', `${spr}<s>✨✨</s>`);
+  else if (kind === 'bats') parts.forEach((p, n) => add('bat', p, `top:${10 + n * 9}%;animation-delay:${n * .35}s`));
+  else if (kind === 'fireworks') for (let n = 0; n < 7; n++) add('fw', parts[n % parts.length], `left:${R(8, 78)}%;top:${R(8, 45)}%;animation-delay:${n * .45}s`);
+  else for (let n = 0; n < 8; n++) add(kind, parts[n % parts.length], `left:${R(4, 86)}%;animation-delay:${R(0, 1.2).toFixed(2)}s`);
+  document.querySelector('.phone').appendChild(box); setTimeout(() => box.remove(), 6500);
 }
 Object.defineProperty(window, 'CRAVINGS_LIST', { get: () => HOLI.cur ? ['holiday:' + HOLI.cur.id, ...CRAVINGS_BASE] : CRAVINGS_BASE });
 
@@ -468,7 +486,7 @@ document.addEventListener('click', e => {
   if (t.closest('[data-rescan]')) { state.ingredients = []; state.low = []; state.step = 0; return renderScan(); }
   if (t.closest('#scanGo')) return scan();
   const ai = t.closest('[data-addi]'); if (ai) { const n = prompt(I18N.t('Add an ingredient')); if (n && n.trim()) { state.ingredients.push({ name: n.trim(), qty: '', cat: ai.dataset.addi }); LS.set('ingredients', state.ingredients); renderScan(); } return; }
-  const cr = t.closest('[data-cr]'); if (cr) { state.craving = cr.dataset.cr; prefetchRecipes(900); return renderScan(); }
+  const cr = t.closest('[data-cr]'); if (cr) { state.craving = cr.dataset.cr; if (cr.dataset.cr.startsWith('holiday:')) holidayAnim(true); prefetchRecipes(900); return renderScan(); }
   if (t.closest('#goRecipes')) return getRecipes();
   if (t.closest('#moreIdeas')) return moreIdeas();
   const am = t.closest('[data-addmiss]'); if (am) { const k = am.dataset.addmiss; if (k === 'all') (state.recipes?.more || []).forEach(addMissing); else addMissing(k === 'cur' ? state.recipe : pick(k)); }
@@ -514,7 +532,7 @@ window.addEventListener('hashchange', () => { route(); const a = document.queryS
 function setLang(l) { if (l === I18N.lang) return; I18N.load(l, () => setLang2(l)); }
 function setLang2(l) { I18N.set(l); I18N.applyStatic(document.querySelector('.phone')); renderLeft(); renderPro(); renderFavCount(); renderDietCount(); applyHoliday(); route(); toast(I18N.t('Done: the app is in English.'), 1800); }
 I18N.applyStatic(document.querySelector('.phone')); renderLeft(); applyHoliday();
-route();
+route(); if (!location.hash || location.hash === '#home') setTimeout(() => holidayAnim(), 400);
 if (!new URLSearchParams(location.search).get('country')) { let g = null; try { g = sessionStorage.getItem('sc.geo'); } catch {} if (!g) fetch('/api/geo').then(r => r.json()).then(j => { if (j.country) { try { sessionStorage.setItem('sc.geo', j.country); } catch {} const before = HOLI.cur?.id; applyHoliday(); if (HOLI.cur?.id !== before) route(); } }).catch(() => {}); } setTimeout(cleanGlist, 2500);
 /* INSTALL */
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;

@@ -77,6 +77,28 @@
     orthodoxxmas: ['Orthodox Christmas', 'Navidad ortodoxa', 'Natal ortodoxo', 'ऑर्थोडॉक्स क्रिसमस', 'Natal Ortodoks', 'Noël orthodoxe', 'Orthodoxes Weihnachten', 'عيد الميلاد الأرثوذكسي', 'Рождество', 'Ortodoks Noeli'],
     maslenitsa: ['Maslenitsa', 'Maslenitsa', 'Maslenitsa', 'मास्लेनित्सा', 'Maslenitsa', 'Maslenitsa', 'Maslenitsa', 'ماسلينيتسا', 'Масленица', 'Maslenitsa'],
   };
+  // Full palettes (2026-11-02): [bg, soft (banner/chips/lines), accent (buttons, Snap card, headline words, nav), accent 2 (Snap gradient end),
+  // dark (Crave card, dark buttons), dark 2 (Crave gradient end), gold (small accent text)]. test/holiday.test.mjs enforces WCAG AA on every pair.
+  const XMAS = ['#FBF7F2', '#F6E1DF', '#B3261E', '#8E1B16', '#0F4D2E', '#1E6B42', '#7F6010'], USA = ['#F7F9FD', '#E1EAF8', '#B22234', '#3C3B6E', '#1B2A55', '#3C3B6E', '#8A5A00'], ISL = ['#F4FAF7', '#DCEFE6', '#146C52', '#0E5240', '#0F2E2A', '#1D4A40', '#6E5510'];
+  const P = { newyear: ['#FAF7EE', '#F3EAC8', '#7F6010', '#6B4F0A', '#14213D', '#2B3A67', '#6E5510'], valentines: ['#FFF5F8', '#FCE1EA', '#C2185B', '#A3123F', '#5C0F2A', '#8E1B45', '#9E1C4A'],
+    stpatricks: ['#F3FAF4', '#DDF1E2', '#1A6E3E', '#145C33', '#0F3D22', '#1F5A36', '#6E5510'], easter: ['#FBF8FF', '#EDE3FA', '#7B4BB7', '#A0457A', '#4A3B6B', '#2E6B5E', '#8A5A00'],
+    cincodemayo: ['#FFF8EF', '#FFE6CC', '#A33A0A', '#096A4A', '#1F4D3A', '#8C1D1D', '#8A5A00'], mothersday: ['#FFF6F9', '#FBE0EA', '#B8326A', '#8E3FA0', '#4B2340', '#6E3460', '#8A5A00'],
+    memorialday: USA, july4: USA, laborday: USA, fathersday: ['#F5F8FC', '#DFE8F5', '#1F4E8C', '#2C6E6A', '#1E2A38', '#3B4A5C', '#6E5510'],
+    halloween: ['#FFF7EE', '#FFE3C7', '#9E3D06', '#6B2FA0', '#1A1423', '#3B1F5C', '#8A4B00'], thanksgiving: ['#FBF5EC', '#F3E2C9', '#9C4A12', '#8A5A10', '#3E2614', '#5C3A1E', '#7A5300'],
+    hanukkah: ['#F5F8FF', '#DEE7FA', '#1D4F9C', '#285FA0', '#142A52', '#2A3F6E', '#6E5510'], christmas: XMAS, posadas: XMAS, orthodoxxmas: XMAS,
+    diwali: ['#FFF8EC', '#FFE7C2', '#A3176B', '#A8380A', '#4A1942', '#7A2462', '#8A5A00'], ramadan: ISL, eid: ISL, eidadha: ISL,
+    lunarnewyear: ['#FFF6F2', '#FBE0D8', '#B71C1C', '#8A1414', '#4A0E0E', '#7A1F1F', '#8A5A00'], holi: ['#FFF7FB', '#FBE1F0', '#B0246E', '#5B3FB0', '#2A2560', '#0F6B6B', '#8A5A00'],
+    carnaval: ['#FAF6FF', '#EBE1FB', '#6A3BC9', '#B0246E', '#2A1B4D', '#0B6E4F', '#8A5A00'], festajunina: ['#FFF8EA', '#FFE7B8', '#A8460A', '#2E6B2E', '#3D2A12', '#1F4F7A', '#7A5300'],
+    muertos: ['#FFF7EC', '#FFE2B8', '#A3176B', '#9E3E08', '#2B1636', '#5A1F55', '#8A4B00'], reyes: ['#FBF8EE', '#F3E8C4', '#6B3FA0', '#7F6010', '#2B1F4A', '#4A3570', '#6E5510'],
+    bastille: ['#F6F8FC', '#E1E8F6', '#0055A4', '#C8102E', '#1A2A4A', '#2A3F6E', '#8A5A00'], oktoberfest: ['#F4F8FD', '#DCE8F6', '#1F5AA6', '#8A5A10', '#2B1E10', '#4A3418', '#7A5300'],
+    maslenitsa: ['#FFF8EC', '#FFE6BF', '#A8460A', '#8A3B10', '#3D2412', '#5C3A1E', '#7A5300'] };
+  const INK = '#1C1A17', MUTED = '#5A534B';
+  // Animations (once per session on home, and on Holiday foods tap): [kind, sprite]
+  const A = { thanksgiving: ['walk', '🦃'], christmas: ['fly', '🦌🦌🛷🎅'], posadas: ['fly', '🦌🦌🛷🎅'], orthodoxxmas: ['fly', '🦌🦌🛷🎅'], easter: ['hop', '🐰'], halloween: ['bats', '🦇👻🦇'],
+    valentines: ['float', '💕💖💘'], mothersday: ['float', '💐🌷💖'], newyear: ['fireworks', '🎆🎇✨'], july4: ['fireworks', '🎆🎇✨'], memorialday: ['fireworks', '🇺🇸✨🎇'], laborday: ['walk', '🌭'], fathersday: ['walk', '🍔'],
+    diwali: ['glow', '🪔🪔🪔'], ramadan: ['glow', '🏮🌙⭐'], eid: ['glow', '🌙⭐🏮'], eidadha: ['glow', '🌙⭐🏮'], lunarnewyear: ['glow', '🏮🧧🏮'], hanukkah: ['glow', '🕎✨⭐'],
+    stpatricks: ['float', '☘️🍀☘️'], cincodemayo: ['float', '🎉🌮🎊'], holi: ['float', '🎨💜💛'], carnaval: ['float', '🎭🎉🎊'], festajunina: ['glow', '🎆🌽🔥'], muertos: ['float', '🌼💀🌼'],
+    reyes: ['walk', '🐫'], bastille: ['fireworks', '🎆🎇✨'], oktoberfest: ['walk', '🥨'], maslenitsa: ['float', '🥞☀️🥞'] };
   const LANGS = ['en', 'es', 'pt', 'hi', 'id', 'fr', 'de', 'ar', 'ru', 'tr'];
   const UI = { // [Holiday foods, {h} is coming!, Snap your fridge, then pick Holiday foods for {h} recipes.]
     en: ['Holiday foods', '{h} is coming!', 'Snap your fridge, then pick Holiday foods for {h} recipes.'],
@@ -120,6 +142,6 @@
     for (const id of setFor(country)) for (const y of [t.getFullYear() - 1, t.getFullYear(), t.getFullYear() + 1]) { const w = windowOf(id, y); if (w && t >= w.start && t <= w.end && (!best || rank(w) < rank(best))) best = { id, ...w }; }
     return best; }
   const li = l => Math.max(0, LANGS.indexOf(String(l || 'en').slice(0, 2)));
-  const info = (id, lang) => H[id] ? { id, emoji: H[id][0], accent: H[id][1], soft: H[id][2], name: L[id][li(lang)] || L[id][0], nameEn: L[id][0], dishes: H[id][5], ui: UI[LANGS[li(lang)]] } : null;
-  root.SC_HOLIDAY = { H, L, UI, SETS, ids: Object.keys(H), setFor, active, info, windowOf, easter, orthEaster, countryFromLocale, isHoliday: c => /^holiday:[a-z0-9]+$/.test(String(c || '')) && !!H[String(c).slice(8)] };
+  const info = (id, lang) => H[id] ? { id, emoji: H[id][0], accent: H[id][1], soft: H[id][2], name: L[id][li(lang)] || L[id][0], nameEn: L[id][0], dishes: H[id][5], ui: UI[LANGS[li(lang)]], pal: P[id], anim: A[id] } : null;
+  root.SC_HOLIDAY = { H, L, UI, P, A, INK, MUTED, SETS, ids: Object.keys(H), setFor, active, info, windowOf, easter, orthEaster, countryFromLocale, isHoliday: c => /^holiday:[a-z0-9]+$/.test(String(c || '')) && !!H[String(c).slice(8)] };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
