@@ -1,0 +1,23 @@
+SnapCravings stats: real people only + sources  (2026-11-03)
+Commit bd1118c pushed to master. NOT DEPLOYED, DB MIGRATION NOT APPLIED (see "Needs you").
+
+Done
+1) Real people only. /api/ev now flags bot/automation UAs (HeadlessChrome, Playwright, Puppeteer, Lighthouse, bot/crawler/curl etc.),
+   owner devices (plan=owner) and test runs (?test=1, localStorage sc_test / sc.test, navigator.webdriver) with meta.kind.
+   Rows are still stored (so "All traffic" works) but snap_stats hides them by default. Dashboard has a Real people / All traffic toggle
+   (real by default; header line says which mode is showing).
+2) Where visitors come from: first visit per device sends referrer domain + utm_source/medium/campaign once. Grouped server-side into
+   Instagram, TikTok, Facebook, YouTube, Google, email, direct, other. New card "Where visitors come from" (+ campaign list).
+3) More ideas = 0: tracking code was wired correctly and the live pipeline accepts the event (a probe POST returned x-ev: ok).
+   I could not find a break, so the 0 is most likely no real taps yet (button is at the bottom of the recipe list). Hardened: the event is now sent
+   BEFORE the re-render so a render error can't skip it. Check the count after deploy. NOTE: my probe wrote 1 more_ideas row (device sc-probe-moreideas-1103,
+   plan free) to the live DB; it has no flag, so it shows as 1 until removed.
+Tests: node --test test/*.test.mjs = 192 pass, 1 fail. The fail is test/play-verify.test.mjs (missing gitignored functions/_lib/play_key.js on this PC; fails before my change too).
+New test/stats-filter.test.mjs. Migration logic checked in PGlite (real vs all, sources, campaigns, re-runnable). Cache bumped to ui62 in sw.js and index.html.
+
+Needs you (blocked here)
+- Deploy: this PC has no Cloudflare login (wrangler asks for CLOUDFLARE_API_TOKEN) and no functions/_lib/stats_key.js (gitignored, lives on the box;
+  a deploy from here would break owner-code login). Run from the box: git pull; npx wrangler pages deploy web --project-name snapcravings --branch main
+- Apply supabase/migrations/20261103_snapcravings_real_people_sources.sql in the Supabase SQL editor (everborn-command). Until then /api/stats falls back to
+  the old function (all traffic, no sources) and the dashboard says "All traffic (filter not live yet)". Old rows have no source/flags, so history stays mixed.
+- Optional: add ?test=1 to the e2e-*.mjs base URLs so test runs stop counting.
