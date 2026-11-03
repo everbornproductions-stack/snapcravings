@@ -198,7 +198,7 @@ export async function buildPlan(env, p, lang, ask0 = gemini, send = () => {}) {
   const ask = (...a) => ask0(...a).then(v => { okCalls++; return v; }, e => { lastErr = e; throw e; }); // remember why the AI failed, so an empty plan says "busy" and not "diet"
 
   // The menu round trip only pays off for the full week; a 2-day preview is faster as one call (measured 4.7 s vs 5.6 s).
-  if (p.genDays > 2) try { const m = await ask(env, MENU_SCHEMA, [{ text: menuPrompt(p, lang) }], 2500); menu = checkMenu(p, m.menu); } catch {}
+  if (p.genDays > 2) try { const m = await ask(env, MENU_SCHEMA, [{ text: menuPrompt(p, lang) }], 4000); menu = checkMenu(p, m.menu); } catch {}
   let meals = [], open = [], prepOut = { prep: [], storage: [] }, banned = [];
   if (menu) {
     const prepJob = ask(env, PREP_SCHEMA, [{ text: prepPrompt(p, menu, lang) }], 4000).catch(() => ({ prep: [], storage: [] }));
