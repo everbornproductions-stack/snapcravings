@@ -5,14 +5,15 @@ import { langCode, intlNote } from '../_lib/lang.js';
 import { dietOf, dietPrompt, recipeHits } from '../_lib/diet.js';
 import { ADAPT_SCHEMA, cleanRecipe } from '../_lib/extras.js';
 import { gemini } from './plan.js';
+import { hourly as rl } from '../_lib/limit.js';
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const mem = new Map();
 export async function onRequestPost({ request, env }) {
   const es = String(request.headers.get('x-sc-lang') || '').startsWith('es'); const E = (en, sp, s) => json({ error: es ? sp : en }, s);
   if (+request.headers.get('content-length') > 2_500_000) return E('That photo is too big.', 'Esa foto pesa demasiado.', 413);
   let b; try { b = await request.json(); } catch { return E('Bad request', 'Solicitud inválida', 400); }
-  const ip = request.headers.get('cf-connecting-ip') || 'local'; const k = ip + ':' + Math.floor(Date.now() / 36e5); const c = (mem.get(k) || 0) + 1; mem.set(k, c);
-  const pro = !!(await verifyToken(env, request.headers.get('x-sc-token'))); if (c > (pro ? 40 : 6)) return E('Whoa, hungry! You hit the hourly limit. Try again soon.', '¡Uy, qué hambre! Llegaste al límite por hora. Intenta de nuevo pronto.', 429);
+  const ip = request.headers.get('cf-connecting-ip') || 'local'; 
+  const pro = !!(await verifyToken(env, request.headers.get('x-sc-token'))); if (await rl(env, 'adapt', ip, pro ? 40 : 6)) return E('Whoa, hungry! You hit the hourly limit. Try again soon.', '¡Uy, qué hambre! Llegaste al límite por hora. Intenta de nuevo pronto.', 429);
   const text = String(b.text || '').slice(0, 6000).trim(); const img = /^data:(image\/(jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(b.image || ''));
   if (!text && !img) return E('Paste your recipe or add a photo first!', '¡Pega tu receta o agrega una foto primero!', 400);
   const diet = dietOf(b.prefs); const lang = langCode(b.lang);

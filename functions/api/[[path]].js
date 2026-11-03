@@ -2,7 +2,8 @@
 // Routes: POST /api/scan {images:[dataURL]} | POST /api/recipes {ingredients, craving} | POST /api/crave {craving, ingredients}
 // GET /api/health. Set MOCK_AI=1 (local only) to return canned results without a key.
 import { libFind, libSave, libCount, libStats, pick as libPick, prefKey as libPrefKey } from '../_lib/recipelib.js';
-import { verifyToken, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
+import { verifyToken, safeEq, signScan, verifyScan, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
+import { hourly } from '../_lib/limit.js';
 import '../../web/holiday.js'; // sets globalThis.SC_HOLIDAY (holiday mode, shared with the web app)
 import { trendHit } from '../_lib/trending.js';
 import { INTL, langCode, intlNote, intlScanNote } from '../_lib/lang.js';
@@ -12,20 +13,30 @@ const FREE_SCANS_PER_WEEK = 3; const IP_SCANS_PER_WEEK = 30;
 // Free-scan limit, kept in Supabase (snap_scan_gate RPC): 3 scans per device per rolling 7 days, 30 per IP.
 // On by default (ENFORCE_FREE='0' turns it off). Paid/owner tokens skip it. Any RPC failure lets the scan through (fail open).
 const sha = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+// When Supabase errors, free users are not let through blindly: a per-isolate count (same 3 per 7 days) decides.
+const gateMem = new Map();
+function memGate(dev, scan, ticket, why) {
+  const now = Date.now(); const l = (gateMem.get(dev) || []).filter(x => now - x.t < 7 * 864e5);
+  if (!l.some(x => x.s === scan)) { if (l.length >= FREE_SCANS_PER_WEEK) return { allowed: false, why: why + '-mem-limit' }; l.push({ s: scan, t: now }); }
+  gateMem.set(dev, l); if (gateMem.size > 20000) gateMem.clear(); return { allowed: true, why: why + '-mem', ticket };
+}
 async function scanGate(env, request, ip) {
   if (env.ENFORCE_FREE === '0') return { allowed: true, why: 'off' };
   if (await verifyToken(env, request.headers.get('x-sc-token'))) return { allowed: true, why: 'pro' };
   const dev = String(request.headers.get('x-sc-dev') || '').replace(/[^\w-]/g, '').slice(0, 64);
-  const scan = String(request.headers.get('x-sc-scan') || '').replace(/[^\w-]/g, '').slice(0, 64) || crypto.randomUUID();
+  const devHash = await sha('snapcravings-scan-d:' + (dev || 'ip-' + ip));
+  // The scan id comes from a server-signed ticket (10 minutes, bound to this device). Anything else starts a new scan.
+  const tk = await verifyScan(env, String(request.headers.get('x-sc-scan') || '').slice(0, 400), devHash);
+  const scan = tk ? tk.s : crypto.randomUUID().replace(/-/g, ''); const ticket = env.SUB_SECRET ? (tk ? String(request.headers.get('x-sc-scan')) : await signScan(env, devHash, scan)) : null;
   const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 4000);
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/snap_scan_gate`, { method: 'POST', signal: ac.signal,
       headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ p_device: await sha('snapcravings-scan-d:' + (dev || 'ip-' + ip)), p_ip: await sha('snapcravings-scan-ip:' + ip), p_scan: scan.padEnd(4, '0'), p_limit: FREE_SCANS_PER_WEEK, p_ip_limit: IP_SCANS_PER_WEEK }) });
-    if (!r.ok) return { allowed: true, why: 'rpc-' + r.status };
+      body: JSON.stringify({ p_device: devHash, p_ip: await sha('snapcravings-scan-ip:' + ip), p_scan: scan.padEnd(4, '0'), p_limit: FREE_SCANS_PER_WEEK, p_ip_limit: IP_SCANS_PER_WEEK }) });
+    if (!r.ok) return memGate(devHash, scan, ticket, 'rpc-' + r.status);
     const j = await r.json();
-    return { allowed: j?.allowed !== false, why: j?.allowed === false ? 'limit' : 'ok', used: j?.used };
-  } catch { return { allowed: true, why: 'error' }; } finally { clearTimeout(t); }
+    return { allowed: j?.allowed !== false, why: j?.allowed === false ? 'limit' : 'ok', used: j?.used, ticket };
+  } catch { return memGate(devHash, scan, ticket, 'error'); } finally { clearTimeout(t); }
 }
 const MODEL = 'gemini-3.5-flash-lite'; // gemini-2.5-flash is closed to new API users (404); see CHAIN for fallbacks
 const MAX_IMAGES = 10, MAX_IMAGE_BYTES = 1_500_000, MAX_BODY = 9_000_000;
@@ -34,6 +45,10 @@ const mem = new Map(); // fallback limiter when no KV binding (per isolate, best
 
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
 
+// Public view of the race log: provider/model, a short status (429, timeout, badjson...), ms. Never raw provider error text.
+export const shortSt = st => { const s = String(st ?? ''); const m = /^(\d{3}|[a-z][a-z-]{0,20})\b/i.exec(s.trim()); return m ? m[1] : 'err'; };
+export const publicTries = t => Array.isArray(t) ? t.map(x => [String(x[0]).slice(0, 60), shortSt(x[1]), +x[2] || 0]) : undefined;
+const publicUsage = u => u && { ...u, tries: publicTries(u.tries) };
 async function limited(env, ip, route) {
   const key = `rl:${route}:${ip}:${Math.floor(Date.now() / 1000 / WINDOW_S)}`;
   let n;
@@ -160,7 +175,7 @@ async function openAI(env, name, route, parts, signal, tap) {
   const model = (scan ? env[up + '_VISION_MODEL'] : env[up + '_MODEL']) || (scan ? P.vision : P.text);
   const content = parts.map(p => p.inlineData ? { type: 'image_url', image_url: { url: `data:${p.inlineData.mimeType};base64,${p.inlineData.data}` } } : { type: 'text', text: p.text });
   const body = { model, messages: [{ role: 'system', content: sysFor(route) }, { role: 'user', content: scan ? content : content.map(c => c.text).join('\n') }],
-    response_format: { type: 'json_object' }, temperature: 0.6, max_tokens: 6000, stream: !!tap };
+    response_format: { type: 'json_object' }, temperature: 0.6, max_tokens: name === 'groq' ? (scan ? 2500 : 5000) : 6000, stream: !!tap }; // Groq free: prompt + max_tokens must fit its 8K tokens/min (6000 gave 429 'Request too large')
   if (/gpt-oss/.test(model)) body.reasoning_effort = 'low';
   const r = await (env.__fetch || fetch)(P.url, { method: 'POST', signal, headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env[P.key], ...(name === 'openrouter' ? { 'HTTP-Referer': 'https://snapcravings.pages.dev', 'X-Title': 'SnapCravings' } : {}) }, body: JSON.stringify(body) });
   if (!r.ok) { const msg = (await r.text()).slice(0, 300); throw err(r.status + ' ' + (/"message":\s*"([^"]{0,140})/.exec(msg)?.[1] || ''), msg); }
@@ -200,11 +215,12 @@ async function gemini(env, route, parts, opts = {}) {
     if (owner !== null && owner !== id) return null;
     const ctl = new AbortController(); ctls.set(id, ctl); const timer = setTimeout(() => ctl.abort(), prov === 'cf' ? 40000 : PER_MODEL); const t0 = Date.now();
     const label = prov === 'cf' ? (env.__cfModel || (route === 'scan' ? CF_MODEL.scan : CF_MODEL.text)) : prov === 'gemini' ? model : prov;
-    const note = st => tries.push([label, st, Date.now() - t0]);
+    const note = st => tries.push([label, shortSt(st), Date.now() - t0]); // status code or short word only: raw provider text can carry account ids
     const tap = stream && prov !== 'cf' ? recipeTap(r => emit(id, r)) : null;
     try {
       if (prov !== 'cf' && env.__forceGeminiFail) throw err('forced-fail');
       const v = prov === 'cf' ? await workersAI(env, route, parts, ctl.signal) : prov === 'gemini' ? await geminiOne(env, model, thinking, route, parts, ctl.signal, tap) : await openAI(env, prov, route, parts, ctl.signal, tap);
+      if (route === 'scan' && prov !== 'gemini' && !v.data.ingredients.length) throw err('empty'); // a weaker fallback that sees nothing should not end the race
       if (stream) { if (owner !== null && owner !== id && ctls.has(owner)) { note('lost'); return null; } owner = id; v.data.recipes.forEach(r => emit(id, r)); }
       note(200); console.log('ok', route, v.model, Date.now() - t0, 'ms', v.in, v.out);
       return { data: v.data, usage: { model: v.model, provider: prov === 'cf' ? 'workers-ai' : prov, ms: Date.now() - t0, total: Date.now() - T0, in: v.in, out: v.out, tries } };
@@ -281,15 +297,15 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
   const len = +request.headers.get('content-length') || 0;
   if (len > MAX_BODY) return json({ error: 'Those photos are too big. Try fewer photos.' }, 413);
   const ip = request.headers.get('cf-connecting-ip') || 'local';
-  if (await limited(env, ip, route)) return json({ error: 'Whoa, hungry! You hit the hourly limit. Try again soon.' }, 429);
+  if (await hourly(env, route, ip, LIMIT[route])) return json({ error: 'Whoa, hungry! You hit the hourly limit. Try again soon.' }, 429);
   let body; try { body = await request.json(); } catch { return json({ error: 'Bad request' }, 400); }
   // Test hook: skip Gemini so the free Workers AI fallback answers. Owner code only (or '1' on a preview branch host).
   const ff = String(request.headers.get('x-sc-force-fallback') || '').trim().toLowerCase(), host = new URL(request.url).hostname;
-  if (ff && ((env.OWNER_CODE && ff === String(env.OWNER_CODE).trim().toLowerCase()) || (ff === '1' && (/\.snapcravings\.pages\.dev$/.test(host) || host === 'localhost' || host === '127.0.0.1')))) env = Object.assign(Object.create(env), { __forceGeminiFail: true, __cfModel: ff === '1' ? String(request.headers.get('x-sc-cf-model') || '').slice(0, 80) : '', __cfMode: ff === '1' ? String(request.headers.get('x-sc-cf-mode') || '') : '' });
+  if (ff && ((env.OWNER_CODE && safeEq(ff, String(env.OWNER_CODE).trim().toLowerCase())) || (ff === '1' && (/\.snapcravings\.pages\.dev$/.test(host) || host === 'localhost' || host === '127.0.0.1')))) env = Object.assign(Object.create(env), { __forceGeminiFail: true, __cfModel: ff === '1' ? String(request.headers.get('x-sc-cf-model') || '').slice(0, 80) : '', __cfMode: ff === '1' ? String(request.headers.get('x-sc-cf-mode') || '') : '' });
   // Free plan: 3 scans (a scan = one Go, many photo batches share one scan id) per IP per week; Unlimited token skips it.
   if (!env.GEMINI_API_KEY && env.MOCK_AI !== '1') return json({ error: 'AI is not set up yet (missing GEMINI_API_KEY).' }, 503);
 
-  let parts, rkey = null, lib = null; const lang = langOf(body, request); const LN = LANG_NOTE[lang];
+  let parts, rkey = null, lib = null, scanTicket = null; const lang = langOf(body, request); const LN = LANG_NOTE[lang];
   if (route === 'scan') {
     const imgs = Array.isArray(body.images) ? body.images : [];
     if (!imgs.length) return json({ error: 'Add at least one photo!' }, 400);
@@ -307,6 +323,7 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
     parts.push({ text: `These ${imgs.length} photos are all from ONE kitchen; each is labeled with its area (fridge, freezer, pantry, spices). Analyze ALL photos together and return ONE combined, de-duplicated inventory: if the same item appears in several photos, list it once. List every distinct food item you can see, explicitly including spices, dried herbs, seasonings and blends, salt and pepper, sauces, oils, vinegars and condiments (read jar and bottle labels). For each give a short common name (e.g. "smoked paprika", "soy sauce", "olive oil"), a rough quantity (e.g. "6 eggs", "half a jar", "about 1 lb"), a category (Produce, Proteins, Dairy, Pantry, Spices & Seasonings; sauces, oils and condiments go in Pantry; spices, dried herbs, salt, pepper and seasoning blends go in Spices & Seasonings), and low=true if it looks nearly empty or running low. Ignore non-food items. If no food is visible, return an empty list.${lang === 'es' ? ' LANGUAGE: write each name and qty in natural Latin American Spanish (for example "pimentón ahumado", "salsa de soya", "aceite de oliva", "6 huevos", "medio frasco"). Keep category values exactly in English as listed.' : intlScanNote(lang)}` });
     const g = await scanGate(env, request, ip);
     if (!g.allowed) return json({ error: "You've used your 3 free scans this week.", paywall: true }, 402);
+    scanTicket = g.ticket || null;
   } else if (route === 'recipes') {
     const diet = dietOf(body.prefs); const ing = clean(body.ingredients, 80).filter(x => !bad(diet, x)); const craving = String(body.craving || 'Anything').slice(0, 60);
     const section = body.section === 'more' ? 'more' : 'ready';
@@ -375,7 +392,7 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
   };
   if (stream) return ndjson(async send => {
     try { const out = await recipes(r => send({ recipe: r })); libDone(out); send({ done: true, ...out }); save(out); }
-    catch (e) { const m = e.message || 'Something went sideways. Try again!'; send({ done: true, error: lang === 'es' ? (ERR[m] || m) : m, why: e.why, tries: e.tries }); }
+    catch (e) { const m = e.message || 'Something went sideways. Try again!'; send({ done: true, error: lang === 'es' ? (ERR[m] || m) : m, why: e.why, tries: publicTries(e.tries) }); }
   });
   try {
     if (route === 'recipes') { const out = await recipes(); libDone(out); save(out); return json(out); }
@@ -390,8 +407,8 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
       if (h.length) return json({ error: "Couldn't make that one fit your diet. Try a different craving!", why: h.slice(0, 12) }, 502);
     }
     if (route === 'crave' && data?.recipe?.name) bg(trendHit(env, { country: request.cf?.country, kind: 'crave', label: data.recipe.name, lang, device: String(request.headers.get('x-sc-dev') || '').replace(/[^\w-]/g, '').slice(0, 64) })); // trending Popular cravings
-    return json({ ...data, craving: body.craving, usage });
-  } catch (e) { return json({ error: e.message || 'Something went sideways. Try again!', tries: e.tries, ...(e.why?.length ? { why: e.why } : {}) }, e.why ? 502 : 502); }
+    return json({ ...data, craving: body.craving, usage: publicUsage(usage), ...(scanTicket ? { scanTicket } : {}) });
+  } catch (e) { return json({ error: e.message || 'Something went sideways. Try again!', tries: publicTries(e.tries), ...(scanTicket ? { scanTicket } : {}), ...(e.why?.length ? { why: e.why } : {}) }, e.why ? 502 : 502); }
 }
 
 // NDJSON stream: one JSON object per line ({recipe} ... then {done:true, recipes, craving, usage} or {done:true, error}).

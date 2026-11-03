@@ -32,7 +32,9 @@
       <button class="btn insta" id="hpAdd" style="padding:11px">🛒 ${T('Add to my grocery list')}</button></div>`;
     return x + `<p class="fine">${T('AI-generated plan. Check doneness, food safety and allergens yourself.')}</p><button class="btn ghost" id="hpNew">${T('New plan')}</button>`;
   }
-  function render() { const b = el('hplanBody'); if (!b) return; const tt = document.querySelector('#hplan .topbar .t'); if (tt) tt.textContent = T('Holiday planner'); const h = holInfo(); if (!h) { b.innerHTML = `<p class="sub">${T('The holiday planner opens about a week before each holiday.')}</p>`; return; }
+  function render() { const b = el('hplanBody'); if (!b) return; const tt = document.querySelector('#hplan .topbar .t'); if (tt) tt.textContent = T('Holiday planner'); const h = holInfo(); if (!h) { const nx = window.SC_HOLIDAY.next(new Date(), HOLI.country); const ni = nx && window.SC_HOLIDAY.info(nx.id, I18N.lang);
+      let when = ''; try { when = ni ? new Intl.DateTimeFormat(I18N.lang, { month: 'long', day: 'numeric' }).format(nx.day) : ''; } catch { when = ni ? nx.day.toDateString() : ''; }
+      b.innerHTML = `${ni ? `<div class="card" style="text-align:center"><div style="font-size:40px">${ni.emoji}</div><div class="kick" style="margin:4px 0 2px">${t('Next holiday')}</div><h2 style="margin:0">${esc(ni.name)}</h2><p class="sub" style="margin:4px 0 0">${esc(when)}</p></div>` : ''}<p class="sub">${T('The holiday planner opens about a week before each holiday.')}</p><a class="btn primary" href="#home">${t('🍳 Back to recipes')}</a>`; return; }
     if (plan && plan.holiday !== h.id) plan = null; b.innerHTML = plan && plan.menu ? result(h) : busy ? loading(T('Planning your feast…')) : form(h); }
   async function build() {
     const h = holInfo(); if (!h || busy) return; busy = true; plan = null; LS.set('hpOpts', opts); render();

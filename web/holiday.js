@@ -142,7 +142,12 @@
   function active(date, country) { const t = strip(date || new Date()); let best = null;
     for (const id of setFor(country)) for (const y of [t.getFullYear() - 1, t.getFullYear(), t.getFullYear() + 1]) { const w = windowOf(id, y); if (w && t >= w.start && t <= w.end && (!best || rank(w) < rank(best))) best = { id, ...w }; }
     return best; }
+  // Next holiday for this country after today: { id, day } where day is the holiday itself (or a long window's first day).
+  function next(date, country) { const t = strip(date || new Date()); let best = null;
+    for (const id of setFor(country)) for (const y of [t.getFullYear(), t.getFullYear() + 1]) { const h = H[id]; const v = h && h[3](y); if (!v) continue; const day = v.start ? v.start : v; const w = windowOf(id, y);
+      if (w && w.start > t && (!best || day < best.day)) best = { id, day, opens: w.start }; }
+    return best; }
   const li = l => Math.max(0, LANGS.indexOf(String(l || 'en').slice(0, 2)));
   const info = (id, lang) => H[id] ? { id, emoji: H[id][0], accent: H[id][1], soft: H[id][2], name: L[id][li(lang)] || L[id][0], nameEn: L[id][0], dishes: H[id][5], ui: UI[LANGS[li(lang)]], pal: P[id], anim: A[id] } : null;
-  root.SC_HOLIDAY = { H, L, UI, P, A, INK, MUTED, SETS, ids: Object.keys(H), setFor, active, info, windowOf, easter, orthEaster, countryFromLocale, region: cc => { cc = String(cc || '').toUpperCase(); return SETS[cc] ? cc : ALIAS[cc] || 'GLOBAL'; }, LANG_COUNTRY, isHoliday: c => /^holiday:[a-z0-9]+$/.test(String(c || '')) && !!H[String(c).slice(8)] };
+  root.SC_HOLIDAY = { H, L, UI, P, A, INK, MUTED, SETS, ids: Object.keys(H), setFor, active, next, info, windowOf, easter, orthEaster, countryFromLocale, region: cc => { cc = String(cc || '').toUpperCase(); return SETS[cc] ? cc : ALIAS[cc] || 'GLOBAL'; }, LANG_COUNTRY, isHoliday: c => /^holiday:[a-z0-9]+$/.test(String(c || '')) && !!H[String(c).slice(8)] };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

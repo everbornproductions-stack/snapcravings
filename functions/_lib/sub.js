@@ -11,8 +11,23 @@ export const PRICE_CENTS = 399;       // display only; the real price lives on t
 export const SUPABASE_URL = 'https://ezbpstloczzdlcxwliwu.supabase.co';
 export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_-vQhqr9u5dSSLCkrnkNT5g_JmReU16a';
 const enc = new TextEncoder();
+const unb64u = s => Uint8Array.from(atob(String(s).replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((String(s).length + 3) % 4)), c => c.charCodeAt(0));
+// Constant-time string compare (owner code, test hooks).
+export function safeEq(a, b) { a = String(a ?? ''); b = String(b ?? ''); let d = a.length ^ b.length; for (let i = 0; i < Math.max(a.length, b.length); i++) d |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0); return d === 0; }
+// Server-issued scan tickets: one free scan = one ticket, reused by the later photo batches of the same Go for up to 10 minutes.
+// The id inside is random and signed, so a client can no longer pick (and replay) its own scan id forever.
+export const SCAN_TICKET_MS = 10 * 60 * 1000;
+export async function signScan(env, dev, id = crypto.randomUUID().replace(/-/g, ''), t = Date.now()) {
+  const body = b64u(enc.encode(JSON.stringify({ s: id, d: String(dev).slice(0, 32), t })));
+  return body + '.' + b64u(await crypto.subtle.sign('HMAC', await key(env, 'scan'), enc.encode(body)));
+}
+export async function verifyScan(env, tok, dev, now = Date.now()) {
+  if (!env.SUB_SECRET || !tok || !String(tok).includes('.')) return null; const [body, sig] = String(tok).split('.');
+  let ok = false; try { ok = await crypto.subtle.verify('HMAC', await key(env, 'scan'), unb64u(sig), enc.encode(body)); } catch {} if (!ok) return null;
+  try { const p = JSON.parse(new TextDecoder().decode(unb64u(body))); return p.d === String(dev).slice(0, 32) && now - p.t >= 0 && now - p.t < SCAN_TICKET_MS ? p : null; } catch { return null; }
+}
 const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-async function key(env) { return crypto.subtle.importKey('raw', enc.encode(env.SUB_SECRET || ''), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']); }
+async function key(env, use) { return crypto.subtle.importKey('raw', enc.encode((use ? use + ':' : '') + (env.SUB_SECRET || '')), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']); }
 export async function signToken(env, email, days = 35) {
   const body = b64u(enc.encode(JSON.stringify({ e: email, x: Date.now() + days * 864e5 })));
   return body + '.' + b64u(await crypto.subtle.sign('HMAC', await key(env), enc.encode(body)));
@@ -20,8 +35,8 @@ export async function signToken(env, email, days = 35) {
 export async function verifyToken(env, tok) {
   if (!env.SUB_SECRET || !tok || !tok.includes('.')) return null;
   const [body, sig] = tok.split('.');
-  const good = b64u(await crypto.subtle.sign('HMAC', await key(env), enc.encode(body)));
-  if (good !== sig) return null;
+  let ok = false; try { ok = await crypto.subtle.verify('HMAC', await key(env), unb64u(sig), enc.encode(body)); } catch {} // constant-time check
+  if (!ok) return null;
   try { const p = JSON.parse(atob(body.replace(/-/g, '+').replace(/_/g, '/'))); return p.x > Date.now() ? p : null; } catch { return null; }
 }
 export const PAYWALL_ON = env => !!(PAYMENT_LINK_URL && env.SUB_SECRET && env.PAYWALL !== 'off');

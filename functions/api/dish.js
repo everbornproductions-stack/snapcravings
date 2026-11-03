@@ -3,7 +3,7 @@
 // AI chain: Gemini 3.5-flash-lite -> 3.1-flash-lite (vision, strict JSON schema, minimal thinking) -> Workers AI Llama 4 Scout (json_schema).
 // Every answer goes through SC_DISH.validate (ranges + 4P+4C+9F energy check) before it reaches the app.
 import '../../web/dishcore.js';
-import { verifyToken, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
+import { verifyToken, safeEq, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
 import { INTL, langCode } from '../_lib/lang.js';
 const D = globalThis.SC_DISH;
 export const FREE_DISH_PER_WEEK = 1, IP_DISH_PER_WEEK = 10, MAX_IMAGE_BYTES = 1_500_000;
@@ -23,7 +23,8 @@ export function dishPrompt(lang, fix) {
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
 const sha = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
 const mem = new Map();
-function hourly(ip, n) { const k = `dish:${ip}:${Math.floor(Date.now() / 36e5)}`; const c = (mem.get(k) || 0) + 1; mem.set(k, c); if (mem.size > 5000) mem.clear(); return c > n; }
+import { hourly as rl } from '../_lib/limit.js';
+
 // Weekly gate: Pro/owner token skips it; free devices get FREE_DISH_PER_WEEK. Same Supabase RPC as the fridge scan, separate hashes. Fails open.
 export async function dishGate(env, request, ip) {
   if (env.__gate) return env.__gate();
@@ -84,21 +85,21 @@ async function handle({ request, env }) {
   const ip = request.headers.get('cf-connecting-ip') || 'local';
   let body; try { body = await request.json(); } catch { return json({ error: 'Bad request' }, 400); }
   const ff = String(request.headers.get('x-sc-force-fallback') || '').trim().toLowerCase(), host = new URL(request.url).hostname;
-  if (ff && ((env.OWNER_CODE && ff === String(env.OWNER_CODE).trim().toLowerCase()) || (ff === '1' && /\.snapcravings\.pages\.dev$|^localhost$|^127\.0\.0\.1$/.test(host)))) env = Object.assign(Object.create(env), { __forceGeminiFail: true });
+  if (ff && ((env.OWNER_CODE && safeEq(ff, String(env.OWNER_CODE).trim().toLowerCase())) || (ff === '1' && /\.snapcravings\.pages\.dev$|^localhost$|^127\.0\.0\.1$/.test(host)))) env = Object.assign(Object.create(env), { __forceGeminiFail: true });
   const lang = langCode(body.lang || request.headers.get('x-sc-lang'));
   let parts, fix = null;
   if (body.fix) {
     const name = String(body.fix.name || '').replace(/[\u0000-\u001f"<>]/g, ' ').trim().slice(0, 80);
     const items = (Array.isArray(body.fix.items) ? body.fix.items : []).slice(0, 15).map(i => ({ name: String(i?.name || '').replace(/[\u0000-\u001f"<>;]/g, ' ').trim().slice(0, 60), grams: Math.max(0, Math.min(2000, Math.round(+i?.grams || 0))) })).filter(i => i.name);
     if (!name) return json({ error: 'Bad request' }, 400);
-    if (hourly(ip, 30)) return json({ error: 'Whoa, hungry! You hit the hourly limit. Try again soon.' }, 429);
+    if (await rl(env, 'dish', ip, 30)) return json({ error: 'Whoa, hungry! You hit the hourly limit. Try again soon.' }, 429);
     fix = { name, items }; parts = [{ text: dishPrompt(lang, fix) }];
   } else {
     const m = /^data:(image\/(jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(body.image || ''));
     if (!body.image) return json({ error: 'Add a photo of your plate first!' }, 400);
     if (!m) return json({ error: 'Photos must be JPEG, PNG or WebP.' }, 400);
     if (m[3].length * 0.75 > MAX_IMAGE_BYTES) return json({ error: 'That photo is too big (max 1.5 MB).' }, 413);
-    if (hourly(ip, 20)) return json({ error: 'Whoa, hungry! You hit the hourly limit. Try again soon.' }, 429);
+    if (await rl(env, 'dish', ip, 20)) return json({ error: 'Whoa, hungry! You hit the hourly limit. Try again soon.' }, 429);
     const g = await dishGate(env, request, ip);
     if (!g.allowed) return json({ error: "You've used your free dish scan this week.", paywall: true }, 402);
     parts = [{ inlineData: { mimeType: m[1], data: m[3] } }, { text: dishPrompt(lang) }];

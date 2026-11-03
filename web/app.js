@@ -28,15 +28,15 @@ async function checkSub(email, quiet) {
 }
 function renderPro() {
   if (!el('proBody')) return;
-  el('proPrice').textContent = '$' + Number(subCfg.price).toFixed(2);
+  el('proPrice').textContent = 'US$' + Number(subCfg.price).toFixed(2); /* Stripe charges USD in every country, whatever the UI language */
   if (unlimited()) { el('proBody').innerHTML = `<div class="card" style="background:var(--green-soft);border-color:#BFE3CC;text-align:center;margin-top:12px"><b style="color:#1F6B42">${t("You're Unlimited! 🎉")}</b><div class="fine" style="color:#1F6B42">${t("{email} · unlimited photo scans. Let's get cooking!", { email: esc(sub.email) })}</div></div><a class="btn primary" href="#scan">${t('📸 Snap it')}</a><p class="fine" style="text-align:center">${sub.code ? t('Your food preferences live in') : t('Manage or cancel anytime in')} <a href="#settings" style="color:var(--coral);font-weight:700">${t('Settings')}</a>.</p>`; return; }
   if (sub.email && !el('proEmail').value) el('proEmail').value = sub.email;
   if (!subCfg.enabled) { el('proGo').textContent = t('Unlimited · coming soon!'); el('proGo').style.opacity = '.6'; el('proGo').setAttribute('aria-disabled', 'true'); el('proEmail').parentNode.style.display = 'none'; el('proRestore').style.display = 'none'; }
   else { if (!el('proGo').querySelector('.spin')) el('proGo').textContent = t("Go Unlimited — let's get cooking!"); el('proGo').style.opacity = ''; el('proGo').removeAttribute('aria-disabled'); el('proEmail').parentNode.style.display = ''; el('proRestore').style.display = ''; }
-  if (inPlay()) { if (el('proYrSub')) el('proYrSub').textContent = t('$39.99/yr, save 33% vs $4.99/mo list price'); el('proEmail').parentNode.style.display = 'none'; el('proRestore').style.display = ''; el('proGo').style.opacity = ''; el('proGo').removeAttribute('aria-disabled'); if (!el('proGo').querySelector('.spin')) el('proGo').textContent = t("Go Unlimited — let's get cooking!"); if (!el('proYearly')) { const y = document.createElement('button'); y.className = 'btn ghost'; y.id = 'proYearly'; el('proGo').after(y); } if (!el('proYearly').querySelector('.spin')) el('proYearly').textContent = t('Or go yearly: $39.99/year'); el('proFine').textContent = t('${price}/mo or $39.99/year. Secure checkout by Google Play. Cancel anytime in Google Play.', { price: Number(subCfg.price).toFixed(2) }); return; }
-  if (el('proYrSub')) el('proYrSub').textContent = subCfg.linkYearly ? t('$39.99/yr, save 33% vs $4.99/mo list price') : t('Coming soon · about $3.33/mo');
-  if (yearlyPicked()) { el('proFine').textContent = t('$39.99 billed once a year. Secure checkout by Stripe. We use your email only to find your plan.'); return; }
-  el('proFine').textContent = subCfg.enabled ? t('${price}/mo founders price, first 100 members, locked in. Secure checkout by Stripe. We use your email only to find your plan.', { price: Number(subCfg.price).toFixed(2) }) : t('Unlimited is coming soon. Free scans and codes still work!');
+  if (inPlay()) { if (el('proYrSub')) el('proYrSub').textContent = t('About 16% less than 12 monthly payments'); el('proEmail').parentNode.style.display = 'none'; el('proRestore').style.display = ''; el('proGo').style.opacity = ''; el('proGo').removeAttribute('aria-disabled'); if (!el('proGo').querySelector('.spin')) el('proGo').textContent = t("Go Unlimited — let's get cooking!"); if (!el('proYearly')) { const y = document.createElement('button'); y.className = 'btn ghost'; y.id = 'proYearly'; el('proGo').after(y); } if (!el('proYearly').querySelector('.spin')) el('proYearly').textContent = t('Or go yearly: $39.99/year'); el('proFine').textContent = t('${price}/mo or $39.99/year. Secure checkout by Google Play. Cancel anytime in Google Play.', { price: Number(subCfg.price).toFixed(2) }); return; }
+  if (el('proYrSub')) el('proYrSub').textContent = subCfg.linkYearly ? t('US$39.99/yr (about US$3.33/mo), 16% less than 12 months at US$3.99') : t('Coming soon · about US$3.33/mo');
+  if (yearlyPicked()) { el('proFine').textContent = t('US$39.99 billed once a year. Secure checkout by Stripe. We use your email only to find your plan.'); return; }
+  el('proFine').textContent = subCfg.enabled ? t('US${price}/mo founders price, first 100 members, locked in. Secure checkout by Stripe. We use your email only to find your plan.', { price: Number(subCfg.price).toFixed(2) }) : t('Unlimited is coming soon. Free scans and codes still work!');
 }
 // Google Play Billing (Android TWA only): Digital Goods API + PaymentRequest. The website keeps Stripe.
 const PLAY_SKU = 'snapcravings_pro_monthly', PLAY_YEARLY = 'snapcravings_pro_yearly', PLAY_SKUS = [PLAY_SKU, PLAY_YEARLY], PLAY_METHOD = 'https://play.google.com/billing';
@@ -163,6 +163,7 @@ async function api(path, body, ms = 60000) {
   catch (e) { throw new Error(e.name === 'AbortError' ? t('That took too long. Check your signal and tap Retry!') : t('Lost the connection for a sec. Tap Retry!')); }
   finally { clearTimeout(tm); }
   const j = await r.json().catch(() => ({ error: 'Something went sideways. Try again!' }));
+  if (path === 'scan' && j.scanTicket) state.scanId = j.scanTicket;
   if (!r.ok) { const er = new Error(t(j.error || 'Something went sideways. Try again!')); er.paywall = !!j.paywall; throw er; }
   return j;
 }
@@ -269,7 +270,7 @@ async function onPhotos(files) {
   if (!files.length) return;
   location.hash = '#scan';
   const area = (STEPS[state.step] || STEPS[3]).area;
-  for (const f of files) { try { state.photos.push({ src: await shrink(f), area }); } catch (e) { toast(t('One photo could not be read. Try another!')); } }
+  state.scanId = ''; for (const f of files) { try { state.photos.push({ src: await shrink(f), area }); } catch (e) { toast(t('One photo could not be read. Try another!')); } }
   state.ingredients = []; state.low = []; renderScan();
 }
 function renderPhotos() {
@@ -284,15 +285,21 @@ function mergeInv(lists) {
 }
 async function scan() {
   if (!state.photos.length) return toast(t('Snap a photo first!'));
-  state.busy = true; const n = state.photos.length; state.scanId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random());
+  if (state.busy) return; /* a second Go while a scan runs used to start a second race */
+  state.busy = true; const n = state.photos.length; const run = state.scanRun = (state.scanRun || 0) + 1; /* state.scanId = the server's signed scan ticket (10 min); a Retry of the same photos reuses it, new photos clear it */
   const batches = []; for (let i = 0; i < n; i += BATCH) batches.push(state.photos.slice(i, i + BATCH));
   let done = 0; const prog = () => el('scanBody').innerHTML = loading(t(n === 1 ? 'Peeking at {n} photo… spices too! ({d}/{n})' : 'Peeking at {n} photos… spices too! ({d}/{n})', { n, d: Math.min(done * BATCH, n) }));
   prog();
   const one = async b => { for (let a = 0; a < 2; a++) { try { const j = await api('scan', { images: b.map(p => ({ data: p.src, area: p.area })) }, 60000); done++; prog(); return j.ingredients; } catch (e) { if (a || e.paywall) throw e; } } };
+  const dog = setTimeout(() => { if (state.scanRun === run && state.busy) { state.scanRun++; state.busy = false; scanFail(new Error(t('That took too long. Check your signal and tap Retry!')), n); } }, 150000); /* watchdog: never leave a spinner or a silent reset */
   try {
     const results = []; // two batches at a time
-    for (let i = 0; i < batches.length; i += 2) results.push(...await Promise.all(batches.slice(i, i + 2).map(one)));
-    state.ingredients = mergeInv(results).map(i => ({ name: i.name, qty: i.qty || '', cat: i.category, low: !!i.low, bad: !!i.conflict }));
+    results.push(await one(batches[0])); /* first batch alone: its ticket makes the other batches part of the same free scan */
+    for (let i = 1; i < batches.length; i += 2) results.push(...await Promise.all(batches.slice(i, i + 2).map(one)));
+    clearTimeout(dog); if (state.scanRun !== run) return; /* the watchdog already gave up on this run */
+    const found = mergeInv(results.filter(Array.isArray));
+    if (!found.length) throw new Error(t("We couldn't spot any food in those photos. Try a brighter, closer photo!")); /* a 200 with an empty list used to drop back to step 1 with no message */
+    state.ingredients = found.map(i => ({ name: i.name, qty: i.qty || '', cat: i.category, low: !!i.low, bad: !!i.conflict }));
     state.low = state.ingredients.filter(i => i.low && !i.bad); // items that break your diet stay off the restock list // running-low items still count as "have" for cooking
     LS.set('ingredients', state.ingredients); LS.set('low', state.low);
     const wk = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5); wk.push(Date.now()); LS.set('scans', wk); renderLeft();
@@ -300,7 +307,12 @@ async function scan() {
     track('scan', 'scan', { photos: n, items: state.ingredients.length });
     state.busy = false; renderScan(); prefetchRecipes();
   } catch (e) {
-    state.busy = false;
+    clearTimeout(dog); if (state.scanRun !== run) return;
+    state.busy = false; scanFail(e, n);
+  }
+}
+function scanFail(e, n) {
+  {
     if (e.paywall) { el('scanBody').innerHTML = `<div class="kick">${t('Hungry for more?')}</div><h2>${t('Free scans used up')}</h2><p class="sub">${esc(e.message)} ${t(n === 1 ? 'Your {n} photo is still here.' : 'Your {n} photos are still here.', { n })}</p><a class="btn primary" href="#pro">${subCfg.enabled ? t("Go Unlimited — let's get cooking!") : t('Go Unlimited (coming soon) · Have a code?')}</a>`; return; }
     el('scanBody').innerHTML = `<div class="kick">${t('Oops, kitchen hiccup!')}</div><h2>${t("We couldn't read your photos")}</h2><p class="sub">${esc(e.message)} ${t(n === 1 ? 'Your {n} photo is still here.' : 'Your {n} photos are still here.', { n })}</p><button class="btn primary" id="scanGo" style="font-size:20px;padding:20px">${t('Retry 🔄')}</button>`;
   }
@@ -376,8 +388,8 @@ const THUMBS = ['#FFF1C9', '#E3F3E9', '#EDE6F7', '#FDE9E0'];
 function renderRecipes() {
   const R = state.recipes;
   if (!R) { el('recipesBody').innerHTML = `<div class="kick">${t('Craving unlocked!')}</div><h2>${t('No recipes yet')}</h2><p class="sub">${t("Snap your fridge first and we'll match recipes to what you have.")}</p><a class="btn primary" href="#scan">${t('📸 Snap it')}</a>`; return; }
-  const ready = (R.ready || []).map((r, i) => `<a class="card recipe" href="#recipe" data-rec="ready:${i}"><div class="thumb" style="background:${THUMBS[i % 4]}">${esc(r.emoji || '🍳')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${t('{n} min · {s} servings', { n: esc(r.minutes), s: esc(r.servings) })}</div><span class="pill g">${t('Pantry power! You have everything')}</span>${LEVEL_PILL(r.level)}</div>${heart('ready:' + i, r)}</a>`).join('') || (state.recipesLoading ? loading('Cooking up ideas…') : `<p class="sub">${t('Nothing makes the cut with only what you have. Check the ideas below!')}</p>`);
-  const more = (R.more || []).map((r, i) => `<div class="card recipe"><a href="#recipe" data-rec="more:${i}" style="display:flex;gap:12px;align-items:center;flex:1;color:inherit;text-decoration:none"><div class="thumb" style="background:${THUMBS[(i + 1) % 4]}">${esc(r.emoji || '🍜')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${t('{n} min · {s} servings', { n: esc(r.minutes), s: esc(r.servings) })}</div><span class="pill c">${t('Missing {n}: {items}', { n: r.missing.length, items: esc(r.missing.map(m => m.item).join(', ')) })}</span>${LEVEL_PILL(r.level)}</div></a><span style="display:flex;flex-direction:column;align-items:center;gap:4px">${heart('more:' + i, r)}<a class="chip" href="#list" data-addmiss="more:${i}" style="white-space:nowrap">${t('🛒 + List')}</a></span></div>`).join('');
+  const ready = (R.ready || []).map((r, i) => `<a class="card recipe" href="#recipe" data-rec="ready:${i}"><div class="thumb" style="background:${THUMBS[i % 4]}">${esc(r.emoji || '🍳')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${t('{n} min · {s} servings', { n: esc(r.minutes), s: esc(r.servings) })}</div><span class="pill g">${t('Pantry power! You have everything')}</span>${LEVEL_PILL(r.level)}</div>${heart('ready:' + i, r)}</a>`).join('') || (state.recipesLoading ? ((R.more || []).length ? `<p class="fine">${t('Still checking what you can make right now…')}</p>` : loading('Cooking up ideas…')) : `<p class="sub">${t('Nothing makes the cut with only what you have. Check the ideas below!')}</p>`);
+  const more = (R.more || []).map((r, i) => `<div class="card recipe"><a href="#recipe" data-rec="more:${i}" style="display:flex;gap:12px;align-items:center;flex:1;color:inherit;text-decoration:none"><div class="thumb" style="background:${THUMBS[(i + 1) % 4]}">${esc(r.emoji || '🍜')}</div><div style="flex:1"><b>${esc(r.name)}</b><div class="meta">${t('{n} min · {s} servings', { n: esc(r.minutes), s: esc(r.servings) })}</div>${(r.missing || []).length ? `<span class="pill c">${t('Missing {n}: {items}', { n: r.missing.length, items: esc(r.missing.map(m => m.item).join(', ')) })}</span>` : `<span class="pill g">${t('Pantry power! You have everything')}</span>`}${LEVEL_PILL(r.level)}</div></a><span style="display:flex;flex-direction:column;align-items:center;gap:4px">${heart('more:' + i, r)}<a class="chip" href="#list" data-addmiss="more:${i}" style="white-space:nowrap">${t('🛒 + List')}</a></span></div>`).join('');
   el('recipesBody').innerHTML = `<div class="kick">${t('Craving unlocked!')}</div><h2>${t('Matched to “{c}”', { c: esc(cravLabel(R.craving || state.craving)) })}</h2>${dietOn() && dietLine() ? `<p class="fine" style="margin-top:2px">${t('🥗 Cooking for: {d} · ', { d: esc(dietLine()) })}<a href="#settings" style="color:var(--coral);font-weight:700">${t('Change')}</a></p>` : ''}
     <h3>${t("Ready now: let's get cooking!")}</h3><p class="sub">${t('You already have everything for these. Pantry power!')}</p><div style="height:8px"></div>${ready}
     ${more || state.recipesLoading ? `<h3>${t('Make it with a few more things')}</h3><p class="sub">${t('Just a few items away. Add them to your grocery list and restock time is done!')}</p><div style="height:8px"></div>${more || loading('Cooking up ideas…')}${state.recipesLoading ? '' : `<a class="btn ghost" href="#list" data-addmiss="all">${t('🛒 Restock time! Build my grocery list')}</a>`}` : ''}
@@ -455,7 +467,7 @@ function renderList() {
   el('listLow').innerHTML = part(g => g.src !== 'miss');
   const open = glist.filter(g => !g.done && g.qty > 0);
   el('listCount').textContent = t(open.length === 1 ? '{n} item to grab' : '{n} items to grab', { n: open.length });
-  el('listTotal').textContent = '~' + $(r2(open.reduce((s, g) => s + g.price * g.qty, 0)));
+  { const tot = r2(open.reduce((s, g) => s + (+g.price || 0) * g.qty, 0)); el('listTotal').textContent = tot > 0 ? '~' + $(tot) : ''; } /* no prices (scan restock items) = no fake $0.00 */
 }
 const instaUrl = n => 'https://www.instacart.com/store/s?k=' + encodeURIComponent(n.replace(/,.*$/, ''));
 function sendList() {
@@ -485,7 +497,7 @@ document.addEventListener('click', e => {
   const rp = t.closest('[data-rmp]'); if (rp) { state.photos.splice(+rp.dataset.rmp, 1); return renderScan(); }
   if (t.closest('[data-next]')) { state.step++; return renderScan(); }
   if (t.closest('[data-back]')) { state.step = STEPS.length - 1; return renderScan(); }
-  if (t.closest('[data-rescan]')) { state.ingredients = []; state.low = []; state.step = 0; return renderScan(); }
+  if (t.closest('[data-rescan]')) { state.ingredients = []; state.low = []; state.step = 0; state.scanId = ''; return renderScan(); }
   if (t.closest('#scanGo')) return scan();
   const ai = t.closest('[data-addi]'); if (ai) { const n = prompt(I18N.t('Add an ingredient')); if (n && n.trim()) { state.ingredients.push({ name: n.trim(), qty: '', cat: ai.dataset.addi }); LS.set('ingredients', state.ingredients); renderScan(); } return; }
   const cr = t.closest('[data-cr]'); if (cr) { state.craving = cr.dataset.cr; if (cr.dataset.cr.startsWith('holiday:')) holidayAnim(true); prefetchRecipes(900); return renderScan(); }
@@ -493,8 +505,8 @@ document.addEventListener('click', e => {
   if (t.closest('#moreIdeas')) return moreIdeas();
   const am = t.closest('[data-addmiss]'); if (am) { const k = am.dataset.addmiss; if (k === 'all') (state.recipes?.more || []).forEach(addMissing); else addMissing(k === 'cur' ? state.recipe : pick(k)); }
   const rc = t.closest('[data-rec]'); if (rc) { state.recipe = pick(rc.dataset.rec); state.from = rc.dataset.rec === 'crave' ? 'crave' : rc.dataset.rec === 'x' ? (state.extFrom || 'lib') : rc.dataset.rec.startsWith('fav:') ? 'favs' : 'recipes'; }
-  const ci = t.closest('[data-craveit]'); if (ci) el('craveInput').value = ci.dataset.craveit;
-  const hc = t.closest('[data-crave]'); if (hc) el('craveInput').value = hc.dataset.crave;
+  const ci = t.closest('[data-craveit]'); if (ci) { el('craveInput').value = ci.dataset.craveit; try { el('craveInput').select(); } catch {} }
+  const hc = t.closest('[data-crave]'); if (hc) { const ci2 = el('craveInput'); ci2.value = hc.dataset.crave; setTimeout(() => { try { ci2.focus({ preventScroll: true }); ci2.select(); } catch {} }, 60); } /* selected, so typing replaces the chip text instead of appending */
   if (t.closest('#craveGo')) return crave(el('craveInput').value);
   const d = t.closest('[data-gdone]'); if (d) { const g = glist[+d.dataset.gdone]; g.done = !g.done; LS.set('glist', glist); return renderList(); }
   const q = t.closest('[data-gq]'); if (q) { const g = glist[+q.dataset.gq]; g.qty = Math.max(0, g.qty + +q.dataset.d); LS.set('glist', glist); return renderList(); }
@@ -525,6 +537,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) hidde
 function route() {
   const id = SCREENS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
   if (id !== 'settings') state.dietFirst = false;
+  if (id === 'hplan' || id === 'prep' || id === 'pro') document.getElementById('holAnim')?.remove(); /* the swoop must not cover the planner cards */
   RENDER[id]?.();
   if (id !== lastView) { lastView = id; track('page_view', id); }
   document.querySelectorAll('.screen').forEach(s => { s.classList.toggle('active', s.id === id); if (s.id === id) s.scrollTop = 0; });

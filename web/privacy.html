@@ -17,15 +17,17 @@ p,li{font-size:15px}.muted{color:var(--muted);font-size:13px}a{color:var(--coral
 </head>
 <body><main><div class="card">
 <h1>SnapCravings Privacy Policy</h1>
-<p class="muted">Last updated: November 1, 2026</p>
+<p class="muted">Last updated: November 2, 2026</p>
 <p>SnapCravings (the website at snapcravings.pages.dev and the Android app app.snapcravings.twa) is made by Everborn Marketing LLC ("we", "us"). This policy explains what we collect, why, and your choices. SnapCravings is meant for adults 18 and older and is not directed to children.</p>
 
 <h2>What we collect</h2>
 <ul>
-<li><b>Photos you upload.</b> When you snap your fridge or pantry, the photo is sent to our server and to Google's Gemini AI service only to recognize ingredients and write recipes. We do not keep your photos after the request is answered and we do not use them for advertising.</li>
-<li><b>Text you type.</b> Cravings, diet and allergy settings, and meal-plan requests are processed the same way to make recipes. Diet settings, favorites and your shopping list are stored on your device.</li>
+<li><b>Photos you upload.</b> When you snap your fridge, pantry or a plate of food, the photo is sent to our server and to our AI providers (listed below) only to recognize ingredients or estimate nutrition and write recipes. We do not store your photos after the request is answered and we do not use them for advertising.</li>
+<li><b>Text you type.</b> Cravings, diet and allergy settings, ingredient lists, and meal-plan or holiday-plan requests are sent to the same AI providers to make recipes. Diet settings, favorites, plans and your shopping list are stored on your device. AI answers (recipes, not your photos) may be cached for up to 24 hours and kept in a shared recipe library without any link to you.</li>
 <li><b>Email address and purchase info.</b> If you subscribe to SnapCravings Pro, your email address and subscription status (plan, purchase token or payment reference, renewal state) are used to unlock and restore Pro. Payments are handled by Google Play or Stripe; we never see or store your full card number.</li>
-<li><b>Basic usage events.</b> Simple, anonymous counts such as "scan" or "recipes shown" with a hashed random device id, to understand which features are used and to limit free scans. No cookies for tracking, no advertising IDs, no IP address stored.</li>
+<li><b>Basic usage events.</b> Simple, anonymous counts such as "scan" or "recipes shown" with a hashed random device id, to understand which features are used. No cookies for tracking and no advertising IDs.</li>
+<li><b>Hashed IP address and device id for abuse limits.</b> To enforce free-scan and fair-use limits we store a salted one-way hash of your IP address and of the app's random device id, with the time of each scan or plan. We never store the IP address itself. These rows are deleted automatically after about 8 days.</li>
+<li><b>Approximate country.</b> Our host (Cloudflare) tells us your approximate country from your connection. We use it to pick holidays and units and, with a hashed device id, to count which dishes are popular in your country ("Popular cravings"). We do not store your city or precise location.</li>
 <li><b>Recipe ratings and saved recipes</b> you choose to share, linked to the anonymous device id.</li>
 </ul>
 
@@ -33,7 +35,12 @@ p,li{font-size:15px}.muted{color:var(--muted);font-size:13px}a{color:var(--coral
 <p>Only to run the app: make recipes, enforce free-scan limits, provide and restore your subscription, prevent abuse, and fix problems. We do not sell your data and we show no ads.</p>
 
 <h2>Who we share it with</h2>
-<p>Service providers that run the app for us: Google (Gemini AI and Google Play Billing), Stripe (web payments), Supabase (database) and Cloudflare (hosting). They may process data only to provide their service. We may also disclose data if the law requires it.</p>
+<p>Service providers that run the app for us, who may process data only to provide their service:</p>
+<ul>
+<li><b>AI providers</b> that read your photos and text to write recipes, plans and nutrition estimates. We send each request to one or more of: Google Gemini, Cerebras, Groq, Mistral AI, OpenRouter (which forwards to the model's host) and Cloudflare Workers AI. Which one answers depends on speed and availability.</li>
+<li><b>Payments:</b> Google Play Billing and Stripe. <b>Database:</b> Supabase. <b>Hosting:</b> Cloudflare.</li>
+</ul>
+<p><b>Free AI tiers may keep your inputs.</b> We use free or low-cost tiers of some AI services. Under their terms these providers may log, retain or use the photos and text sent to them (for example to improve their models). Please do not include personal information, faces or documents in your photos or typed requests. We may also disclose data if the law requires it.</p>
 
 <h2>Security and retention</h2>
 <p>All data is sent over encrypted connections (HTTPS). Photos are not stored. Subscription records are kept while your subscription is active and as long as needed for tax and legal records. Anonymous usage events are deleted or aggregated over time.</p>

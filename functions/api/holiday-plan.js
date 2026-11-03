@@ -9,7 +9,8 @@ const VOICE = 'You write for SnapCravings, a fun, upbeat cooking app. Plain, fri
 const CHAIN = [['gemini-3.5-flash-lite', { thinkingLevel: 'minimal' }], ['gemini-3.1-flash-lite', { thinkingLevel: 'minimal' }], ['gemini-3-flash-preview', { thinkingLevel: 'minimal' }]];
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
 const mem = new Map();
-const hourly = (ip, n) => { const k = `hp:${ip}:${Math.floor(Date.now() / 36e5)}`; const c = (mem.get(k) || 0) + 1; mem.set(k, c); if (mem.size > 5000) mem.clear(); return c > n; };
+import { hourly as rl } from '../_lib/limit.js';
+
 export async function ask(env, kind, schema, text) {
   if (env.__ask) return env.__ask(kind, text);
   let last = 'The recipe brain hiccuped. Tap Retry!';
@@ -37,7 +38,7 @@ export async function onRequest({ request, env, waitUntil }) {
   const ip = request.headers.get('cf-connecting-ip') || 'local';
   let b; try { b = await request.json(); } catch { return json({ error: 'Bad request' }, 400); }
   const p = hpInput(b); if (!p.holiday) return json({ error: 'Bad request' }, 400);
-  if (hourly(ip, 20)) return json({ error: 'Whoa, hungry! You hit the hourly limit. Try again soon.' }, 429);
+  if (await rl(env, 'hp', ip, 20)) return json({ error: 'Whoa, hungry! You hit the hourly limit. Try again soon.' }, 429);
   const tok = env.__pro !== undefined ? env.__pro : await verifyToken(env, request.headers.get('x-sc-token')); const pro = !!tok;
   const lang = langCode(b.lang || request.headers.get('x-sc-lang'));
   const key = 'hp5:' + await sha(JSON.stringify([p.holiday, p.country, p.guests, p.time, lang, p.diet.tags, p.diet.other || '', [...p.fridge].map(s => s.toLowerCase()).sort()]));
