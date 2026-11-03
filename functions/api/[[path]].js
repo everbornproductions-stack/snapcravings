@@ -5,7 +5,8 @@ import { libFind, libSave, libCount, libStats, pick as libPick, prefKey as libPr
 import { verifyToken, safeEq, signScan, verifyScan, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../_lib/sub.js';
 import { hourly } from '../_lib/limit.js';
 import '../../web/holiday.js';
-import '../../web/money.js'; // sets globalThis.SC_MONEY (local currency + price levels, shared with the web app) // sets globalThis.SC_HOLIDAY (holiday mode, shared with the web app)
+import '../../web/money.js';
+import { costRecipe, costKey, costGet, costPut, linePrice } from '../_lib/cost.js'; // sets globalThis.SC_MONEY (local currency + price levels, shared with the web app) // sets globalThis.SC_HOLIDAY (holiday mode, shared with the web app)
 import { trendHit } from '../_lib/trending.js';
 import { INTL, langCode, intlNote, intlScanNote } from '../_lib/lang.js';
 import { dietOf, dietPrompt, bad, hits, recipeBad, recipeHits, flagScan, staplesFor as dietStaples } from '../_lib/diet.js';
@@ -346,7 +347,7 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
   } else {
     const diet = dietOf(body.prefs); const craving = String(body.craving || '').slice(0, 80).trim(); const ing = clean(body.ingredients).filter(x => !bad(diet, x));
     if (!craving) return json({ error: 'Name a craving first!' }, 400);
-    parts = [{ text: `Craving: ${craving}.\nIngredients the user has: ${ing.length ? ing.join('; ') : 'unknown, assume only staples'}.\nStaples: ${staplesFor(diet)}.\n${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}Give one home recipe for this craving (2 servings)${diet.hard ? ', adapted so it fully follows the rules above (swap forbidden ingredients and name the swaps)' : ''}. Mark have=true for ingredients they have or staples. List everything else in missing with a rough local grocery price for the smallest common package. est_cook_cost = estimated cost of ALL ingredients used in the recipe (portion actually used). est_menu_price = typical price of ONE serving of this dish at an ordinary local restaurant (menu price, before delivery fees).${LN}` }];
+    parts = [{ text: `Craving: ${craving}.\nIngredients the user has: ${ing.length ? ing.join('; ') : 'unknown, assume only staples'}.\nStaples: ${staplesFor(diet)}.\n${dietPrompt(diet) ? dietPrompt(diet) + '\n' : ''}${cravingNote(diet, craving)}Give one home recipe for this craving (2 servings)${diet.hard ? ', adapted so it fully follows the rules above (swap forbidden ingredients and name the swaps)' : ''}. Mark have=true for ingredients they have or staples. Give every ingredient and missing item en = its plain English name (e.g. "chicken breast") and a qty with a unit (g, ml, tbsp, tsp, cup or a count). List everything else in missing with a rough local grocery price for the smallest common package. est_cook_cost = estimated cost of ALL ingredients used in the recipe (portion actually used). est_menu_price = typical price of ONE serving of this dish at an ordinary local restaurant (menu price, before delivery fees).${LN}` }];
   }
 
   const dd = route === 'scan' ? null : dietOf(body.prefs); const sd = route === 'scan' ? dietOf(body.prefs) : null;
@@ -410,6 +411,7 @@ async function handle({ request, env, params, waitUntil }) { // env may be wrapp
       }
       if (h.length) return json({ error: "Couldn't make that one fit your diet. Try a different craving!", why: h.slice(0, 12) }, 502);
     }
+    if (route === 'crave' && data?.recipe) data = await steadyCost(env, data, body.craving, cc, dd, bg);
     if (route === 'crave' && data?.recipe?.name) bg(trendHit(env, { country: request.cf?.country, kind: 'crave', label: data.recipe.name, lang, device: String(request.headers.get('x-sc-dev') || '').replace(/[^\w-]/g, '').slice(0, 64) })); // trending Popular cravings
     return json({ ...data, ...(route === 'scan' ? {} : { cur: CUR, country: cc }), craving: body.craving, usage: publicUsage(usage), ...(scanTicket ? { scanTicket } : {}) });
   } catch (e) { return json({ error: e.message || 'Something went sideways. Try again!', tries: publicTries(e.tries), ...(scanTicket ? { scanTicket } : {}), ...(e.why?.length ? { why: e.why } : {}) }, e.why ? 502 : 502); }
@@ -424,6 +426,15 @@ function ndjson(run) {
 }
 // Cache key: sorted, de-duplicated, lower-cased ingredient names (quantities in parentheses dropped) + craving + section + diet + lang.
 const normIng = s => String(s).toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[^\p{L}\p{N}\[\] ]+/gu, ' ').replace(/\s+/g, ' ').trim();
+// Same dish + country + diet => same cook cost and menu price (cached), computed from ingredient price anchors where known.
+export async function steadyCost(env, data, craving, cc, dd, bg = p => p) {
+  const M = globalThis.SC_MONEY, r = data.recipe, serv = Math.max(1, +r.servings || 2), key = await costKey(craving || r.name, cc, dd?.tags || []);
+  const missing = (r.missing || []).map(m => { const p = linePrice(m.en || m.item, m.qty, cc, true); return { ...m, est_price: p != null ? M.round(p, M.cur(cc)) : m.est_price }; });
+  let hit = await costGet(env, key, cc).catch(() => null); const wasCached = !!hit;
+  if (!hit) { const c = costRecipe(r, data.est_cook_cost, cc); hit = { total: c.total, menu: M.menuFix(+data.est_menu_price > 0 ? +data.est_menu_price : M.menuGuess(c.total / serv, cc), cc), servings: serv, known: c.known, of: c.of }; bg(costPut(env, key, cc, hit)); }
+  const total = M.round(hit.total * serv / Math.max(1, hit.servings || serv), M.cur(cc));
+  return { ...data, recipe: { ...r, missing }, est_cook_cost: total, est_menu_price: hit.menu, costBasis: { known: hit.known, of: hit.of, cached: wasCached } };
+}
 // Library recipes store prices as US-equivalent US$; convert missing-item prices for the reader's country (and back on save).
 export const locRecipe = (r, cc, f) => r && Array.isArray(r.missing) ? { ...r, missing: r.missing.map(m => ({ ...m, est_price: f(m.est_price, cc) })) } : r;
 async function recipeKey({ ing, craving, section, lang, prefs }) {

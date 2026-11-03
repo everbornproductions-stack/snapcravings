@@ -61,7 +61,8 @@
       <ol class="steps">${m.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>
       ${m.kcal ? `<div class="fine">${t('{k} kcal · {p}g protein · {c}g carbs · {f}g fat per serving (estimate)', { k: m.kcal, p: m.protein_g, c: m.carbs_g, f: m.fat_g })}</div>` : ''}
       <div class="row"><span>${t('Make it: ~{a} (~{b} per serving, estimate)', { a: $(m.est_cook_cost, pc()), b: $(per, pc()) })}</span></div>
-      <div class="row"><span class="m">${t('Order it out: comparison coming soon')}</span><span class="pill c" style="margin:0">${t('Coming soon')}</span></div>
+      ${(() => { const M = window.SC_MONEY, cc = (plan && plan.country) || scCountry(), s = Math.max(1, m.servings || 1), d = M && M.delivery(M.menuFix(M.menuGuess(per, cc), cc), s, cc); /* same ESTIMATE card as Crave it */
+        return d ? `<div class="row"><span class="m">🛵 ${t('Order it delivered')} <small style="display:block">${t('Estimate, not a quote. Check the app.')}</small></span><b>~${$(d.lo, pc())}–${$(d.hi, pc())}</b></div>` : ''; })()}
       <button class="btn ghost" data-pswap="${i}" style="padding:10px">${plan.swapping === i ? '<span class="spin"></span> ' + t('Swapping…') : '🔄 ' + t('Swap this meal')}</button></div></details>`;
   }
   // Daily totals (one serving of each meal) vs the target share those meals should cover.
