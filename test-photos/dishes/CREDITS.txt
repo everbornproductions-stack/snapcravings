@@ -1,0 +1,5 @@
+Plated-meal test photos from Wikimedia Commons (1024 px thumbnails), used only for testing dish scan:
+- bolognese.jpg: "Liat Portal for Foodie Disorder - Spaghetti Bolognese with peas and broccoli" by HaJunkiyada, CC BY-SA 4.0
+- caesar.jpg: "Caesar's salad at Caesar's restaurant 2018" by Keizers, CC BY-SA 4.0
+- sushi.jpg: "Ala Carte Sushi - Shoya" (Flickr), CC BY-SA 2.0
+- burger.jpg: "Bacon Cheeseburger with French Fries on plate" by Ceeseven, CC BY-SA 4.0

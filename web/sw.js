@@ -1,6 +1,6 @@
 // Network-first for everything (HTML/JS/CSS always fresh when online); cache only as offline fallback.
-const VERSION = 'sc-2026-11-02j-ui41';
-const SHELL = ['./', './index.html', './config.js?v=ui41', './i18n.js?v=ui41', './app.js?v=ui41', './grow.js?v=ui41', './holiday.js?v=ui41', './hplan-i18n.js?v=ui41', './hplan.js?v=ui41', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+const VERSION = 'sc-2026-11-02i-ui42';
+const SHELL = ['./', './index.html', './config.js?v=ui42', './i18n.js?v=ui42', './app.js?v=ui42', './grow.js?v=ui42', './holiday.js?v=ui42', './hplan-i18n.js?v=ui42', './hplan.js?v=ui42', './dishcore.js?v=ui42', './dish-i18n.js?v=ui42', './dish.js?v=ui42', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).catch(() => {})); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {

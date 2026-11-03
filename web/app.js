@@ -316,7 +316,7 @@ function renderScan() {
       ${st ? `<div class="fine" style="margin:0">${t('Step {a} of {b} · {n}/{m} photos', { a: state.step + 1, b: STEPS.length, n, m: MAX_PHOTOS })}</div>
       <div class="kick">${t(st.kick)}</div><h2>${t(st.h)}</h2><p class="sub">${t(st.d)}</p>
       <button class="btn primary" data-addphoto>📸 ${here ? t('Add another') : t('Snap it')}</button>
-      <div style="display:flex;gap:8px"><button class="btn ghost" data-addlib style="flex:1">${t('🖼 Pick photos')}</button><button class="btn ghost" data-next style="flex:1">${here ? t('Next →') : t('Skip')}</button></div>`
+      <div style="display:flex;gap:8px"><button class="btn ghost" data-addlib style="flex:1">${t('🖼 Pick photos')}</button><button class="btn ghost" data-next style="flex:1">${here ? t('Next →') : t('Skip')}</button></div>${!n && state.step === 0 && window.renderDish ? `<a class="card" href="#dish" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);margin-top:12px"><div style="font-size:22px">🍽️</div><div style="flex:1;font-size:13px"><b>${t('Scan my plate')}</b><br><span class="sub" style="font-size:12px">${t('Snap a plated meal for estimated calories and macros.')}</span></div><span>›</span></a>` : ''}`
       : `<div class="kick">${t('Fridge to fabulous!')}</div><h2>${t(n === 1 ? '{n} photo ready!' : '{n} photos ready!', { n })}</h2><p class="sub">${t("We'll look at all of them together: one list, spices and sauces too.")}</p>${n < MAX_PHOTOS ? `<button class="chip" data-back style="cursor:pointer;margin-top:8px">${t('‹ Add more photos')}</button>` : ''}`}
       ${n ? `<button class="btn primary" id="scanGo" style="font-size:20px;padding:20px">${t('Go! 🚀')}</button>` : ''}`;
     return;
@@ -518,8 +518,8 @@ el('craveInput').addEventListener('keydown', e => { if (e.key === 'Enter') crave
 
 function renderLeft() { if (unlimited()) { el('scanLeft').textContent = t("Unlimited scans. Let's get cooking!"); return; } const n = LS.get('scans', []).filter(t => Date.now() - t < 7 * 864e5).length; el('scanLeft').textContent = n < 3 ? t('{n} of 3 free scans left this week', { n: 3 - n }) : t('Free scans used up. Beta bonus: keep snapping!'); }
 renderLeft();
-const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'favs', 'pro', 'settings', 'prep', 'lib', 'family', 'hplan'];
-const RENDER = { hplan: () => window.renderHplan?.(), scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, favs: renderFavs, home: () => { renderFavCount(); renderDietCount(); }, settings: renderSettings, pro: renderPro, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList, prep: () => window.renderPrep?.(), lib: () => window.renderLib?.(), family: () => window.renderFamily?.() };
+const SCREENS = ['home', 'scan', 'recipes', 'recipe', 'crave', 'compare', 'cart', 'list', 'favs', 'pro', 'settings', 'prep', 'lib', 'family', 'hplan', 'dish'];
+const RENDER = { dish: () => window.renderDish?.(), hplan: () => window.renderHplan?.(), scan: () => state.busy || renderScan(), recipes: () => el('recipesBody').querySelector('.spin, #goRecipes') || renderRecipes(), recipe: renderRecipe, favs: renderFavs, home: () => { renderFavCount(); renderDietCount(); }, settings: renderSettings, pro: renderPro, compare: () => el('compareBody').querySelector('.spin') || renderCompare(), list: renderList, prep: () => window.renderPrep?.(), lib: () => window.renderLib?.(), family: () => window.renderFamily?.() };
 let lastView = '', hiddenAt = 0;
 document.addEventListener('visibilitychange', () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 30 * 60 * 1000) { hiddenAt = 0; track('page_view', lastView || 'home'); } }); // reopened installed app = a new visit
 function route() {
