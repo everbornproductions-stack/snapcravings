@@ -108,5 +108,6 @@ async function handle({ request, env }) {
   console.log('dish', fix ? 'fix' : 'scan', r.model, Date.now() - t0, 'ms', JSON.stringify(r.tries));
   if (r.notfood) return json({ error: "That doesn't look like a plate of food. Try another photo!", notfood: true, tries: r.tries }, 422);
   if (!r.dish) return json({ error: "We couldn't read that plate. Tap Retry!", tries: r.tries }, 502);
+  if (fix) r.dish.name = fix.name; // the user's correction wins over the model's renaming
   return json({ dish: r.dish, model: r.model, ms: Date.now() - t0, tries: r.tries });
 }

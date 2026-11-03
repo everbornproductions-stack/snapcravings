@@ -53,7 +53,7 @@ test('allowed scan returns a validated dish; recalculating a correction skips th
   const r = await onRequest({ request: req({ image: IMG }), env }); assert.equal(r.status, 200);
   const j = await r.json(); assert.equal(j.dish.name, good.dish); assert.equal(gates, 1);
   const r2 = await onRequest({ request: req({ fix: { name: 'Salmon bowl', items: [{ name: 'Salmon', grams: 140 }] } }), env });
-  assert.equal(r2.status, 200); assert.equal(gates, 1);
+  assert.equal(r2.status, 200); assert.equal(gates, 1); assert.equal((await r2.json()).dish.name, 'Salmon bowl');
 });
 test('bad inputs: no photo, wrong type, empty fix name', async () => {
   const env = { GEMINI_API_KEY: 'k', __gate: () => ({ allowed: true }), __fetch: gem(good) };
