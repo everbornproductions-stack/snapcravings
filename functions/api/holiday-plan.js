@@ -40,7 +40,7 @@ export async function onRequest({ request, env, waitUntil }) {
   if (hourly(ip, 20)) return json({ error: 'Whoa, hungry! You hit the hourly limit. Try again soon.' }, 429);
   const tok = env.__pro !== undefined ? env.__pro : await verifyToken(env, request.headers.get('x-sc-token')); const pro = !!tok;
   const lang = langCode(b.lang || request.headers.get('x-sc-lang'));
-  const key = 'hp2:' + await sha(JSON.stringify([p.holiday, p.country, p.guests, p.time, lang, p.diet.tags, p.diet.other || '', [...p.fridge].map(s => s.toLowerCase()).sort()]));
+  const key = 'hp3:' + await sha(JSON.stringify([p.holiday, p.country, p.guests, p.time, lang, p.diet.tags, p.diet.other || '', [...p.fridge].map(s => s.toLowerCase()).sort()]));
   const stream = b.stream === true;
   const bg = x => { try { waitUntil ? waitUntil(x) : null; } catch {} };
   const build = async send => {
@@ -50,7 +50,7 @@ export async function onRequest({ request, env, waitUntil }) {
     if (menu.length < 5 && banned.length) { const again = checkMenu(p, (await ask(env, 'menu', MENU_SCHEMA, menuPrompt(p, lang) + `\nIMPORTANT: never use ${banned.join(', ')} or anything made with them.`)).menu); if (again.menu.length > menu.length) menu = again.menu; }
     if (!menu.length) throw new Error("We couldn't build a menu that fits your diet. Tap Retry!");
     send?.({ menu });
-    const timeline = cleanTimeline((await ask(env, 'timeline', TIMELINE_SCHEMA, timelinePrompt(p, menu, lang))).timeline);
+    const timeline = cleanTimeline((await ask(env, 'timeline', TIMELINE_SCHEMA, timelinePrompt(p, menu, lang))).timeline, menu);
     const full = { holiday: p.holiday, country: p.country, guests: p.guests, time: p.time, menu, timeline, shopping: shoppingFor(p, menu) };
     if (!env.__ask) bg(cachePut(key, full));
     return previewOf(full, pro);

@@ -30,7 +30,7 @@ ${p.fridge.length ? `The user already has: ${p.fridge.join('; ')}. Use some of t
 export function timelinePrompt(p, menu, lang) {
   const h = globalThis.SC_HOLIDAY.info(p.holiday, 'en');
   return `Write a cooking timeline for this ${h.nameEn} meal for ${p.guests} guests, served at ${p.time}: ${menu.map(d => `${d.name} (${d.minutes} min)`).join('; ')}.
-Count back from the meal time. 10 to 16 steps, earliest first: shopping and make-ahead days before (thawing big frozen roasts in the fridge, about 1 day per 2 kg), the day before, the morning of, then T-3h, T-2h, T-1h, T-30m, serve. before_min = minutes before the meal (2 days = 2880). when = short label like "2 days before", "Morning of", "T-1h". task = one or two specific sentences in ${unitsFor(p.country)}, with oven temps and food-safety notes. dish = the dish name or "All".${INTL[lang] ? intlNote(lang) : lang === 'es' ? '\nWrite when and task in Latin American Spanish.' : ''}`;
+Count back from the meal time. 10 to 16 steps, earliest first: shopping and make-ahead days before (thawing a frozen turkey or roast in the fridge takes 1 day per 4 lb / 1.8 kg, so a 16 lb turkey starts thawing 4 days before: before_min 5760), the day before, the morning of, then T-3h, T-2h, T-1h, T-30m, serve. before_min = minutes before the meal (2 days = 2880). when = short label like "2 days before", "Morning of", "T-1h". task = one or two specific sentences in ${unitsFor(p.country)}, with oven temps and food-safety notes. dish = the dish name or "All".${INTL[lang] ? intlNote(lang) : lang === 'es' ? '\nWrite when and task in Latin American Spanish.' : ''}`;
 }
 export function checkMenu(p, menu) {
   const good = [], banned = new Set();
@@ -44,8 +44,16 @@ export function checkMenu(p, menu) {
   good.sort((a, b) => COURSES.indexOf(a.course) - COURSES.indexOf(b.course));
   return { menu: good, banned: [...banned] };
 }
-export function cleanTimeline(tl) {
-  return (Array.isArray(tl) ? tl : []).filter(s => s && s.task).map(s => ({ before_min: clamp(s.before_min, 0, 10080, 0), when: String(s.when || '').slice(0, 40), task: String(s.task).slice(0, 300), dish: String(s.dish || '').slice(0, 80) }))
+// Food safety: fridge-thawing needs about 1 day per 4 lb (1.8 kg). Models often schedule it too late, so fix the start time from the weight.
+export function thawFix(s, menu = []) {
+  if (!/thaw|descongel|décongel|auftau|разморо|çöz|cair|डीफ्रॉस्ट|पिघला|إذابة/i.test(s.task)) return s;
+  const txt = s.task + ' ' + menu.map(d => d.ingredients.map(i => i.item + ' ' + i.qty).join(' ')).join(' ');
+  const lb = +(/(\d+(?:\.\d+)?)\s*(?:lb|pound)/i.exec(txt) || [])[1] || 0, kg = +(/(\d+(?:\.\d+)?)\s*(?:kg|kilo)/i.exec(txt) || [])[1] || 0;
+  const days = lb ? Math.ceil(lb / 4) : kg ? Math.ceil(kg / 1.8) : 0; if (!days || s.before_min >= days * 1440) return s;
+  return { ...s, before_min: days * 1440, when: days + (days === 1 ? ' day before' : ' days before'), fixed: true };
+}
+export function cleanTimeline(tl, menu = []) {
+  return (Array.isArray(tl) ? tl : []).filter(s => s && s.task).map(s => thawFix({ before_min: clamp(s.before_min, 0, 10080, 0), when: String(s.when || '').slice(0, 40), task: String(s.task).slice(0, 300), dish: String(s.dish || '').slice(0, 80) }, menu))
     .sort((a, b) => b.before_min - a.before_min).slice(0, 20);
 }
 export const shoppingFor = (p, menu) => groceryList(menu.map(d => ({ ...d, ingredients: d.ingredients })), p.fridge, p.diet);

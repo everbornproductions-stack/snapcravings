@@ -38,3 +38,9 @@ test('planner strings exist in all 9 other languages with the same placeholders'
   const D = globalThis.HP_I18N, keys = Object.keys(D.es); assert.ok(keys.length >= 30);
   for (const l of ['es', 'pt', 'hi', 'id', 'fr', 'de', 'ar', 'ru', 'tr']) for (const k of keys) { assert.ok(D[l]?.[k], l + ' ' + k); for (const ph of k.match(/\{\w+\}/g) || []) assert.ok(D[l][k].includes(ph), l + ' ' + k); }
 });
+test('thaw step is moved early enough for the bird size (1 day per 4 lb)', async () => {
+  const { thawFix } = await import('../functions/_lib/hplan.js');
+  const f = thawFix({ before_min: 2880, when: '2 days before', task: 'Thaw your frozen 16 lb turkey in the fridge.', dish: 'Turkey' }); assert.equal(f.before_min, 5760); assert.equal(f.when, '4 days before');
+  assert.equal(thawFix({ before_min: 4320, when: '3 days before', task: 'Thaw the turkey.' }, [{ ingredients: [{ item: 'Whole turkey', qty: '5 kg' }] }]).before_min, 4320);
+  assert.equal(thawFix({ before_min: 60, when: 'T-1h', task: 'Rest the turkey.' }).before_min, 60);
+});
