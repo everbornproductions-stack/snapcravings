@@ -39,3 +39,7 @@ test('crave input selects on focus synchronously (no deferred select eating the 
   const a = rd('web/app.js'); assert.doesNotMatch(a, /setTimeout\(\(\) => \{ try \{ i\.select\(\)/); assert.match(a, /ci\.addEventListener\('focus', \(\) => \{ if \(ci\.value\) \{ try \{ ci\.select\(\)/);
   assert.match(rd('web/prep.js'), /Math\.round\(SC_MONEY\.fromUS\(80, scCountry\(\)\) \/ 5\) \* 5/);
 });
+test('AI menu price is clamped to a plausible local band', () => {
+  assert.ok(M.menuFix(24, 'DE') <= 20 && M.menuFix(24, 'DE') >= 19); assert.equal(M.menuFix(14, 'DE'), 14); assert.ok(M.menuFix(1, 'US') >= 8); assert.ok(M.menuFix(600, 'IN') < 540);
+  const d = M.delivery(24, 2, 'DE'); assert.ok(d.hi < 60, JSON.stringify(d));
+});

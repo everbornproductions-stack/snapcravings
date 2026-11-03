@@ -444,7 +444,7 @@ function renderCompare() {
   const r = c.recipe; const miss = r.missing || []; const groc = r2(miss.reduce((s, m) => s + (+m.est_price || 0), 0));
   const cu = c.cur || (c.recipe && c.cur) || 'USD', cc = c.country || scCountry(), serv = Math.max(1, +r.servings || 1);
   /* Delivery = ESTIMATE range (typical local menu price x servings + app markup + delivery, service fee, tip). Never a quote, never app data. */
-  const M = window.SC_MONEY, menu = +c.est_menu_price > 0 ? +c.est_menu_price : M.menuGuess((+c.est_cook_cost || 0) / serv, cc), dl = M.delivery(menu, serv, cc);
+  const M = window.SC_MONEY, menu = M.menuFix(+c.est_menu_price > 0 ? +c.est_menu_price : M.menuGuess((+c.est_cook_cost || 0) / serv, cc), cc), dl = M.delivery(menu, serv, cc);
   const homeAll = r2(+groc + 0), save = dl ? Math.max(0, r2(dl.lo - Math.max(homeAll, +c.est_cook_cost || 0))) : 0;
   el('compareBody').innerHTML = `<span class="example">${t('⚠ Cook cost is an estimate')}</span><div class="kick">${t('Make it or take it?')}</div><h2>${esc(c.craving)}</h2>
     <p class="sub" style="font-size:13px">${t('{s} servings · {name}', { s: esc(r.servings), name: esc(r.name) })}</p>

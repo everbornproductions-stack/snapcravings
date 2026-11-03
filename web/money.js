@@ -44,16 +44,18 @@
   // Rough delivery-app total for ONE order of this dish (servings x a typical menu price + markup + delivery + service + tip).
   // An ESTIMATE range, never a quote; menu = typical restaurant price of one serving in local money.
   function delivery(menu, servings, cc) {
-    const k = of(cc), s = Math.max(1, Math.min(8, +servings || 1)), m = Math.max(0, +menu || 0); if (!m) return null;
+    const k = of(cc), s = Math.max(1, Math.min(8, +servings || 1)), m = menuFix(menu, cc); if (!m) return null;
     const food = m * s, lo = food * 0.9 * (1 + k.mk * 0.5), hi = food * 1.1 * (1 + k.mk);
     const tot = (f, d, x) => f + d + f * k.sv * x + f * k.tip * x;
     return { lo: round(tot(lo, k.d[0], 0.8), k.c), hi: round(tot(hi, k.d[1], 1.2), k.c), c: k.c };
   }
   // Fallback menu price when the AI gave none: home cost per serving x 3.5, at least a cheap local meal.
+  // AI menu prices swing (Schnitzel 12 EUR one call, 24 EUR the next): keep them inside 0.6x-1.8x of a typical local main dish.
+  const menuFix = (menu, cc) => { const k = of(cc), base = 14 * k.fx * k.g, m = +menu || 0; return m > 0 ? round(Math.min(base * 1.8, Math.max(base * 0.6, m)), k.c) : 0; };
   const menuGuess = (cookPerServing, cc) => { const k = of(cc); return Math.max(+cookPerServing * 3.5 || 0, round(8 * k.fx * k.g, k.c)); };
   // Browser only: the user's country = ?country (dev/QA), else /api/geo (sessionStorage sc.geo), else the browser locale.
   const country = () => { try { const q = cc2(new URLSearchParams(location.search).get('country')); if (q) return q; let g = ''; try { g = sessionStorage.getItem('sc.geo') || ''; } catch {}
     return cc2(g) || cc2(root.SC_HOLIDAY && root.SC_HOLIDAY.countryFromLocale((navigator.languages || [])[0] || navigator.language, root.I18N && root.I18N.lang)) || 'US'; } catch { return 'US'; } };
   if (typeof location !== 'undefined') root.scCountry = country;
-  root.SC_MONEY = { C, cc2, of, cur, name, dec, round, fmt, fromUS, toUS, note, delivery, menuGuess };
+  root.SC_MONEY = { C, cc2, of, cur, name, dec, round, fmt, fromUS, toUS, note, delivery, menuGuess, menuFix };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
