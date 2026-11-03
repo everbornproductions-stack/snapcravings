@@ -35,7 +35,7 @@ REZEPTE IN SEKUNDEN
 Rezepte erscheinen nacheinander, und eine stetig wachsende Rezeptbibliothek liefert sofort Treffer für gängige Zutaten.
 
 FEIERTAGSMODUS
-Rund um die Feiertage in deinem Land zeigt sich die App in festlichen Farben, mit einer kurzen Animation und einem Button für klassische Feiertagsgerichte.
+Rund um die Feiertage in deinem Land zeigt sich die App in festlichen Farben, mit einer kurzen Animation und einem Button für klassische Feiertagsgerichte. Der Feiertagsplaner erstellt ein komplettes Festmenü für deine Gästezahl, eine passende Einkaufsliste und einen Kochzeitplan (voller Plan mit Pro).
 
 10 SPRACHEN
 Deutsch, English, Español, Português (Brasil), हिन्दी, Bahasa Indonesia, Français, العربية, Русский und Türkçe.

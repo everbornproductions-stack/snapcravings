@@ -35,7 +35,7 @@ RESEP DALAM HITUNGAN DETIK
 Resep muncul satu per satu, dan perpustakaan resep yang terus bertambah memberi hasil instan untuk bahan-bahan umum.
 
 MODE HARI RAYA
-Saat hari raya di negara Anda, aplikasi tampil dengan warna bertema, animasi singkat, dan tombol makanan khas hari raya.
+Saat hari raya di negara Anda, aplikasi tampil dengan warna bertema, animasi singkat, dan tombol makanan khas hari raya. Perencana hari raya membuat menu lengkap sesuai jumlah tamu, daftar belanja yang disesuaikan, dan jadwal memasak (rencana lengkap dengan Pro).
 
 10 BAHASA
 Bahasa Indonesia, English, Español, Português (Brasil), हिन्दी, Français, Deutsch, العربية, Русский, dan Türkçe.

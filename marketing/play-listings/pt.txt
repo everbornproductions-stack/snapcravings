@@ -35,7 +35,7 @@ RECEITAS EM SEGUNDOS
 As receitas aparecem uma a uma, e uma biblioteca de receitas que não para de crescer traz resultados instantâneos para ingredientes comuns.
 
 MODO FERIADO
-Nos feriados do seu país, o app ganha cores temáticas, uma animação curta e um botão de comidas típicas do feriado.
+Nos feriados do seu país, o app ganha cores temáticas, uma animação curta e um botão de comidas típicas do feriado. O planejador de feriados monta um cardápio completo para o número de convidados, uma lista de compras na medida e um cronograma de preparo (plano completo no Pro).
 
 10 IDIOMAS
 Português (Brasil), English, Español, हिन्दी, Bahasa Indonesia, Français, Deutsch, العربية, Русский e Türkçe.

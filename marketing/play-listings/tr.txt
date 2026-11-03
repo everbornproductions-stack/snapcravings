@@ -35,7 +35,7 @@ SANİYELER İÇİNDE TARİFLER
 Tarifler tek tek gelir; sürekli büyüyen tarif kütüphanesi yaygın malzemeler için anında sonuç verir.
 
 BAYRAM MODU
-Ülkenizdeki bayram ve özel günlerde uygulama temalı renklere bürünür, kısa bir animasyon gösterir ve geleneksel bayram yemekleri için bir düğme sunar.
+Ülkenizdeki bayram ve özel günlerde uygulama temalı renklere bürünür, kısa bir animasyon gösterir ve geleneksel bayram yemekleri için bir düğme sunar. Bayram planlayıcısı misafir sayınıza göre eksiksiz bir bayram menüsü, buna göre ayarlanmış bir alışveriş listesi ve pişirme zaman çizelgesi hazırlar (tam plan Pro ile).
 
 10 DİL
 Türkçe, English, Español, Português (Brasil), हिन्दी, Bahasa Indonesia, Français, Deutsch, العربية ve Русский.

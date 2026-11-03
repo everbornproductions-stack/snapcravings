@@ -4,7 +4,7 @@ Display name everywhere: **SnapCravings**. Credit line where room allows: "An Ev
 **Instagram** (150) — link https://snapcravings.pages.dev/?ref=instagram
 > 📸 Snap your fridge → recipes for your cravings
 > 🥗 Your diet + allergies, meal prep, cook vs. order
-> 🌍 10 languages · 🎉 holiday foods · Free
+> 🌍 10 languages · 🎉 holiday foods + planner · Free
 ES alt: 📸 Foto a tu refri → recetas para tu antojo · Planea tu semana · Gratis
 
 **TikTok** (80) — ?ref=tiktok

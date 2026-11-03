@@ -104,6 +104,8 @@ Thanksgiving, sorted. 🦃
 
 The SnapCravings Library has a seasonal Thanksgiving collection rated by the community. Filter by quick, high-protein or under 500 kcal, and save your favorites. Hosting someone with an allergy? Set it once.
 
+Hosting this year? The Holiday planner builds the whole menu for your guest count, one shopping list and a cooking timeline that counts back from dinner.
+
 Link in bio.
 
 #SnapCravings #thanksgiving #thanksgivingrecipes #holidayrecipes #easyrecipes
@@ -111,7 +113,7 @@ Link in bio.
 
 **TikTok (photo mode, slide-1..3, or the VIDEO_PLAN cut):** Thanksgiving, sorted. 🦃 Link in bio 👆 #SnapCravings #thanksgiving #thanksgivingrecipes #holidayrecipes #easyrecipes
 **Pinterest (pin-1000x1500, link https://snapcravings.pages.dev/?ref=pinterest):** Title: Thanksgiving recipe ideas, community rated / Description: Seasonal Thanksgiving recipes: quick sides, high-protein mains, allergy-friendly swaps.
-**X (landscape-1200x675):** Thanksgiving collection is live in the SnapCravings Library, rated by real cooks: https://snapcravings.pages.dev/?ref=x
+**X (landscape-1200x675):** Hosting Thanksgiving? SnapCravings plans the menu for your guest count, the shopping list and a countdown cooking timeline: https://snapcravings.pages.dev/?ref=x
 **Visual notes:** slide-1 hook + real screen, slide-2 how it works, slide-3 brand CTA with "An Everborn Production".
 
 ## 08-family-recipes  (VIDEO_PLAN #10)

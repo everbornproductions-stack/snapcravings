@@ -35,7 +35,7 @@ DES RECETTES EN QUELQUES SECONDES
 Les recettes arrivent une par une, et une bibliothèque de recettes qui s'agrandit sans cesse donne des résultats instantanés pour les ingrédients courants.
 
 MODE FÊTES
-Pendant les fêtes de votre pays, l'appli prend des couleurs festives, avec une courte animation et un bouton de plats de fête traditionnels.
+Pendant les fêtes de votre pays, l'appli prend des couleurs festives, avec une courte animation et un bouton de plats de fête traditionnels. Le planificateur de fêtes crée un menu complet pour votre nombre d'invités, une liste de courses adaptée et un planning de cuisson (plan complet avec Pro).
 
 10 LANGUES
 Français, English, Español, Português (Brasil), हिन्दी, Bahasa Indonesia, Deutsch, العربية, Русский et Türkçe.

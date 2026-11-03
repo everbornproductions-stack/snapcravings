@@ -45,7 +45,7 @@ RECIPES IN SECONDS
 Recipes stream in one by one, and a growing recipe library gives instant matches for common ingredients.
 
 HOLIDAY MODE
-Around the holidays in your country, the app dresses up in holiday colors with a short animation and a Holiday foods button for classic dishes.
+Around the holidays in your country, the app dresses up in holiday colors with a short animation and a Holiday foods button for classic dishes. The Holiday planner builds a full holiday menu for your guest count, a scaled shopping list and a cooking timeline (full plan with Pro).
 
 10 LANGUAGES
 English, Español, Português (Brasil), हिन्दी, Bahasa Indonesia, Français, Deutsch, العربية, Русский and Türkçe.

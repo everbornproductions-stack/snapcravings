@@ -48,6 +48,8 @@ Catchphrases: "Let's get cooking!" · "Fridge to fabulous!" · "Craving unlocked
 4. Get a legal review of the screenshot price-check flow and the app-store wording.
 5. Build Phase 1, then test Pro pricing with a small beta.
 
+## Live: Holiday planner (2026-11-02)
+- **Holiday planner** (next to the holiday banner, only during a holiday window, per country): a full holiday menu (mains, sides, desserts, drinks) for 2-30 guests with diet/allergy rules and the optional fridge scan, a shopping list scaled to the guest count (can be added to the grocery list) and a cooking timeline counted back from the meal time. Free: menu + the first 3 timeline steps; Pro: full timeline and shopping list. 10 languages.
+
 ## Roadmap (NOT live; never list these as current features in store, site or launch copy)
-- **Holiday planner** (part of the meal planner): builds a full holiday menu for X guests, with one shopping list and a cooking timeline for the day. Today's live holiday mode only themes the app and offers a "Holiday foods" craving; it does not plan a menu.
 - **Dish scanning for macros**: snap a plated dish to estimate calories and macros. Today only recipe and meal-prep estimates show macros.
