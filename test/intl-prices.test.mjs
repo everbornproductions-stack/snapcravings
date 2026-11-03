@@ -15,3 +15,15 @@ test('lookup: country data first, then the scaled US table', () => {
   const r = costRecipe({ servings: 2, ingredients: [{ item: 'Kartoffeln', en: 'potato', qty: '500 g' }, { item: 'Tomaten', en: 'tomato', qty: '300 g' }, { item: 'Reis', en: 'rice', qty: '200 g' }] }, 5, 'DE');
   assert.equal(r.known, 3); assert.equal(r.local, INTL.c.DE.i.potato ? 2 : 1);
 });
+test('local-source label in all 10 languages', async () => {
+  await import('../web/prices.js'); const S = globalThis.SC_PRICES; const ps = { kind: 'local', store: 0, regional: 0, local: 7, of: 16, srcs: ['ONS Jan 2026'] };
+  for (const l of Object.keys(S.T)) { assert.ok(S.T[l].local && S.T[l].tagL, l); assert.match(S.label(ps, l), /ONS Jan 2026/); assert.equal(S.tag('local', l), S.T[l].tagL); }
+  assert.equal(Object.keys(S.T).length, 10);
+});
+test('steadyCost tags non-US local prices with their source', async () => {
+  const { steadyCost } = await import('../functions/api/[[path]].js'); const { srcLabel, localUse } = await import('../functions/_lib/cost.js');
+  assert.equal(srcLabel({ src: 'ons', period: 'january 2026' }), 'ONS Jan 2026'); assert.equal(srcLabel({ src: 'openprices', period: 'last 18 months' }), 'Open Prices');
+  const d = await steadyCost({}, { est_cook_cost: 8, recipe: { servings: 2, ingredients: [{ item: 'Tomatoes', en: 'tomato', qty: '400 g' }, { item: 'Rice', en: 'rice noodle', qty: '200 g' }], missing: [{ item: 'Tomatoes', en: 'tomato', qty: '400 g' }] } }, 'test dish ' + Math.random(), 'GB', { tags: [] });
+  assert.equal(d.priceSrc.kind, 'local'); assert.equal(d.priceSrc.local, 1); assert.deepEqual(d.priceSrc.srcs, [srcLabel(INTL.c.GB.i.tomato)]); assert.equal(d.recipe.missing[0].priceSrc, 'local');
+  assert.equal(localUse([{ en: 'tomato' }], 'US').n, 0);
+});

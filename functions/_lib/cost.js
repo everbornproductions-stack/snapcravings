@@ -32,6 +32,11 @@ const num = s => { const m = String(s || '').replace(',', '.').match(/(\d+(?:\.\
 const simple = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\([^)]*\)/g, ' ').replace(/,.*$/, '').replace(/[^a-z ]+/g, ' ').trim().split(/\s+/).map(w => w.length > 3 ? w.replace(/(oes|ches|shes)$/, m => m.slice(0, -2)).replace(/ies$/, 'y').replace(/([^s])s$/, '$1') : w).join(' ');
 const sfx = n => { const w = n.split(' '); for (let k = Math.min(3, w.length); k >= 1; k--) { const t = w.slice(-k).join(' '); if (P[t]) return [t, P[t]]; } return null; };
 export function find(name) { const s0 = simple(name); const hit = s0 && sfx(s0); if (hit) return hit; const n = normIngredient(name); if (!n) return null; if (P[n]) return [n, P[n]]; const w = n.split(' '); for (let k = w.length - 1; k >= 1; k--) { const t = w.slice(-k).join(' '); if (P[t]) return [t, P[t]]; } for (const x of w) if (P[x]) return [x, P[x]]; return null; }
+// Short source name for the UI label, e.g. 'ONS Jan 2026', 'DIEESE 09/2026', 'Open Prices'.
+const SRCN = { ons: 'ONS', dieese: 'DIEESE', openprices: 'Open Prices', profeco: 'PROFECO', dca: 'DCA' };
+export function srcLabel(it) { if (!it) return ''; const n = SRCN[it.src] || it.src, per = String(it.period || ''); if (it.src === 'openprices' || !per) return n; const m = per.match(/^([a-z]{3})[a-z]*\s+(\d{4})$/i); return n + ' ' + (m ? m[1][0].toUpperCase() + m[1].slice(1) + ' ' + m[2] : per); }
+// Which ingredient lines are priced from local country data, and from which sources (for the label).
+export function localUse(items, cc) { const srcs = new Set(); let n = 0; for (const i of items || []) { const f = i && find(i.en || i.item); const it = f && localPrice(f[0], cc); if (it) { n++; srcs.add(srcLabel(it)); } } return { n, srcs: [...srcs] }; }
 // Grams/ml (or pieces for 'ea' items) of one ingredient line; 0 when unparseable.
 export function amount(qty, row) {
   const q = String(qty || '').toLowerCase(); const n = num(q); if (!n) return 0;

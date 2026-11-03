@@ -7,7 +7,7 @@ import { hourly } from '../_lib/limit.js';
 import '../../web/holiday.js';
 import '../../web/money.js';
 import { realPrices } from '../_lib/prices.js';
-import { costRecipe, costKey, costGet, costPut, linePrice } from '../_lib/cost.js'; // sets globalThis.SC_MONEY (local currency + price levels, shared with the web app) // sets globalThis.SC_HOLIDAY (holiday mode, shared with the web app)
+import { costRecipe, costKey, costGet, costPut, linePrice, localUse } from '../_lib/cost.js'; // sets globalThis.SC_MONEY (local currency + price levels, shared with the web app) // sets globalThis.SC_HOLIDAY (holiday mode, shared with the web app)
 import { trendHit } from '../_lib/trending.js';
 import { INTL, langCode, intlNote, intlScanNote } from '../_lib/lang.js';
 import { dietOf, dietPrompt, bad, hits, recipeBad, recipeHits, flagScan, staplesFor as dietStaples } from '../_lib/diet.js';
@@ -431,11 +431,12 @@ const normIng = s => String(s).toLowerCase().replace(/\([^)]*\)/g, ' ').replace(
 // Same dish + country + diet => same cook cost and menu price (cached), computed from ingredient price anchors where known.
 export async function steadyCost(env, data, craving, cc, dd, bg = p => p) {
   const M = globalThis.SC_MONEY, r = data.recipe, serv = Math.max(1, +r.servings || 2), key = await costKey(craving || r.name, cc, dd?.tags || []);
-  const missing = (r.missing || []).map(m => { const p = linePrice(m.en || m.item, m.qty, cc, true); return { ...m, est_price: p != null ? M.round(p, M.cur(cc)) : m.est_price }; });
+  const missing = (r.missing || []).map(m => { const p = linePrice(m.en || m.item, m.qty, cc, true); const lu = cc !== 'US' && localUse([m], cc); return { ...m, est_price: p != null ? M.round(p, M.cur(cc)) : m.est_price, ...(lu && lu.n ? { priceSrc: 'local' } : {}) }; });
+  const lu = cc !== 'US' ? localUse((r.ingredients || []).filter(i => i && i.item), cc) : { n: 0 }; // real local prices (functions/_lib/intl-prices.js)
   let hit = await costGet(env, key, cc).catch(() => null); const wasCached = !!hit;
   if (!hit) { const c = costRecipe(r, data.est_cook_cost, cc); hit = { total: c.total, menu: M.menuFix(+data.est_menu_price > 0 ? +data.est_menu_price : M.menuGuess(c.total / serv, cc), cc), servings: serv, known: c.known, of: c.of, local: c.local }; bg(costPut(env, key, cc, hit)); }
   const total = M.round(hit.total * serv / Math.max(1, hit.servings || serv), M.cur(cc));
-  return { ...data, recipe: { ...r, missing }, est_cook_cost: total, est_menu_price: hit.menu, costBasis: { known: hit.known, of: hit.of, local: hit.local || 0, cached: wasCached } };
+  return { ...data, recipe: { ...r, missing }, est_cook_cost: total, est_menu_price: hit.menu, costBasis: { known: hit.known, of: hit.of, local: hit.local || 0, cached: wasCached }, ...(lu.n ? { priceSrc: { kind: 'local', store: 0, regional: 0, local: lu.n, of: (r.ingredients || []).filter(i => i && i.item).length, srcs: lu.srcs } } : {}) };
 }
 // Library recipes store prices as US-equivalent US$; convert missing-item prices for the reader's country (and back on save).
 export const locRecipe = (r, cc, f) => r && Array.isArray(r.missing) ? { ...r, missing: r.missing.map(m => ({ ...m, est_price: f(m.est_price, cc) })) } : r;

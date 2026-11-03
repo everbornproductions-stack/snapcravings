@@ -73,23 +73,73 @@ try {
   if (!done) log.push('dieese skipped: no recent month');
 } catch (e) { log.push('dieese skipped: ' + e.message); }
 
-/* 4) India DCA price monitoring (fcainfoweb.nic.in): report form needs a CAPTCHA; data.gov.in API needs a key -> skipped, not automated. */
-log.push('india skipped: fcainfoweb.nic.in reports sit behind a CAPTCHA and api.data.gov.in needs an API key (and timed out)');
+/* Local files dropped in by hand (sources the box cannot reach): /workspace/price-data/{mx,in}/*.csv|xlsx|xls  (PRICE_DATA=dir overrides) */
+import { execFileSync } from 'node:child_process';
+const PD = process.env.PRICE_DATA || '/workspace/price-data';
+const filesIn = d => { try { return fs.readdirSync(PD + '/' + d).filter(f => /\.(csv|txt|xlsx|xls)$/i.test(f)).map(f => PD + '/' + d + '/' + f).sort(); } catch { return []; } };
+// Every sheet of a file as rows of trimmed strings.
+function readRows(file) {
+  if (/\.(csv|txt)$/i.test(file)) { const b = fs.readFileSync(file); let t = b.toString('utf8'); if (t.includes('\ufffd')) t = b.toString('latin1'); t = t.replace(/^\ufeff/, '');
+    const L = t.split(/\r?\n/); const sep = (L[0].match(/;/g) || []).length > (L[0].match(/,/g) || []).length ? ';' : ',';
+    return L.filter(Boolean).map(l => (sep === ',' ? csvRow(l) : l.split(';')).map(c => c.replace(/^"|"$/g, '').trim())); }
+  let f = file; if (/\.xls$/i.test(file)) { execFileSync('soffice', ['--headless', '--convert-to', 'xlsx', '--outdir', '/tmp', file], { stdio: 'ignore' }); f = '/tmp/' + file.split('/').pop().replace(/\.xls$/i, '.xlsx'); }
+  const py = 'import openpyxl,json,sys\nwb=openpyxl.load_workbook(sys.argv[1],read_only=True,data_only=True)\nprint(json.dumps([["" if v is None else str(v).strip() for v in r] for ws in wb.worksheets for r in ws.iter_rows(values_only=True)]))';
+  return JSON.parse(execFileSync('python3', ['-c', py, f], { maxBuffer: 1 << 30 }).toString());
+}
+const numv = v => { const x = parseFloat(String(v).replace(/[^\d.,-]/g, '').replace(/,(?=\d{3}\b)/g, '').replace(',', '.')); return x > 0 ? x : null; };
+// Per-piece rows (avocado, egg, lime, tortilla) from a per-kg price use the cost.js grams per piece.
+const toUnit = (key, perKg) => P[key][1] === 'ea' ? (P[key][2] ? perKg * P[key][2] / 1000 : null) : perKg;
 
-/* 5) Mexico PROFECO Quien es Quien en los Precios (datos.gob.mx, CC-BY-4.0): national median per product of the latest file. */
+/* 4) India DCA price monitoring (Dept of Consumer Affairs, fcainfoweb.nic.in): daily retail prices, Rs/kg (milk Rs/litre), per centre.
+   The site needs a CAPTCHA and api.data.gov.in needs a key, so only files placed in /workspace/price-data/in are used. */
+const DCA = [[/^rice/i, 'rice'], [/^atta|wheat\s*flour/i, 'flour'], [/^sugar/i, 'sugar'], [/^milk/i, 'milk'], [/^potato/i, 'potato'], [/^onion/i, 'onion'], [/^tomato/i, 'tomato'],
+  [/^masoor/i, 'lentil'], [/^tea/i, null], [/^gram\s*dal|^chana/i, null]];
 try {
-  const pr = await fetch('https://datos.gob.mx/api/3/action/package_show?id=programa_quien_es_quien_precios_' + new Date().getUTCFullYear(), { headers: H }); const pt = await pr.text(); if (!pr.ok || /Access Denied/.test(pt.slice(0, 300))) throw new Error('datos.gob.mx blocked (' + pr.status + ', Akamai Access Denied)'); const pk = JSON.parse(pt);
-  const url = pk.result.resources.map(r => r.url).sort().pop(); const r = await fetch(url, { headers: H }); const t = await r.text();
-  if (!r.ok || /Access Denied/.test(t.slice(0, 300))) throw new Error('download blocked (' + r.status + ') ' + url);
-  const L = t.split(/\r?\n/); const h = csvRow(L[0]).map(s => s.toLowerCase()); const iP = h.findIndex(s => /producto/.test(s)), iR = h.findIndex(s => /presentaci/.test(s)), iV = h.findIndex(s => /^precio/.test(s));
-  const MX = [[/^jitomate/i, /kg|granel/i, 'tomato'], [/^cebolla/i, /kg|granel/i, 'onion'], [/^papa\b/i, /kg|granel/i, 'potato'], [/^zanahoria/i, /kg|granel/i, 'carrot'], [/^aguacate/i, /kg|granel/i, 'avocado', 0.17],
-    [/^lim.n/i, /kg|granel/i, 'lime', 0.06], [/^pl.tano/i, /kg|granel/i, 'banana'], [/^manzana/i, /kg|granel/i, 'apple'], [/^huevo/i, /kg|granel/i, 'egg', 0.05], [/^tortilla/i, /kg/i, 'tortilla', 0.04], [/^frijol/i, /kg/i, 'bean'], [/^arroz/i, /kg/i, 'rice'], [/^az.car/i, /kg/i, 'sugar']];
-  const g = {}; for (const l of L.slice(1)) { const c = csvRow(l); const m = MX.find(x => x[0].test(c[iP] || '') && x[1].test(c[iR] || '')); const v = +c[iV]; if (m && v > 0) (g[m[2]] ||= []).push(v * (m[3] || 1)); }
-  for (const [k, a] of Object.entries(g)) if (a.length >= 20) put('MX', k, med(a), a.length, 'profeco', url.split('/').pop());
-  out.sources.profeco = { name: 'PROFECO Quien es Quien en los Precios', url, license: 'CC-BY-4.0' };
+  const fl = filesIn('in'); if (!fl.length) throw new Error('no files in ' + PD + '/in (fcainfoweb needs a CAPTCHA, data.gov.in needs a key)');
+  const g = {}; let period = '';
+  for (const file of fl) { const rows = readRows(file);
+    const hi = rows.findIndex(r => r.filter(c => DCA.some(([re, k]) => k && re.test(c))).length >= 3); // wide: centres x commodities
+    if (hi >= 0) { const h = rows[hi]; const cols = h.map(c => (DCA.find(([re]) => re.test(c)) || [])[1]);
+      for (const r of rows.slice(hi + 1)) { const name = String(r[0] || r[1] || ''); if (/average|max|min|modal|all india|^$/i.test(r.slice(0, 2).join(' '))) continue;
+        r.forEach((c, j) => { const k = cols[j], v = numv(c); if (k && v && v < 2000) (g[k] ||= []).push(v); }); }
+    } else { // long: one commodity per row, centres as columns (or a Price column)
+      for (const r of rows) { const k = (DCA.find(([re]) => re.test(r[0] || r[1] || '')) || [])[1]; if (!k) continue; r.slice(1).forEach(c => { const v = numv(c); if (v && v < 2000 && !/^\d{4}$/.test(c)) (g[k] ||= []).push(v); }); } }
+    const dm = rows.flat().join(' ').match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](20\d\d)/); if (dm) period = dm[0];
+  }
+  let n = 0; for (const [k, a] of Object.entries(g)) if (a.length >= 5) { put('IN', k, toUnit(k, med(a)), a.length, 'dca', period || fl.map(f => f.split('/').pop()).join(', ')); n++; }
+  if (!n) throw new Error('files found but no DCA commodity table recognised: ' + fl.join(', '));
+  out.sources.dca = { name: 'Department of Consumer Affairs (India), Price Monitoring Division, daily retail prices', url: 'https://fcainfoweb.nic.in/reports/report_menu_web.aspx', note: 'median across reporting centres; file(s) ' + fl.map(f => f.split('/').pop()).join(', ') };
+} catch (e) { log.push('india dca skipped: ' + e.message); }
+
+/* 5) Mexico PROFECO Quien es Quien en los Precios (datos.gob.mx, CC-BY-4.0): national median per product.
+   Files in /workspace/price-data/mx win; else try the newest file on datos.gob.mx (Akamai often blocks the box). */
+const MXM = [[/^jitomate/i, 'tomato'], [/^cebolla/i, 'onion'], [/^papa\b/i, 'potato'], [/^zanahoria/i, 'carrot'], [/^aguacate/i, 'avocado'], [/^lim[oó]n/i, 'lime'], [/^pl[aá]tano/i, 'banana'],
+  [/^manzana/i, 'apple'], [/^huevo/i, 'egg'], [/^tortilla/i, 'tortilla'], [/^frijol/i, 'bean'], [/^arroz/i, 'rice'], [/^az[uú]car/i, 'sugar'], [/^chile poblano|^pimiento/i, 'bell pepper'], [/^calabacita/i, 'zucchini'],
+  [/^leche/i, 'milk'], [/^pechuga/i, 'chicken breast'], [/^pollo/i, 'chicken'], [/^carne molida|^molida de res/i, 'ground beef'], [/^ajo/i, 'garlic']];
+// Presentacion -> kg (or litre) per package; null when it is not a weight/volume we can trust (e.g. 'PIEZA').
+const mxSize = s => { s = String(s).toUpperCase(); if (/\bGRANEL\b|\b1 ?KG\b|\bKG\.?$|POR KILO/.test(s) && !/\d+ ?(GR|G)\b/.test(s)) return 1; let m = s.match(/(\d+(?:[.,]\d+)?) ?(KG|KILO)/); if (m) return +m[1].replace(',', '.');
+  m = s.match(/(\d+(?:[.,]\d+)?) ?(GR|G|GRS)\b/); if (m) return +m[1].replace(',', '.') / 1000; m = s.match(/(\d+(?:[.,]\d+)?) ?(L|LT|LTS|LITRO|LITROS)\b/); if (m) return +m[1].replace(',', '.'); m = s.match(/(\d+) ?ML\b/); if (m) return +m[1] / 1000; return null; };
+function mxParse(rows, label) {
+  let h = rows[0].map(c => c.toLowerCase()), body = rows.slice(1); let iP = h.findIndex(c => /^producto/.test(c)), iR = h.findIndex(c => /presentaci/.test(c)), iV = h.findIndex(c => /^precio/.test(c));
+  if (iP < 0 || iV < 0) { iP = 0; iR = 1; iV = 5; body = rows; } // headerless files: producto, presentacion, marca, categoria, catalogo, precio, fecha, ...
+  const g = {}; for (const c of body) { const m = MXM.find(([re]) => re.test(c[iP] || '')); if (!m) continue; const k = m[1], v = numv(c[iV]); if (!v) continue;
+    const egg = k === 'egg' && String(c[iR]).toUpperCase().match(/(\d+) ?(PZAS?|PIEZAS)/);
+    if (egg) { (g[k] ||= []).push(v / +egg[1]); continue; } const sz = mxSize(c[iR]); if (!sz) continue; const u = toUnit(k, v / sz); if (u) (g[k] ||= []).push(u); }
+  let n = 0; for (const [k, a] of Object.entries(g)) if (a.length >= 20) { put('MX', k, med(a), a.length, 'profeco', label); n++; } return n;
+}
+try {
+  const fl = filesIn('mx'); let n = 0, used = '';
+  if (fl.length) { const rows = fl.flatMap(f => { const r = readRows(f); return r; }); used = fl.map(f => f.split('/').pop()).join(', '); n = mxParse(rows, used); }
+  else {
+    const pr = await fetch('https://datos.gob.mx/api/3/action/package_show?id=programa_quien_es_quien_precios_' + new Date().getUTCFullYear(), { headers: H }); const pt = await pr.text(); if (!pr.ok || /Access Denied/.test(pt.slice(0, 300))) throw new Error('datos.gob.mx blocked (' + pr.status + ', Akamai Access Denied) and no files in ' + PD + '/mx'); const pk = JSON.parse(pt);
+    const url = pk.result.resources.map(r => r.url).sort().pop(); const r = await fetch(url, { headers: H }); const t = await r.text();
+    if (!r.ok || /Access Denied/.test(t.slice(0, 300))) throw new Error('download blocked (' + r.status + ') ' + url); used = url.split('/').pop(); n = mxParse(t.split(/\r?\n/).filter(Boolean).map(csvRow), used);
+  }
+  if (!n) throw new Error('no PROFECO products recognised in ' + used);
+  out.sources.profeco = { name: 'PROFECO Quien es Quien en los Precios', url: 'https://datos.gob.mx/dataset/programa_quien_es_quien_precios_2026', license: 'CC-BY-4.0', note: 'national median of store prices; ' + used };
 } catch (e) { log.push('profeco skipped: ' + e.message); }
 
 out.skipped = log;
-fs.writeFileSync(new URL('../../functions/_lib/intl-prices.js', import.meta.url), '// Generated by scripts/intl/build.mjs from Open Prices, ONS, DIEESE (and PROFECO when reachable). Do not edit by hand.\nexport default ' + JSON.stringify(out, null, 1) + ';\n');
+fs.writeFileSync(process.env.OUT || new URL('../../functions/_lib/intl-prices.js', import.meta.url), '// Generated by scripts/intl/build.mjs from Open Prices, ONS, DIEESE (and PROFECO when reachable). Do not edit by hand.\nexport default ' + JSON.stringify(out, null, 1) + ';\n');
 for (const [cc, c] of Object.entries(out.c)) console.log(cc, c.cur, Object.keys(c.i).length, Object.entries(c.i).map(([k, v]) => k + '=' + v.p + '/' + v.u + '(' + v.src[0] + v.n + ')').join(' '));
 console.log(log.join('\n'));
